@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Runtime、可复用核心、DSH 执行与控制面",
+    "locale": "zh-CN",
+    "output": ".archify/explainer-dsh-superagent-20261105-021749/system-overview-diagram.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "github", "type": "external", "label": "GitHub Source", "pos": [40, 60], "size": [150, 60] },
+    { "id": "feishu", "type": "external", "label": "Feishu Source", "pos": [40, 160], "size": [150, 60] },
+    { "id": "runtime", "type": "backend", "label": "Runtime", "pos": [260, 110], "size": [140, 60] },
+    { "id": "engine", "type": "security", "label": "Engine", "pos": [460, 60], "size": [140, 60] },
+    { "id": "policy", "type": "security", "label": "Policy", "pos": [460, 160], "size": [140, 60] },
+    { "id": "worker", "type": "frontend", "label": "DSH Worker Sessions", "pos": [660, 60], "size": [170, 60] },
+    { "id": "workdir", "type": "database", "label": "Ticket Worktrees", "pos": [660, 160], "size": [170, 60] },
+    { "id": "sqlite", "type": "database", "label": "SQLite Store", "pos": [40, 280], "size": [140, 60] },
+    { "id": "effects", "type": "messagebus", "label": "Effects", "pos": [220, 280], "size": [130, 60] },
+    { "id": "outbox", "type": "messagebus", "label": "Outbox", "pos": [390, 280], "size": [130, 60] },
+    { "id": "health", "type": "database", "label": "Health Board", "pos": [560, 280], "size": [140, 60] },
+    { "id": "panel", "type": "frontend", "label": "Management Panel", "pos": [740, 280], "size": [170, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "外部来源", "wraps": ["github", "feishu"] },
+    { "kind": "region", "label": "可复用核心", "wraps": ["runtime", "engine", "policy"] },
+    { "kind": "region", "label": "DSH 执行", "wraps": ["worker", "workdir"] },
+    { "kind": "region", "label": "控制面", "wraps": ["sqlite", "effects", "outbox", "health", "panel"] }
+  ],
+  "connections": [
+    { "id": "github-runtime", "from": "github", "to": "runtime", "label": "poll" },
+    { "id": "feishu-runtime", "from": "feishu", "to": "runtime", "label": "optional", "variant": "dashed" },
+    { "id": "runtime-engine", "from": "runtime", "to": "engine", "label": "triggers", "variant": "emphasis" },
+    { "id": "engine-policy", "from": "engine", "to": "policy", "label": "gate", "variant": "security" },
+    { "id": "engine-worker", "from": "engine", "to": "worker", "label": "assignment", "variant": "emphasis" },
+    { "id": "worker-workdir", "from": "worker", "to": "workdir", "label": "isolated" },
+    { "id": "runtime-sqlite", "from": "runtime", "to": "sqlite", "label": "transactions" },
+    { "id": "runtime-effects", "from": "runtime", "to": "effects", "label": "enqueue", "variant": "dashed" },
+    { "id": "effects-outbox", "from": "effects", "to": "outbox", "label": "replay", "variant": "dashed" },
+    { "id": "engine-outbox", "from": "engine", "to": "outbox", "label": "replies" },
+    { "id": "runtime-health", "from": "runtime", "to": "health", "label": "report" },
+    { "id": "panel-runtime", "from": "panel", "to": "runtime", "label": "local API" }
+  ]
+}

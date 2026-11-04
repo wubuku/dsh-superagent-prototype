@@ -1,0 +1,48 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Ticket 状态与人工干预",
+    "output": ".archify/explainer-dsh-superagent-20261105-021749/ticket-lifecycle-diagram.html",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/wubuku/dsh-superagent-prototype.git",
+      "provider": "github",
+      "revision": "6337fc823ce20251c8de8085948165c81aaa701e"
+    }
+  },
+  "mainPath": ["queued", "working", "review", "ended"],
+  "states": [
+    { "id": "queued", "type": "start", "label": "Queued", "sublabel": "accepted", "sources": [{ "path": "src/core/stage.ts", "line": 9, "end_line": 22 }] },
+    { "id": "working", "type": "active", "label": "Working", "sublabel": "session running", "sources": [{ "path": "src/executor/dsh.ts", "line": 84, "end_line": 99 }] },
+    { "id": "waiting", "type": "waiting", "label": "Waiting", "sublabel": "idle", "sources": [{ "path": "src/core/stage.ts", "line": 9, "end_line": 22 }] },
+    { "id": "answer", "type": "waiting", "label": "Answer", "sublabel": "question", "sources": [{ "path": "src/core/stage.ts", "line": 9, "end_line": 22 }] },
+    { "id": "review", "type": "waiting", "label": "Review", "sublabel": "ready", "sources": [{ "path": "src/core/stage.ts", "line": 9, "end_line": 22 }] },
+    { "id": "ended", "type": "success", "label": "Ended", "sublabel": "terminal", "sources": [{ "path": "src/core/tickets.ts", "line": 37, "end_line": 70 }] }
+  ],
+  "transitions": [
+    { "id": "queued-working", "from": "queued", "to": "working", "label": "assignment runs", "variant": "emphasis" },
+    { "id": "working-waiting", "from": "working", "to": "waiting", "label": "turn ends" },
+    { "id": "waiting-working", "from": "waiting", "to": "working", "label": "trigger resumes" },
+    { "id": "working-answer", "from": "working", "to": "answer", "label": "question", "variant": "security" },
+    { "id": "answer-working", "from": "answer", "to": "working", "label": "person answers" },
+    { "id": "working-review", "from": "working", "to": "review", "label": "ready report", "variant": "emphasis" },
+    { "id": "review-working", "from": "review", "to": "working", "label": "follow-up resumes", "variant": "dashed" },
+    { "id": "review-ended", "from": "review", "to": "ended", "label": "approved or merged", "variant": "emphasis" },
+    { "id": "answer-ended", "from": "answer", "to": "ended", "label": "resolved" },
+    { "id": "working-ended-stop", "from": "working", "to": "ended", "label": "human stop", "variant": "security" },
+    { "id": "review-ended-revoked", "from": "review", "to": "ended", "label": "mandate revoked", "variant": "security" },
+    { "id": "ended-working-same-mandate", "from": "ended", "to": "working", "label": "same mandate recovery", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Endings",
+      "items": [
+        "Completed, merged, stopped, or mandate revoked",
+        "A non-human stop can resume under the same mandate"
+      ]
+    }
+  ]
+}

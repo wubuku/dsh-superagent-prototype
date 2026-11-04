@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "1b35ea9f-5e61-4a84-acf1-ea5927ca9fdd",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
+  "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
+  "specification": {
+    "sha256": "18c1440584381b4aa7af581709ccbdf83e992417e0c0003d974e0fc454823ce5",
+    "bytes": 5112
+  },
+  "artifact": {
+    "sha256": "932efc4cd84441f394fdb4f331a7ba45049c0f8f599b0104c2ca87845473bd36",
+    "bytes": 1788638
+  },
+  "explainer": {
+    "preparedSha256": "3f3edef903d6812d8f22533c34584b0dd8c56ed77506bebe97cc3d52f66c269f",
+    "dependencies": [
+      {
+        "kind": "repository",
+        "id": "bundle-patch",
+        "path": "cordis.patch.yml",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "fc9271cdf9b3d96bcb7febffe194f92cb427a88044168f83b3fb7522ab5c9bce",
+        "bytes": 8398
+      },
+      {
+        "kind": "repository",
+        "id": "engine",
+        "path": "src/core/engine.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "bd9a4caff834859877d1a08ccddebc990d0e1ca568674b80f9d59ce5adcac827",
+        "bytes": 16310
+      },
+      {
+        "kind": "repository",
+        "id": "intake",
+        "path": "src/core/intake.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "323aadefea69436ba23ed2de3bdbaad673d61915be9e239f3233ecf551a74179",
+        "bytes": 3799
+      },
+      {
+        "kind": "repository",
+        "id": "policy",
+        "path": "src/policy.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "01cff8c333b341ee2943e644046f0da3ed9675af1c0029489b5f4bc8226d293d",
+        "bytes": 19082
+      },
+      {
+        "kind": "repository",
+        "id": "executor",
+        "path": "src/executor/dsh.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "6445a03121fa9bd15fc437736bcc2acc6ab950c5fe732e5b99eb8ee2c8a9476b",
+        "bytes": 47615
+      },
+      {
+        "kind": "repository",
+        "id": "worker-preset",
+        "path": "cordis.patch.yml",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "fc9271cdf9b3d96bcb7febffe194f92cb427a88044168f83b3fb7522ab5c9bce",
+        "bytes": 8398
+      },
+      {
+        "kind": "repository",
+        "id": "store",
+        "path": "docs/007-architecture.md",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "e3747665587fdf88b28d4e9c1a1f8ac40cbc2c65a9999be1fce14b69ec44d748",
+        "bytes": 70507
+      },
+      {
+        "kind": "repository",
+        "id": "outbox",
+        "path": "src/app/outbox.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "48d20062dd8c34c2b95e851c78265c9e403d1040894e97c7d9d0fa190d54415e",
+        "bytes": 3314
+      },
+      {
+        "kind": "repository",
+        "id": "stage",
+        "path": "src/core/stage.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "b935012a654d2a68ca20cb27909ddc8dceafb704b56a16a23a08036a546141df",
+        "bytes": 1684
+      },
+      {
+        "kind": "repository",
+        "id": "tickets",
+        "path": "src/core/tickets.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "1d9f964ad34b54cbb0403bde16af58851e5e80111177ce73a27b6034e9af940e",
+        "bytes": 27013
+      },
+      {
+        "kind": "repository",
+        "id": "wake",
+        "path": "src/core/tickets.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "1d9f964ad34b54cbb0403bde16af58851e5e80111177ce73a27b6034e9af940e",
+        "bytes": 27013
+      },
+      {
+        "kind": "repository",
+        "id": "sessions",
+        "path": "src/app/sessions.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "ca2b98e57e9f27b2abb0afab59d44ea744a96d8be4cf81d7b3776901b56cd36b",
+        "bytes": 24169
+      },
+      {
+        "kind": "diagram-spec",
+        "id": "system-overview",
+        "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/diagram.system-overview.json",
+        "relativePath": "diagram.system-overview.json",
+        "sha256": "b114521720b3bcaa0eeec33aa5ca646bb3748798c700314fa5b47fd53fda12df",
+        "bytes": 3179
+      },
+      {
+        "kind": "diagram-spec",
+        "id": "request-flow",
+        "inline": true,
+        "sha256": "ed35d8b95e1586e153b04bd5624b9f9bc1de7569002588a8b2942d0185ad6d8b",
+        "bytes": 1520
+      },
+      {
+        "kind": "diagram-spec",
+        "id": "ticket-lifecycle-diagram",
+        "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/diagram.ticket-lifecycle.json",
+        "relativePath": "diagram.ticket-lifecycle.json",
+        "sha256": "d77fc03ce6c48049fb92dce3ed396561eec9a04f0ddc31b38ca2ef09197c548d",
+        "bytes": 3054
+      }
+    ]
+  }
+}
