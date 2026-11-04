@@ -13,7 +13,8 @@
 5. **DSH 的 `steer` / `followup` / `inject` 是适配器内部语义，不应进入跨进程协议。** 跨进程协议只应表达“向某个工作单元追加一条带幂等键的输入”，以及“这条输入在下一轮、下一步还是仅上下文生效”；具体怎么映射由 DSH 适配器决定。DSH 的三段语义见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/core/agent/src/runtime-types.ts:215-241`。
 6. **必须同步完成的只有授权事实和工作单元事实；跨角色投递和外部副作用都可以异步。** 具体边界见 §3。把 gate、域事务、Ticket+Mandate 创建拆成远程调用，收益为负。
 7. **进程隔离真正新增的是协议能力，不是线程/进程数量：** 跨进程事件总线、执行节点注册与租约、四类幂等键、deadline 与心跳、失败与“结果未知”的区分、按角色拆权限域。没有这六样，拆进程只会得到更难排查的分布式单体。
-8. **建议分三阶段：P0 端口闭合 + 事务性事件 outbox（仍单进程）；P1 队列、租约、节点注册服务化；P2 角色进程拆分与异构适配器。** 先把协议写对，再拆进程。
+8. **事件事实与投递状态必须分成两层。** 同一个事件可能投给 Router、多个 Worker、审计与 watchdog；持久化、路由、接受、领取、处理是五个不同状态，任一层的成功都不能当作下一层完成。原型已有 `Trigger`、`Input`、`inputsDelivered` / `inputsRead` 的雏形，但缺少按消费者记录的通用投递表。〔外部材料主张 + 原型 + 判断〕
+9. **建议分三阶段：P0 端口闭合 + 事件日志/投递表（仍单进程）；P1 队列、租约、节点注册服务化；P2 角色进程拆分与异构适配器。** 先把协议写对，再拆进程。
 
 一句话结论：**先协议化，再进程化；保留“事务 + 持久队列 + 纯函数准入”的内核，把 Session、投递语义和权限绑定留在 DSH 适配器里。**
 
@@ -28,6 +29,8 @@
 | 〔判断〕（本文分析判断） | 本文基于前两类证据做出的分析、取舍或结论 | 明确写成判断，不冒充实现 |
 | 〔设想〕（文章设想） | 本文提出、尚未在原型或 DSH 中落地的设计 | 明确写成建议 |
 | 〔推断〕 | 代码可解释但未做运行验证的结论 | 在〔判断〕内额外标注 |
+
+另设一个来源标记 **〔外部材料主张〕**，它不是第五类证据，而是出处标签：表示该说法来自 [分享页“调研Agent事件订阅”](https://chatgpt.com/share/6aeb76b7-8874-83ea-a742-75434a6ce4bf)，读取日期 2026-11-05。凡涉及本原型、DSH 或开源实现的断言，本文都回到代码/文档核对：核对后归入〔原型〕/〔DSH〕/〔判断〕；核对不符写“外部材料在此处失准”；无法核对写“无法核实”。页面正文约 9.6 万字符，含多轮回答；与本文无关的厂商产品综述不纳入。
 
 核查方式：先按任务给定线索定位，再逐处复核源码。任务描述与源码行号有偏差的地方以源码为准。例如 GitHub 游标推进的实际位置是 `src/sources/github.ts:225-244` 与 `src/sources/github.ts:372`，而不是 127-146；127-146 是轮询主循环。
 
@@ -158,6 +161,7 @@
 2. **失败是否可能已经产生不可撤销的外部副作用？** 是 → 不能只重试，必须有幂等键、收据或“结果未知 → 对账”。
 3. **是否改变授权事实？** 是 → 必须单写者、单事务；不能让两个角色各自写一半。
 4. **是否纯函数、无 I/O、无状态？** 是 → 不拆进程。跨进程只会增加延迟与失败面。
+5. **持久化、投递、领取、处理是否被混为一谈？** 混了 → 先拆状态机。只要任一层成功就被当作完成，跨进程后一定会丢消息或重复消费。 〔外部材料主张 + 判断〕
 
 ## 4. 角色无关协议不变量 vs DSH 专有实现
 
@@ -199,7 +203,7 @@
 | 3 | 判断只以主 Session 工具存在 | `orchestrator_eval*` / `orchestrator_route`（`src/app/tools/main.ts:202-220`）；工具只装在主 Session（`src/app/sessions.ts:149-153`） | 外部 Assessor 无法“回写判定”，端口不闭合 | 给 `Assessor` 端口加 `decide` / `cancel` / `heartbeat`，或另立 `AssessorService` 协议；工具只是其中一个适配器 | 高 | P0 |
 | 4 | 通知只能 steer/inject 到已存在 agent | relay 与 notice handler（`src/app/sessions.ts:104-105`、`src/app/sessions.ts:162-186`） | Router 不在线时通知丢失或长期挂起 | 通知改成按事件 id 持久投递；接收方上线后补投；非 DSH 适配器可降级为队列 | 中 | P1 |
 | 5 | effect 派发与 handler 注册都在进程内 | `Effects` 持有 handler 表并 `queueMicrotask` 派发（`src/app/effects.ts:46-88`） | 多节点无法共享队列；节点崩溃后无人 claim | 拆成 queue 服务（先 SQLite 表，后可换 Redis/SQS）：claim / heartbeat / ack / visibility timeout | 高 | P1 |
-| 6 | 域事件没有事务性事件流，只是回调 | `emit` 在事务内回调，`runtime` 直接处理（`src/core/part.ts:64-65`；`src/app/runtime.ts:138-153`） | 跨进程消费者收不到事件；崩溃后无法补投 | 新增 event 表（seq、type、payload、published），消费者按 offset 拉取；先事务写事件，再投递 | 高 | P1 |
+| 6 | 域事件没有事务性事件流，只是回调 | `emit` 在事务内回调，`runtime` 直接处理（`src/core/part.ts:64-65`；`src/app/runtime.ts:138-153`） | 跨进程消费者收不到事件；崩溃后无法补投 | 拆成 Event Journal（seq、type、payload、dedupeKey）与 Delivery 表（consumerId、state、attempts、due）；同事务写事件与待投递行 | 高 | P1 |
 | 7 | Router 与 Worker 共享 OS 权限 | 两者都 `danger-full-access`（`src/app/sessions.ts:152`）；worker 以 operator OS 用户跑命令（`docs/003-execution.md:27`） | 判断侧可写仓库、执行侧可决定新工作，权限域没有拆开 | Router：只读上下文 + decide token；Worker：写工作区 + 授权范围内外部写；Watchdog：只读事件 | 高 | P1 |
 | 8 | Session/agent 注册表是进程内单写者 | 订阅 `agent/created`、`session/event`、`agent/status`（`src/app/sessions.ts:108-136`）；单写者约束见 DSH 绝对路径 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/session/session-persistence/README.md:90` | 不能跨节点直接操作同一个 agent | 一个 agent 只属于一个执行节点；跨节点只传协议消息，不共享 Session | 高 | P2 |
 
@@ -213,7 +217,7 @@
 2. 新增 `DecisionCommand` 的认证：谁可以判定、判定针对哪个 Eval、过期时间；工具调用只是签发这个 command 的一种方式。
 3. 初始化不再 `ensure(masterId)`；改为“Router 上线后消费评估队列”。`Runtime.ready` 只表示引擎与队列就绪。
 4. `RoleTarget` 替代 `masterId` 直投：relay / notice / assessment 都按角色解析当前租约持有者；无持有者时排队。
-5. 加事件 outbox 表；即使消费者进程尚未启动，事件也不丢。
+5. 拆出 Event Journal 与 Delivery 表；即使消费者进程尚未启动，事件事实与待投递行都不丢。
 
 验收信号：杀掉 Router 进程后，事件仍落库、Eval 保持 deadline、重启后能被新 Router 接走；重复投递同一 `evalId` 只产生一个 Decision。 〔设想〕
 
@@ -245,6 +249,7 @@
 | 至少一次投递 | 进程会崩，网络会断 | 持久队列 + ack；消费者幂等 | effect 队列是进程内派发（`src/app/effects.ts:83-88`） |
 | 按 key 保序 | 同一 Thread 的评估、同一 Ticket 的输入不能乱序 | `partitionKey = threadKey` 或 `ticketId`；只保证同 key 顺序 | 当前靠单进程串行与 `ordered` effect；跨进程无约束 |
 | 可暂停与可恢复 | 运维需要停下来修配置 | 队列支持 `paused`；未消费行保留 | `limit: () => paused() ? 0 : ...`（`src/app/assessment.ts:101`、`src/executor/dsh.ts:232-235`） |
+| 事实与投递分离 | 同一事件要投给 Router、多个 Worker、审计等多个目标，各自重试 | Event Journal 一行 + Delivery 每个消费者一行 | 有 `Trigger` 与 Ticket `Input`，但没有以 consumer 为维度的通用投递行 |
 | 消费者可缺席 | Router 进程可能后起 | 事件先落库，消费者注册后再拉 | 初始化阻塞在 Router 创建（`src/app/runtime.ts:210`） |
 
 〔判断〕建议的队列语义是“至少一次 + 按 key 保序 + 消费者侧幂等”，而不是“恰好一次”。跨进程的恰好一次通常需要分布式事务，代价远高于收益。
@@ -317,6 +322,62 @@
 - 域事件已经是审计线索（`src/core/ports.ts:86-103`），但只存在内存回调，不构成可回放的日志。 〔原型〕
 - Decision 的证据要求已经很强：`AssessmentSchema` 要求 `direction`、`rule_assessments`、`title`、`scope`、`intent_evidence`、`reason`（`src/app/assessment.ts:21-34`）。跨进程后这些字段应随 `DecisionCommand` 一起传输并落库。 〔原型 + 设想〕
 - 需要补充：`traceId`（通常就是 `triggerId`）、`nodeId`、`attempt`、`leaseId`、`capability`。否则跨进程后无法回答“这条判定是谁、在哪个节点、第几次尝试做出的”。
+
+### 6.8 事件日志与投递队列：事实和投递不是一张表
+
+来源：[分享页“调研Agent事件订阅”](https://chatgpt.com/share/6aeb76b7-8874-83ea-a742-75434a6ce4bf)（读取日期 2026-11-05）。〔外部材料主张〕
+
+外部材料主张把“不可变事件日志”和“按消费者的投递状态”分开：事件只写一次，投递可以多次；同一事件可以同时投给 Router、多个 Worker、审计和 watchdog，各自的进度与重试互不影响。这个主张与原型的分层高度吻合，但比原型的 `effect` 队列更完整。
+
+〔原型〕原型其实已经有四层，只是没有以 consumer 为维度的通用投递表：
+
+| 层 | 原型对应 | 作用 | 缺口 |
+| --- | --- | --- | --- |
+| 事件事实 | `Trigger` | 通道无关、不可变、按来源 id 去重 | 已具备 |
+| 准入与路由 | `TriggerDisposition` | 记录是否过滤、进了哪个 Eval、扇出到哪些 Ticket | `fanout` / `acked` 聚合在事件行上，不是每个目标一行 |
+| 目标投递 | Ticket `Input` | 每个 Ticket 自己的待投递输入 | 只覆盖 Ticket；Router、审计、watchdog 没有同类投递行 |
+| 副作用投递 | `Effect` | 退避、限流、有序、暂停 | 与服务事件 id、消费者身份的关联较弱 |
+
+证据：`Trigger` 的不可变定义见 `src/core/model.ts:22-39`；路由记录见 `src/core/model.ts:41-60`；扇出创建 Ticket Input 见 `src/core/intake.ts:49-52`；副作用入队见 `src/app/effects.ts:61-66`。
+
+〔设想〕建议的事件信封字段：
+
+| 字段 | 用途 |
+| --- | --- |
+| `eventId` | 来源稳定 id；重放时不变 |
+| `source` / `resourceType` / `resourceId` | 事件来自哪、作用于什么 |
+| `eventType` | 领域事件类型，不是厂商事件名 |
+| `payload` | 原始事实的规范化副本，不可变 |
+| `actor` | 人、agent、系统；用于授权与审计 |
+| `occurredAt` | 外部世界发生时间，不是入库时间 |
+| `dedupeKey` | 来源级去重键；与 `eventId` 可不同 |
+| `correlationId` | Thread / Ticket / Trace 的关联键 |
+| `trustLevel` | 不可信外部输入、已验证成员、系统内部 |
+| `schemaVersion` | 兼容升级用 |
+
+投递表字段建议：`deliveryId`、`eventId`、`consumerId`、`state`、`attempts`、`dueAt`、`leaseId`、`deadline`、`lastError`、`result`。唯一键是 `(eventId, consumerId)`，而不是单个事件行的 offset。
+
+〔判断〕这里修正了本文此前的建议：此前写“加一张事件 outbox 表 + 消费者按 offset 拉取”，这暗含“一个事件一个投递位”。本系统的事件有多个消费者（Router、Worker、审计、watchdog），每个消费者的失败与重试是独立的，因此应拆成 Event Journal + Delivery。两者都在业务事务内写入，但允许 Delivery 尚未创建（消费者后注册时由 Journal 补建）。
+
+### 6.9 投递状态机：persisted、accepted、claimed、processed
+
+〔外部材料主张 + 原型 + 判断〕外部材料提出“持久化不等于送达、送达不等于处理完成”。原型已经有两个现成的状态证据：`inputsDelivered` 与 `inputsRead` 分开记录（`src/core/engine.ts:181-190`；worker 的 turn 开始时才标记 read，`src/executor/dsh.ts:495-503`）。这说明“投递成功”和“真的被 agent 看见”在原型里就是两件事。
+
+| 状态 | 含义 | 原型证据 | 谁能推进 |
+| --- | --- | --- | --- |
+| persisted | 事件/输入/副作用已提交到库 | `src/core/intake.ts:23-30`；`src/app/effects.ts:61-66` | Engine 事务 |
+| routed | 已决定投给哪些消费者，Delivery 行已建 | `src/core/intake.ts:49-55` | Intake / Router |
+| accepted | 适配器已把输入放进 agent 的 inbox 并返回 | `src/app/delivery.ts:79-84` | Agent 适配器 |
+| claimed | agent 真正开始处理这条输入 | `src/core/engine.ts:181-190`；`src/executor/dsh.ts:495-503` | Agent 运行时事件 |
+| processed | 产生了业务结果（Decision、Report、Reply） | `src/core/tickets.ts:37-56`；`src/executor/dsh.ts:342` | Engine / Worker |
+| failed / expired / unknown | 失败、超期、结果不确定 | `src/app/effects.ts:130-143`；`src/core/evals.ts:60-69` | Dispatcher / Watchdog |
+
+关键结论：
+
+- **DSH 的 `steer` / `followup` / `inject` 返回 `void`，不是“模型已处理”的 Promise**（DSH 绝对路径 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/core/agent/src/runtime-types.ts:215-241`）。适配器最多能诚实报告 `accepted`；`claimed` / `processed` 必须另有运行时事件或心跳。
+- `steer` 可能在下一次取消时被丢弃、`inject` 可能错过当前请求（同一注释段），所以 `accepted` 也不等于“一定进入模型上下文”。〔DSH〕
+- 跨进程协议必须把 `DeliveryResult` 定义为 `accepted | rejected | unsupported`，而不是布尔成功；`claimed` / `processed` 通过后续事件回报。若外部 agent 无法提供 `claimed`，就用 deadline 加心跳把“慢”与“丢”区分开。 〔设想〕
+- 这直接补强 §6.5 的失败分类：`timeout` 应细分为“未 accepted 的超时”和“已 accepted 未 claimed 的超时”；后者更像投递丢失，前者更像连接失败。 〔判断〕
 
 ## 7. 为什么“判断寄生在常驻 Router 会话”是瓶颈
 
