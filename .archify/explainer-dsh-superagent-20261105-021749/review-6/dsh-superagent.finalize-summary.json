@@ -7,13 +7,13 @@
   "quality": "showcase",
   "specification": {
     "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
-    "sha256": "12e735111eb42cf6910017c7e3929ac6fdd0de54e192f279817b457929c81119",
-    "bytes": 8654
+    "sha256": "3a70e6f0e63ca624642a0b8a00d69f855b69062185822feb670c93c7d62293f5",
+    "bytes": 9407
   },
   "artifact": {
     "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
-    "sha256": "d52212bb1168a653ffa19fa452718dd94daab76fc976a55ef2b3f2d89fa1e3d4",
-    "bytes": 2073555
+    "sha256": "379e55d4b7fd2eaac865f7ca70c01f10d8649a331789a99b8b8fe976a71e2f7d",
+    "bytes": 2140975
   },
   "gates": {
     "validate": "pass",
@@ -32,7 +32,7 @@
     "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/review-6/dsh-superagent.finalize-summary.json"
   },
   "visualReview": "not-requested",
-  "durationMs": 2251,
+  "durationMs": 1454,
   "browserCheck": {
     "requested": false,
     "ran": false

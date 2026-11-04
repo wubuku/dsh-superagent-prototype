@@ -31,13 +31,18 @@
 @source tickets title="Ticket 生命周期与 Mandate 复核" path=src/core/tickets.ts lines=37:70
 @source wake title="同一 Mandate 下恢复已结束 Ticket" path=src/core/tickets.ts lines=220:248
 @source sessions title="主会话与 Worker 会话预设" path=src/app/sessions.ts lines=48:105
+@source subagent title="Subagent 只在 Worker 内部使用" path=cordis.patch.yml lines=102:111
+@source state-lock title="stateDir 单实例锁" path=src/app/runtime.ts lines=87:98
+@source http title="管理 HTTP 仅 loopback + 固定请求头" path=src/app/http.ts lines=75:79
 @source setup title="权限与隔离边界" path=docs/006-deployment.md lines=13:20
 
 ## 系统如何组成？ {#overview span=12}
 
 @diagram architecture id=system-overview source=diagram.system-overview.json title="Runtime 组装、core/ 领域逻辑与 DSH Session"
 
-左侧是外部来源；中间是 Runtime 组装层与 core/ 领域逻辑；下方是持久化与控制面。右侧是同一 Host 进程里的两个 Session：Router 在启动时创建并常驻，Worker 每个 Ticket 一个、按需创建。飞书连线用虚线，因为默认 bundle 中它被禁用。[](source:bundle-patch)[](source:router)[](source:executor)
+左侧是外部来源；中间是 Runtime 组装层与 core/ 领域逻辑；下方是持久化与控制面。右侧是同一 Host 进程里的两个 Session：Router 在启动时创建并常驻，Worker 每个 Ticket 一个、按需创建。[](source:router)[](source:executor)
+
+Router 与 Worker 不是 Subagent 父子；Subagent 只在 Worker 内部使用。飞书连线用虚线，因为默认 bundle 中它被禁用。[](source:bundle-patch)[](source:subagent)
 
 Runtime 的 Passes 每 2 秒一拍；Effects 是 SQLite 持久队列，事件驱动、退避重试，投递用 requestId 去重。[](source:rhythm)[](source:effects)
 
@@ -88,11 +93,14 @@ person 停点有五类：delivery 表示输入投递失败；answer 表示 Worke
 | 默认接单 | `eval.mode` 默认 `observe`：只记 ignore + `would_accept`，不建 Ticket、不启动 Worker | 未改成 `auto` 时，请求不会自动变成工单 |
 | 授权边界 | Mandate 是 Engine 在同一事务里写下的授权记录；Session 权限固定 `danger-full-access` | Mandate 不限制工具或 OS 权限，不能当作沙箱 |
 | 执行隔离 | 每 Ticket 一个 DSH Session 和目录；Router 与 Worker 同在 Host 进程、同 OS 用户；工作目录没有跨进程锁 | 会话与目录是逻辑隔离，不是进程、OS 或租户隔离 |
+| 持久化 | 单一 SQLite 库；stateDir 由 `proper-lockfile` 单实例持有；不同 stateDir 的实例互不相认 | 只支持单机重启恢复，不是多副本 HA |
 | 恢复 | `resume()` 中断 running、重排 pending；新 Assignment 先读 `RECOVERY_NOTE` 核对 worktree、git 与 GitHub；进程重启会终止后台工作 | 核对面是提示词要求，不是服务端对账协议；没有 watchdog 进程 |
 | 来源开关 | 默认启用 GitHub 轮询；Feishu 插件默认 `disabled`，需要单独启用并配置凭据 | 虚线代表可选能力 |
 | 成熟度与文章设想 | README 声明为 research prototype；部分文章设计是未来方向，未实现 | 不要把页面当作承诺；Watchdog、Chain of Recall、投机执行、跨设备 BYOM 都不在图中 |
 
 部署文档建议用独立系统账户获得更强隔离。账号包装器只决定默认凭据和命令解析，不能阻止 Worker 按绝对路径执行程序，也能读操作员的主目录。[](source:setup)
+
+持久化与管理面还有两条边界：SQLite 是单库，stateDir 有单实例锁。管理 HTTP 只监听 loopback、要求固定请求头，没有 token。[](source:state-lock)[](source:http)
 
 @callout id=goal-note level=note title="设计目标"
 这套系统的原则是用最少的人类注意力换取最大价值。它只在被请求或规则允许时行动。它只在有人必须行动或能使用结果时说话。

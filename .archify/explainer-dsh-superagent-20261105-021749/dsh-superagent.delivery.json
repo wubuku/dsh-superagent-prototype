@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
-  "receiptId": "2f73e808-5ab1-4999-90df-21b158dfe207",
+  "receiptId": "925d7df7-d7bf-4246-855f-a94578205372",
   "status": "current",
   "command": "deliver",
   "type": "explainer",
   "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
   "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
   "specification": {
-    "sha256": "12e735111eb42cf6910017c7e3929ac6fdd0de54e192f279817b457929c81119",
-    "bytes": 8654
+    "sha256": "3a70e6f0e63ca624642a0b8a00d69f855b69062185822feb670c93c7d62293f5",
+    "bytes": 9407
   },
   "artifact": {
-    "sha256": "d52212bb1168a653ffa19fa452718dd94daab76fc976a55ef2b3f2d89fa1e3d4",
-    "bytes": 2073555
+    "sha256": "379e55d4b7fd2eaac865f7ca70c01f10d8649a331789a99b8b8fe976a71e2f7d",
+    "bytes": 2140975
   },
   "explainer": {
-    "preparedSha256": "e266b970a8ab310a6cf8b0939b794541932be1956e1bd870b2d8f87875c58f47",
+    "preparedSha256": "44e4581f1bfaea4c93db7912f382380a273adcb459e577325c6c3b4de890f9fd",
     "dependencies": [
       {
         "kind": "repository",
@@ -184,6 +184,30 @@
         "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
         "sha256": "ca2b98e57e9f27b2abb0afab59d44ea744a96d8be4cf81d7b3776901b56cd36b",
         "bytes": 24169
+      },
+      {
+        "kind": "repository",
+        "id": "subagent",
+        "path": "cordis.patch.yml",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "fc9271cdf9b3d96bcb7febffe194f92cb427a88044168f83b3fb7522ab5c9bce",
+        "bytes": 8398
+      },
+      {
+        "kind": "repository",
+        "id": "state-lock",
+        "path": "src/app/runtime.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "5befef035b4a70978cd881b32282680260c6d2561679f890dd911214664cf515",
+        "bytes": 17331
+      },
+      {
+        "kind": "repository",
+        "id": "http",
+        "path": "src/app/http.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "5da39830429559975cae7ae6d39416acb2322ac8e31cfb4da3436df602cb7ec4",
+        "bytes": 16154
       },
       {
         "kind": "repository",
