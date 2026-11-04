@@ -192,6 +192,77 @@
 
 这样，DSH 的三种语义仍然保留在原型里（`src/app/sessions.ts:161-167`；`src/app/delivery.ts:79-81`），但不会污染角色协议。 〔设想〕
 
+### 4.3 两级订阅：Work Subscription 与 Session Subscription
+
+来源：[分享页“调研Agent事件订阅”](https://chatgpt.com/share/6aeb76b7-8874-83ea-a742-75434a6ce4bf)（读取日期 2026-11-05）。〔外部材料主张〕
+
+外部材料主张把订阅拆成两层，避免把“工单关心哪个 Thread”和“agent 运行时监听哪些事件”混成一张表：
+
+| 层 | 定义 | 生命周期 | 原型对应 |
+| --- | --- | --- | --- |
+| Work Subscription | Ticket 与 Thread 的持久业务关系；决定哪些事件成为工单的上下文输入 | 跨 worker、跨重启存活 | `Thread.subscriptions` 保存 ticket id（`src/core/model.ts:156-164`）；扇出时创建 Ticket Input（`src/core/intake.ts:49-52`） |
+| Session Subscription | 某个 agent 实例对事件类型、资源范围、投递方式、优先级的运行时配置 | 随 agent 实例；重启后重挂 | 不存在通用 API；主 Session 由写死的 effect 投递（`src/app/runtime.ts:131-133`），worker 只接收 Ticket 输入（`src/executor/dsh.ts:290-343`） |
+
+核对结论：
+
+- 原型只有 Work Subscription 一层，这一点外部材料说对了：`Thread.subscriptions` 的类型就是 ticket id 数组（`src/core/model.ts:163-164`），扇出逻辑按它复制输入（`src/core/intake.ts:49-52`）。
+- 外部材料把 Session Subscription 列为需要新增的一层。核查后 DSH 侧只有进程内事件钩子（`src/app/sessions.ts:108-136`），没有可配置、可持久化、重启可重挂的 Session Subscription API；原型的 `Subscription` 也只是 Work Subscription。因此这一层是新增设计，不是现有能力。〔判断〕
+- DSH 的 webhook 也提供不了这一层：它按规则创建新根 Session（见 §4.5），没有“把某类事件投给已有 Session”的订阅表。
+
+〔设想〕建议的 `SessionSubscription` 最小字段：
+
+| 字段 | 用途 |
+| --- | --- |
+| `sessionId` / `agentInstanceId` | 投递目标；跨进程时是节点内身份，不是全局 Session |
+| `source` / `resourceType` / `resourceId` | 订阅范围，支持 `*` 或精确匹配 |
+| `eventTypes` | 领域事件类型集合 |
+| `filter` | 内容过滤，例如仅 addressed、仅本人、仅提及 |
+| `deliveryMode` | `next_turn` / `next_step` / `context_only` |
+| `priority` | 评估、通知、审计的排队优先级 |
+| `enabled` / `expiresAt` | 可暂停、可过期，防止孤儿订阅 |
+| `policyVersion` / `capabilitySnapshot` | 建订阅时的授权与适配器能力快照 |
+
+为什么要拆：worker Session 会被替换、Router Session 会被重启、watchdog 只读且独立；Work Subscription 必须比任何 agent 实例活得久，Session Subscription 必须能按实例重建。两者混在一起，换 agent 就会丢工单关系。 〔判断〕
+
+### 4.4 异构适配层：能力声明，而不是一个 `sendMessage`
+
+〔外部材料主张〕外部材料的核心提醒是：不要用统一的 `sendMessage()` 抹平 Claude Code、Codex、DSH 的差异。它们的“投递”语义不同，适配器必须显式声明能力，调用方不得假设。
+
+〔DSH〕DSH 的三种输入语义可以直接核对：`followup` 唤醒下一轮、`steer` 针对下一步且可能在下一次取消时丢弃、`inject` 只注入上下文且可能错过当前请求，三者都返回 `void`（绝对路径 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/core/agent/src/runtime-types.ts:215-241`）；停止当前轮用 `agent.cancel({ kind: 'user' })`（同文件 `:183`）。原型的 `AgentDelivery` 已经映射 `queue → followup`、`steer → steer`、`inject → inject`（`src/app/delivery.ts:79-81`），但它是直接调用 DSH，不是可替换端口。
+
+〔设想〕建议的 `AgentSessionPort` 只保留四个操作，加一组能力标志：
+
+| 操作 / 能力 | 语义 | DSH 核查结果 |
+| --- | --- | --- |
+| `injectContext` | 只加上下文，不唤醒 | 有（`inject`，可能错过当前请求） |
+| `steer` | 影响活跃轮的下一个 step | 有（可能被取消丢弃） |
+| `followup` | 排到下一轮并唤醒空闲 agent | 有 |
+| `interrupt` | 停止当前轮 | 有（`agent.cancel`） |
+| `persistent_session` | Session 跨重启存在 | 有（session persistence） |
+| `cross_process_control` | 从另一个进程操作 agent | 无；Agent Handle 是进程内对象（绝对路径 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/core/agent/src/index.ts:235`） |
+| `progress_events` | 能回报 `claimed` / `processed` | 有进程内 session/agent 事件；跨进程需另建通道 |
+| `durable_inbox` | 已 accepted 的输入在重启后仍保留 | 未逐项实测；适配器必须声明，不能默认成立 |
+
+外部材料给出的 Codex / Claude 具体 API 名称（如 `turn/steer`、`inject_items`）在本仓库与 DSH 仓库都没有对应代码或文档，**无法核实**，因此不作为协议设计依据。本文只采用其结构性建议：适配器声明能力，调用方按能力选择投递语义。
+
+关键规则：
+
+- 适配器返回 `unsupported` 时，调用方不得静默降级为 `followup`；降级必须由策略层显式决定，并记录原因。 〔设想〕
+- `accepted` 只表示 inbox 插入成功，不表示模型看见；`claimed` / `processed` 必须由运行时事件回报（见 §6.9）。 〔判断〕
+- 能力快照要随 Session Subscription 或 Assessor target 一起持久化；重启后能力变化（例如从本地 DSH 换成远程 agent）必须触发重新校验，而不是沿用旧假设。 〔设想〕
+- DSH 的 initiator 归属只在同进程异步链内有效，不是授权凭据（绝对路径 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/core/agent/src/index.ts:239-242`）；跨进程必须显式携带 actor / 主体，不能依赖 ambient presence。 〔DSH + 判断〕
+
+### 4.5 DSH 已有能力的边界：Webhook 不是持久事件总线
+
+〔外部材料主张 + DSH 核对〕分享页提醒 DSH webhook 是 fire-and-forget。核对 DSH 文档与实现后，结论成立，且比“fire-and-forget”更具体：
+
+- webhook 在进程内 fire-and-forget；没有持久投递、重试或死信队列（绝对路径 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/experimental/webhook/README.md:71-73`）。
+- 它只提供“创建一个新的根 Session”这一种动作（同文件 `:12`）；规则命中后提交一条 `Agent.followup()`，这是它的提交点；`deliveryId` 只是提供方 id，不用于我们的事件去重或重试（同文件 `:30`、`:41`）。
+- 它不等待 idle、不检查回复、不发布完成状态（同文件 `:41`、`:73`）；重复投递会重复跑规则。
+- 因此它可以作为 Source 适配器（低延迟唤起一个新 Session），但不能承担“事件事实日志 + 至少一次投递 + 去重”的总线职责。 〔判断〕
+
+这补强了 §4.1 的结论：DSH 提供的是进程内 agent 控制与 webhook 触发，不是跨进程可靠事件总线；“跨进程总线、租约、投递表”仍需自建。 〔判断〕
+
 ## 5. daemon-first：耦合点与改造清单
 
 ### 5.1 四个核心耦合点（扩展为八项）
