@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
-  "receiptId": "925d7df7-d7bf-4246-855f-a94578205372",
+  "receiptId": "0b8e7c36-1909-4790-8cc7-021e2eec1fc2",
   "status": "current",
   "command": "deliver",
   "type": "explainer",
   "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
   "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
   "specification": {
-    "sha256": "3a70e6f0e63ca624642a0b8a00d69f855b69062185822feb670c93c7d62293f5",
-    "bytes": 9407
+    "sha256": "749addfdaece490b494fc4252854246176ba0948459d86ef82b67db479de4c5d",
+    "bytes": 10163
   },
   "artifact": {
-    "sha256": "379e55d4b7fd2eaac865f7ca70c01f10d8649a331789a99b8b8fe976a71e2f7d",
-    "bytes": 2140975
+    "sha256": "03c335dfb6bd71e3c17da0cacab2218de41b2afcaeb72206adb42326b695d24a",
+    "bytes": 2286929
   },
   "explainer": {
-    "preparedSha256": "44e4581f1bfaea4c93db7912f382380a273adcb459e577325c6c3b4de890f9fd",
+    "preparedSha256": "20fc1542b13d8231e8399c3b7a3b0a20f29054472bae1be9f920914444049ce2",
     "dependencies": [
       {
         "kind": "repository",
@@ -40,6 +40,38 @@
         "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
         "sha256": "323aadefea69436ba23ed2de3bdbaad673d61915be9e239f3233ecf551a74179",
         "bytes": 3799
+      },
+      {
+        "kind": "repository",
+        "id": "decide",
+        "path": "src/core/engine.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "bd9a4caff834859877d1a08ccddebc990d0e1ca568674b80f9d59ce5adcac827",
+        "bytes": 16310
+      },
+      {
+        "kind": "repository",
+        "id": "github-poll",
+        "path": "src/sources/github.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "60bfc2c298cbef708553de5ca0c91c387fd633bc7440c6be0d1242478ef84e88",
+        "bytes": 34827
+      },
+      {
+        "kind": "repository",
+        "id": "events",
+        "path": "src/app/runtime.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "5befef035b4a70978cd881b32282680260c6d2561679f890dd911214664cf515",
+        "bytes": 17331
+      },
+      {
+        "kind": "repository",
+        "id": "close",
+        "path": "src/core/tickets.ts",
+        "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+        "sha256": "1d9f964ad34b54cbb0403bde16af58851e5e80111177ce73a27b6034e9af940e",
+        "bytes": 27013
       },
       {
         "kind": "repository",
@@ -222,23 +254,23 @@
         "id": "system-overview",
         "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/diagram.system-overview.json",
         "relativePath": "diagram.system-overview.json",
-        "sha256": "b477d7b1c16aef983471da93b3b20b8e819f17d9c28652fca24ea14b35b2e4c0",
-        "bytes": 5443
+        "sha256": "dbe3ea06ba20152114fdc0ed8729985f2db583c87c53f16b5ef07f0ae5eb1147",
+        "bytes": 5463
       },
       {
         "kind": "diagram-spec",
         "id": "request-flow",
         "inline": true,
-        "sha256": "47b1a6f25610095f5e7edd85f81d9d3828c40d343149845a4d080c5b2fe4d8b0",
-        "bytes": 1959
+        "sha256": "226fccffda3722a208c2303f52dc5a9ba26bfb2addf316a2660cdb08d29a86b1",
+        "bytes": 1955
       },
       {
         "kind": "diagram-spec",
         "id": "ticket-lifecycle-diagram",
         "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/diagram.ticket-lifecycle.json",
         "relativePath": "diagram.ticket-lifecycle.json",
-        "sha256": "36a548efbb7e06061a8182fe607c5f9779f2b98fcb92fbee324275510ac6f34f",
-        "bytes": 4217
+        "sha256": "4962d4a96ecad0a3aca55c7dbec570a0952b29f089dc9e1b55e79d09b94e3f8f",
+        "bytes": 4282
       }
     ]
   }
