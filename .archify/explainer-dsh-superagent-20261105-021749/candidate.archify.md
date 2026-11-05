@@ -48,7 +48,9 @@
 
 Router 与 Worker 不是 Subagent 父子；Subagent 只在 Worker 内部使用。Engine 只把 launch 入队；Effects 派发后，Executor 按需创建 Worker Session 并下发 assignment。飞书连线用虚线，因为默认 bundle 中它被禁用。[](source:bundle-patch)[](source:subagent)[](source:executor)[](source:effects)
 
-Runtime 的 Passes 每 2 秒一拍，踢 Effects 并推进到期评估。Effects 是 SQLite 持久队列，事件驱动、退避重试；消息投递另用 requestId 去重。域事件是进程内回调；本插件没有可回放的 event log。[](source:rhythm)[](source:effects)[](source:events)
+Runtime 的 Passes 每 2 秒一拍，踢 Effects 并推进到期评估。Effects 是 SQLite 持久队列，事件驱动、退避重试；消息投递另用 requestId 去重。[](source:rhythm)[](source:effects)
+
+域事件是进程内回调。本插件没有可回放的事件日志。宿主层虽有 Session 持久化，但它按会话存储，不是按事件类型可路由、可重放的回放源。[](source:events)
 
 ## 一次请求如何变成结果？ {#lifecycle-request}
 
@@ -102,7 +104,7 @@ Ticket 在 ready 报告后结束：没有后续线程就立即结束，跟随后
 | 来源开关 | 默认启用 GitHub 轮询；Feishu 插件默认 `disabled`，需要单独启用并配置凭据 | 虚线代表可选能力 |
 | 成熟度与文章设想 | README 声明为 research prototype；部分文章设计是未来方向，未实现 | 不要把页面当作承诺；Watchdog、Chain of Recall、投机执行、跨设备 BYOM、跨进程角色与租约都不在图中 |
 
-部署文档建议用独立系统账户获得更强隔离。账号包装器只决定默认凭据和命令解析，不能阻止 Worker 按绝对路径执行程序；在同一 OS 用户下，Worker 也能读操作员的主目录。[](source:setup)
+部署文档建议用独立系统账户获得更强隔离。账号包装器只决定默认凭据和命令解析，不能阻止 Worker 按绝对路径执行程序。同一 OS 用户部署下，Worker 可读操作员主目录；按部署文档改用独立系统账户后，这一结论不成立。[](source:setup)
 
 持久化与管理面还有两条边界：SQLite 是单库，stateDir 有单实例锁。管理 HTTP 只监听 loopback、要求固定请求头，没有 token。[](source:state-lock)[](source:http)
 
