@@ -1,0 +1,30 @@
+/*
+ * Lifecycle dashed-edge contrast patch (local to this explainer).
+ *
+ * What it fixes:
+ *   In the lifecycle preview, optional/reversal edges use `.a-dashed`
+ *   (follow-up input, human resume), and security edges use `.a-security`
+ *   (question, human stop). Archify has no per-edge color or contrast
+ *   parameter here, and the preview layer
+ *   `.board .diagram-preview.diagram-preview[class]` resets both tokens to
+ *   --rule-strong. The four dashed labels therefore fall to about 1.32:1
+ *   (light) and 1.74:1 (dark), below the 4.5:1 check in tools/check-contrast.mjs.
+ *
+ * What it changes:
+ *   Only two CSS custom properties on this lifecycle preview. Line width,
+ *   dash pattern, geometry and every other diagram are untouched.
+ *
+ * Why a local patch:
+ *   The renderer exposes no contrast option, and we do not modify the
+ *   archify skill or its renderer. Apply this file after `archify finalize`;
+ *   see REGENERATE.md. Skipping that step silently reverts to the low
+ *   contrast colors while browser-check/visual-check still pass.
+ */
+.board .diagram-preview.preview-ticket-lifecycle-diagram[class] {
+  --database-stroke: #c4b5fd;
+  --security-stroke: #fda4af;
+}
+.board .diagram-preview.preview-ticket-lifecycle-diagram[class][data-theme="light"] {
+  --database-stroke: #6d28d9;
+  --security-stroke: #be123c;
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "explainer",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
+    "sha256": "ff873ae61dfb8ae9dbbdb8e2585c494fc132f40757c3347d3a8e4e5d944ff2d6",
+    "bytes": 10555
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
+    "sha256": "b8a231c1c8c098281d9f8cfcc6068c41fafe62dd252040d6a5131964cd938d91",
+    "bytes": 2289458
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "not-run"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/review-23/dsh-superagent.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/review-23/dsh-superagent.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1218,
+  "browserCheck": {
+    "requested": false,
+    "ran": false
+  }
+}

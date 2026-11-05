@@ -1,0 +1,1073 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "explainer",
+  "quality": "showcase",
+  "startedAt": "2026-11-05T02:43:26.072Z",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
+    "sha256": "ff873ae61dfb8ae9dbbdb8e2585c494fc132f40757c3347d3a8e4e5d944ff2d6",
+    "bytes": 10555
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
+    "sha256": "b8a231c1c8c098281d9f8cfcc6068c41fafe62dd252040d6a5131964cd938d91",
+    "bytes": 2289458
+  },
+  "stages": {
+    "browser-check": {
+      "status": "not-run",
+      "execution": "not-requested"
+    },
+    "validate": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": null,
+      "execution": "embedded-in-deliver",
+      "command": [
+        "/Users/yangjiefeng/.nvm/versions/node/v24.21.0/bin/node",
+        "/Users/yangjiefeng/.agents/skills/archify/bin/archify.mjs",
+        "deliver",
+        "explainer",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": true,
+        "command": "validate",
+        "specification": {
+          "sha256": "ff873ae61dfb8ae9dbbdb8e2585c494fc132f40757c3347d3a8e4e5d944ff2d6",
+          "bytes": 10555
+        },
+        "validation": {
+          "checksPassed": 4,
+          "checkCount": 4,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        }
+      }
+    },
+    "deliver": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 716,
+      "command": [
+        "/Users/yangjiefeng/.nvm/versions/node/v24.21.0/bin/node",
+        "/Users/yangjiefeng/.agents/skills/archify/bin/archify.mjs",
+        "deliver",
+        "explainer",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "receiptId": "addda1c7-f2b7-402f-9c05-1485db78dc5d",
+        "ok": true,
+        "command": "deliver",
+        "type": "explainer",
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
+        "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
+        "explainer": {
+          "preparedSha256": "f571c833e0082975691bc288d6beb8c0a0e970409b12f73f99ab70b56cb83bac",
+          "dependencies": [
+            {
+              "kind": "repository",
+              "id": "bundle-patch",
+              "path": "cordis.patch.yml",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "fc9271cdf9b3d96bcb7febffe194f92cb427a88044168f83b3fb7522ab5c9bce",
+              "bytes": 8398
+            },
+            {
+              "kind": "repository",
+              "id": "engine",
+              "path": "src/core/engine.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "bd9a4caff834859877d1a08ccddebc990d0e1ca568674b80f9d59ce5adcac827",
+              "bytes": 16310
+            },
+            {
+              "kind": "repository",
+              "id": "intake",
+              "path": "src/core/intake.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "323aadefea69436ba23ed2de3bdbaad673d61915be9e239f3233ecf551a74179",
+              "bytes": 3799
+            },
+            {
+              "kind": "repository",
+              "id": "decide",
+              "path": "src/core/engine.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "bd9a4caff834859877d1a08ccddebc990d0e1ca568674b80f9d59ce5adcac827",
+              "bytes": 16310
+            },
+            {
+              "kind": "repository",
+              "id": "github-poll",
+              "path": "src/sources/github.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "60bfc2c298cbef708553de5ca0c91c387fd633bc7440c6be0d1242478ef84e88",
+              "bytes": 34827
+            },
+            {
+              "kind": "repository",
+              "id": "events",
+              "path": "src/app/runtime.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "5befef035b4a70978cd881b32282680260c6d2561679f890dd911214664cf515",
+              "bytes": 17331
+            },
+            {
+              "kind": "repository",
+              "id": "close",
+              "path": "src/core/tickets.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "1d9f964ad34b54cbb0403bde16af58851e5e80111177ce73a27b6034e9af940e",
+              "bytes": 27013
+            },
+            {
+              "kind": "repository",
+              "id": "policy",
+              "path": "src/policy.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "01cff8c333b341ee2943e644046f0da3ed9675af1c0029489b5f4bc8226d293d",
+              "bytes": 19082
+            },
+            {
+              "kind": "repository",
+              "id": "executor",
+              "path": "src/executor/dsh.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "6445a03121fa9bd15fc437736bcc2acc6ab950c5fe732e5b99eb8ee2c8a9476b",
+              "bytes": 47615
+            },
+            {
+              "kind": "repository",
+              "id": "router",
+              "path": "src/app/runtime.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "5befef035b4a70978cd881b32282680260c6d2561679f890dd911214664cf515",
+              "bytes": 17331
+            },
+            {
+              "kind": "repository",
+              "id": "rhythm",
+              "path": "src/app/passes.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "79688aeb8c43396b9f122b3feba0ce1c422f1bfbca3b32919cd764a217b67ea9",
+              "bytes": 3101
+            },
+            {
+              "kind": "repository",
+              "id": "effects",
+              "path": "src/app/effects.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "d350590473299398b17c50dd641c72e1995dd95920c5138699491ab77e3ae481",
+              "bytes": 9993
+            },
+            {
+              "kind": "repository",
+              "id": "mode",
+              "path": "src/policy.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "01cff8c333b341ee2943e644046f0da3ed9675af1c0029489b5f4bc8226d293d",
+              "bytes": 19082
+            },
+            {
+              "kind": "repository",
+              "id": "process",
+              "path": "src/index.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "fbe2a1290be6f92f641592754e813a1fc0ffc164072a8ef2f1e57f8c151d44ec",
+              "bytes": 1990
+            },
+            {
+              "kind": "repository",
+              "id": "recovery",
+              "path": "src/executor/dsh.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "6445a03121fa9bd15fc437736bcc2acc6ab950c5fe732e5b99eb8ee2c8a9476b",
+              "bytes": 47615
+            },
+            {
+              "kind": "repository",
+              "id": "recovery-note",
+              "path": "src/core/assignments.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "6acf4b858b35d95c875680e39b1e3c41557bbe6d39f65031bb26927289327065",
+              "bytes": 8959
+            },
+            {
+              "kind": "repository",
+              "id": "restart",
+              "path": "docs/003-execution.md",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "049aa22a717f75b9dec4cd6969356db6f736c127de4501c3ce1f6d846217f6eb",
+              "bytes": 17389
+            },
+            {
+              "kind": "repository",
+              "id": "document",
+              "path": "README.md",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "737997cf5b7d4129f12ed5485ebbdd5e9d2ce3859a82ded6ac535d222327b713",
+              "bytes": 2571
+            },
+            {
+              "kind": "repository",
+              "id": "worker-preset",
+              "path": "cordis.patch.yml",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "fc9271cdf9b3d96bcb7febffe194f92cb427a88044168f83b3fb7522ab5c9bce",
+              "bytes": 8398
+            },
+            {
+              "kind": "repository",
+              "id": "store",
+              "path": "docs/007-architecture.md",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "e3747665587fdf88b28d4e9c1a1f8ac40cbc2c65a9999be1fce14b69ec44d748",
+              "bytes": 70507
+            },
+            {
+              "kind": "repository",
+              "id": "outbox",
+              "path": "src/app/outbox.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "48d20062dd8c34c2b95e851c78265c9e403d1040894e97c7d9d0fa190d54415e",
+              "bytes": 3314
+            },
+            {
+              "kind": "repository",
+              "id": "stage",
+              "path": "src/core/stage.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "b935012a654d2a68ca20cb27909ddc8dceafb704b56a16a23a08036a546141df",
+              "bytes": 1684
+            },
+            {
+              "kind": "repository",
+              "id": "tickets",
+              "path": "src/core/tickets.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "1d9f964ad34b54cbb0403bde16af58851e5e80111177ce73a27b6034e9af940e",
+              "bytes": 27013
+            },
+            {
+              "kind": "repository",
+              "id": "wake",
+              "path": "src/core/tickets.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "1d9f964ad34b54cbb0403bde16af58851e5e80111177ce73a27b6034e9af940e",
+              "bytes": 27013
+            },
+            {
+              "kind": "repository",
+              "id": "sessions",
+              "path": "src/app/sessions.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "ca2b98e57e9f27b2abb0afab59d44ea744a96d8be4cf81d7b3776901b56cd36b",
+              "bytes": 24169
+            },
+            {
+              "kind": "repository",
+              "id": "subagent",
+              "path": "cordis.patch.yml",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "fc9271cdf9b3d96bcb7febffe194f92cb427a88044168f83b3fb7522ab5c9bce",
+              "bytes": 8398
+            },
+            {
+              "kind": "repository",
+              "id": "state-lock",
+              "path": "src/app/runtime.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "5befef035b4a70978cd881b32282680260c6d2561679f890dd911214664cf515",
+              "bytes": 17331
+            },
+            {
+              "kind": "repository",
+              "id": "http",
+              "path": "src/app/http.ts",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "5da39830429559975cae7ae6d39416acb2322ac8e31cfb4da3436df602cb7ec4",
+              "bytes": 16154
+            },
+            {
+              "kind": "repository",
+              "id": "setup",
+              "path": "docs/006-deployment.md",
+              "revision": "6337fc823ce20251c8de8085948165c81aaa701e",
+              "sha256": "92c5a1c6aecab6782a64b3847a2d6f36a48dc9865fa7b04b892fcdaf04f7de9d",
+              "bytes": 23244
+            },
+            {
+              "kind": "diagram-spec",
+              "id": "system-overview",
+              "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/diagram.system-overview.json",
+              "relativePath": "diagram.system-overview.json",
+              "sha256": "dbe3ea06ba20152114fdc0ed8729985f2db583c87c53f16b5ef07f0ae5eb1147",
+              "bytes": 5463
+            },
+            {
+              "kind": "diagram-spec",
+              "id": "request-flow",
+              "inline": true,
+              "sha256": "226fccffda3722a208c2303f52dc5a9ba26bfb2addf316a2660cdb08d29a86b1",
+              "bytes": 1955
+            },
+            {
+              "kind": "diagram-spec",
+              "id": "ticket-lifecycle-diagram",
+              "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/diagram.ticket-lifecycle.json",
+              "relativePath": "diagram.ticket-lifecycle.json",
+              "sha256": "76de1363371ae082d42cb3699c97b203a260324f48dc1c7846ed7b56b0e20839",
+              "bytes": 4473
+            }
+          ]
+        },
+        "specification": {
+          "sha256": "ff873ae61dfb8ae9dbbdb8e2585c494fc132f40757c3347d3a8e4e5d944ff2d6",
+          "bytes": 10555
+        },
+        "artifact": {
+          "sha256": "b8a231c1c8c098281d9f8cfcc6068c41fafe62dd252040d6a5131964cd938d91",
+          "bytes": 2289458
+        },
+        "validation": {
+          "checksPassed": 4,
+          "checkCount": 4,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        },
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      }
+    },
+    "check": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 382,
+      "command": [
+        "/Users/yangjiefeng/.nvm/versions/node/v24.21.0/bin/node",
+        "/Users/yangjiefeng/.agents/skills/archify/bin/archify.mjs",
+        "check",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
+        "--require-provenance"
+      ],
+      "receipt": {
+        "ok": true,
+        "file": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
+        "family": "explainer",
+        "artifact": {
+          "sha256": "b8a231c1c8c098281d9f8cfcc6068c41fafe62dd252040d6a5131964cd938d91",
+          "bytes": 2289458
+        },
+        "checks": [
+          {
+            "name": "explainer_structure",
+            "ok": true,
+            "details": [
+              "115 unique DOM IDs"
+            ]
+          },
+          {
+            "name": "explainer_payload_identity",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "explainer_dependencies",
+            "ok": true,
+            "details": [
+              "32 frozen dependencies"
+            ]
+          },
+          {
+            "name": "explainer_native_diagrams",
+            "ok": true,
+            "details": [
+              "system-overview: pass",
+              "request-flow: pass",
+              "ticket-lifecycle-diagram: pass"
+            ]
+          }
+        ],
+        "composition": {
+          "schemaVersion": 1,
+          "profile": "showcase",
+          "status": "pass",
+          "summary": {
+            "errors": 0,
+            "warnings": 0
+          },
+          "issues": [],
+          "nativeDiagrams": [
+            {
+              "id": "system-overview",
+              "receipt": {
+                "ok": true,
+                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-q2RUSi/child.html",
+                "artifact": {
+                  "sha256": "e26fabbad20bc9ec9244bde08aa1cc3f52f7052c8474d7eded6f0041ab896d32",
+                  "bytes": 856770
+                },
+                "checks": [
+                  {
+                    "name": "single_svg",
+                    "ok": true,
+                    "details": [
+                      "found 1 <svg> block(s)"
+                    ]
+                  },
+                  {
+                    "name": "finite_svg",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "orthogonal_arrows",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "label_route_clearance",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_crossings",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_corridors",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "container_border_runs",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "route_rhythm",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "legend_clearance",
+                    "ok": true,
+                    "details": []
+                  }
+                ],
+                "composition": {
+                  "schemaVersion": 1,
+                  "profile": "showcase",
+                  "status": "pass",
+                  "summary": {
+                    "errors": 0,
+                    "warnings": 0
+                  },
+                  "metrics": {
+                    "properCrossings": 0,
+                    "resolvedCrossovers": 4,
+                    "ambiguousCorridors": 0,
+                    "arrowheadCollisions": 0,
+                    "containerBorderRuns": 0,
+                    "labelRouteClearanceIssues": 0,
+                    "labelCanvasOverflowIssues": 0,
+                    "minLabelRouteClearance": 5,
+                    "desktopReadabilityIssues": 0,
+                    "viewportHeightIssues": 0,
+                    "minProjectedNodeTextPx": 7.670103092783505,
+                    "maxBends": 6,
+                    "routesOverSuggestedBends": 3,
+                    "maxStretch": 1.309,
+                    "routesOverSuggestedStretch": 0,
+                    "minSegmentPx": 13,
+                    "minInteriorSegmentPx": 16,
+                    "shortSegmentCount": 2,
+                    "shortEndpointSegmentCount": 2,
+                    "shortInteriorSegmentCount": 0,
+                    "microSegmentCount": 0
+                  },
+                  "suggestedLimits": {
+                    "bendsPerRelationship": 2,
+                    "stretch": 1.35,
+                    "segmentPx": 16,
+                    "microSegmentPx": 8
+                  },
+                  "routeReview": {
+                    "crossings": [
+                      {
+                        "left": {
+                          "id": "runtime-sqlite",
+                          "from": "runtime",
+                          "to": "sqlite",
+                          "label": "opens store",
+                          "collectionIndex": 8,
+                          "artifactIndex": 9
+                        },
+                        "right": {
+                          "id": "runtime-effects",
+                          "from": "runtime",
+                          "to": "effects",
+                          "label": "kick",
+                          "collectionIndex": 9,
+                          "artifactIndex": 10
+                        },
+                        "point": [
+                          285,
+                          256
+                        ],
+                        "sharedNode": "runtime"
+                      },
+                      {
+                        "left": {
+                          "id": "outbox-effects",
+                          "from": "outbox",
+                          "to": "effects",
+                          "label": "enqueue",
+                          "collectionIndex": 10,
+                          "artifactIndex": 11
+                        },
+                        "right": {
+                          "id": "panel-runtime",
+                          "from": "panel",
+                          "to": "runtime",
+                          "label": "local API",
+                          "collectionIndex": 13,
+                          "artifactIndex": 14
+                        },
+                        "point": [
+                          376.79999999999995,
+                          310
+                        ]
+                      },
+                      {
+                        "left": {
+                          "id": "engine-outbox",
+                          "from": "engine",
+                          "to": "outbox",
+                          "label": "replies",
+                          "collectionIndex": 11,
+                          "artifactIndex": 12
+                        },
+                        "right": {
+                          "id": "runtime-health",
+                          "from": "runtime",
+                          "to": "health",
+                          "label": "report",
+                          "collectionIndex": 12,
+                          "artifactIndex": 13
+                        },
+                        "point": [
+                          440,
+                          256
+                        ]
+                      },
+                      {
+                        "left": {
+                          "id": "runtime-health",
+                          "from": "runtime",
+                          "to": "health",
+                          "label": "report",
+                          "collectionIndex": 12,
+                          "artifactIndex": 13
+                        },
+                        "right": {
+                          "id": "panel-runtime",
+                          "from": "panel",
+                          "to": "runtime",
+                          "label": "local API",
+                          "collectionIndex": 13,
+                          "artifactIndex": 14
+                        },
+                        "point": [
+                          376.79999999999995,
+                          256
+                        ],
+                        "sharedNode": "runtime"
+                      }
+                    ],
+                    "detours": [
+                      {
+                        "relationship": {
+                          "id": "engine-router",
+                          "from": "engine",
+                          "to": "router",
+                          "label": "candidate",
+                          "collectionIndex": 4,
+                          "artifactIndex": 5
+                        },
+                        "bends": 3,
+                        "stretch": 1.273
+                      },
+                      {
+                        "relationship": {
+                          "id": "engine-worker",
+                          "from": "engine",
+                          "to": "worker",
+                          "label": "launch effect",
+                          "collectionIndex": 6,
+                          "artifactIndex": 7
+                        },
+                        "bends": 4,
+                        "stretch": 1.158
+                      },
+                      {
+                        "relationship": {
+                          "id": "panel-runtime",
+                          "from": "panel",
+                          "to": "runtime",
+                          "label": "local API",
+                          "collectionIndex": 13,
+                          "artifactIndex": 14
+                        },
+                        "bends": 6,
+                        "stretch": 1.309
+                      }
+                    ]
+                  },
+                  "leadingSpace": {
+                    "measured": true,
+                    "emptyTopPx": 30,
+                    "emptyTopRatio": 0.07,
+                    "occupiedTop": 30,
+                    "viewBoxTop": 0,
+                    "canvasHeight": 428,
+                    "typicalNodeHeight": 60,
+                    "reviewSuggested": false
+                  },
+                  "desktopReadability": {
+                    "budgetBasis": "recognized-declared-wide",
+                    "readerContract": "declared-wide-v1",
+                    "availableDiagramWidth": 930,
+                    "actualBudgetPx": 930,
+                    "actualReaderWidth": 960,
+                    "desiredReaderWidth": 960,
+                    "viewportCap": 1376,
+                    "limit": "source-size",
+                    "requestedTargetPx": 7.5,
+                    "requestedTargetMet": true,
+                    "hardFloorPx": 6,
+                    "hardFloorMet": true,
+                    "minimumOwner": {
+                      "kind": "edge",
+                      "id": "github-runtime",
+                      "from": "github",
+                      "to": "runtime"
+                    },
+                    "minimumSourceTextPx": 8,
+                    "minimumProjectedTextPx": 7.670103092783505,
+                    "semanticTextCount": 32
+                  },
+                  "issues": []
+                }
+              }
+            },
+            {
+              "id": "request-flow",
+              "receipt": {
+                "ok": true,
+                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-28gqbV/child.html",
+                "artifact": {
+                  "sha256": "59caf685c51ccf5bc3cbb6786d032555b51dc1927c99f36fed9f1a354d62907b",
+                  "bytes": 837185
+                },
+                "checks": [
+                  {
+                    "name": "single_svg",
+                    "ok": true,
+                    "details": [
+                      "found 1 <svg> block(s)"
+                    ]
+                  },
+                  {
+                    "name": "finite_svg",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "orthogonal_arrows",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "label_route_clearance",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_crossings",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_corridors",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "container_border_runs",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "route_rhythm",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "legend_clearance",
+                    "ok": true,
+                    "details": []
+                  }
+                ],
+                "composition": {
+                  "schemaVersion": 1,
+                  "profile": "showcase",
+                  "status": "pass",
+                  "summary": {
+                    "errors": 0,
+                    "warnings": 0
+                  },
+                  "metrics": {
+                    "properCrossings": 0,
+                    "resolvedCrossovers": 0,
+                    "ambiguousCorridors": 0,
+                    "arrowheadCollisions": 0,
+                    "containerBorderRuns": 0,
+                    "labelRouteClearanceIssues": 0,
+                    "labelCanvasOverflowIssues": 0,
+                    "minLabelRouteClearance": 28,
+                    "desktopReadabilityIssues": 0,
+                    "viewportHeightIssues": 0,
+                    "minProjectedNodeTextPx": 10.8,
+                    "maxBends": 0,
+                    "routesOverSuggestedBends": 0,
+                    "maxStretch": 1,
+                    "routesOverSuggestedStretch": 0,
+                    "minSegmentPx": 90.6,
+                    "minInteriorSegmentPx": null,
+                    "shortSegmentCount": 0,
+                    "shortEndpointSegmentCount": 0,
+                    "shortInteriorSegmentCount": 0,
+                    "microSegmentCount": 0
+                  },
+                  "suggestedLimits": {
+                    "bendsPerRelationship": 2,
+                    "stretch": 1.35,
+                    "segmentPx": 16,
+                    "microSegmentPx": 8
+                  },
+                  "routeReview": {
+                    "crossings": [],
+                    "detours": []
+                  },
+                  "leadingSpace": {
+                    "measured": false,
+                    "reviewSuggested": false
+                  },
+                  "sequenceColumnSpace": {
+                    "measured": true,
+                    "columnFit": "spread",
+                    "participantCount": 8,
+                    "occupiedRight": 880,
+                    "viewBoxLeft": 0,
+                    "canvasWidth": 920,
+                    "emptyRightPx": 40,
+                    "emptyRightRatio": 0.043,
+                    "typicalParticipantWidth": 86,
+                    "reviewSuggested": false
+                  },
+                  "desktopReadability": {
+                    "budgetBasis": "legacy-930",
+                    "readerContract": "declared-wide-v1",
+                    "availableDiagramWidth": 930,
+                    "actualBudgetPx": 930,
+                    "limit": "legacy",
+                    "requestedTargetPx": null,
+                    "requestedTargetMet": null,
+                    "hardFloorPx": 6,
+                    "hardFloorMet": true,
+                    "minimumOwner": {
+                      "kind": "node",
+                      "id": "orchestrator"
+                    },
+                    "minimumSourceTextPx": 10.8,
+                    "minimumProjectedTextPx": 10.8,
+                    "semanticTextCount": 19
+                  },
+                  "issues": []
+                }
+              }
+            },
+            {
+              "id": "ticket-lifecycle-diagram",
+              "receipt": {
+                "ok": true,
+                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-D75B4b/child.html",
+                "artifact": {
+                  "sha256": "e632f27e55fb83d6265aef85c1dd44193afef934f5872293b0c4121febbf52bf",
+                  "bytes": 841233
+                },
+                "checks": [
+                  {
+                    "name": "single_svg",
+                    "ok": true,
+                    "details": [
+                      "found 1 <svg> block(s)"
+                    ]
+                  },
+                  {
+                    "name": "finite_svg",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "orthogonal_arrows",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "label_route_clearance",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_crossings",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_corridors",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "container_border_runs",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "route_rhythm",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "legend_clearance",
+                    "ok": true,
+                    "details": []
+                  }
+                ],
+                "composition": {
+                  "schemaVersion": 1,
+                  "profile": "showcase",
+                  "status": "pass",
+                  "summary": {
+                    "errors": 0,
+                    "warnings": 0
+                  },
+                  "metrics": {
+                    "properCrossings": 0,
+                    "resolvedCrossovers": 3,
+                    "ambiguousCorridors": 0,
+                    "arrowheadCollisions": 0,
+                    "containerBorderRuns": 0,
+                    "labelRouteClearanceIssues": 0,
+                    "labelCanvasOverflowIssues": 0,
+                    "minLabelRouteClearance": 10,
+                    "desktopReadabilityIssues": 0,
+                    "viewportHeightIssues": 0,
+                    "minProjectedNodeTextPx": 9,
+                    "maxBends": 2,
+                    "routesOverSuggestedBends": 0,
+                    "maxStretch": 1.406,
+                    "routesOverSuggestedStretch": 1,
+                    "minSegmentPx": 30,
+                    "minInteriorSegmentPx": 47.3,
+                    "shortSegmentCount": 0,
+                    "shortEndpointSegmentCount": 0,
+                    "shortInteriorSegmentCount": 0,
+                    "microSegmentCount": 0
+                  },
+                  "suggestedLimits": {
+                    "bendsPerRelationship": 2,
+                    "stretch": 1.35,
+                    "segmentPx": 16,
+                    "microSegmentPx": 8
+                  },
+                  "routeReview": {
+                    "crossings": [
+                      {
+                        "left": {
+                          "id": "working-answer",
+                          "from": "working",
+                          "to": "answer",
+                          "label": "question",
+                          "collectionIndex": 3,
+                          "artifactIndex": 4
+                        },
+                        "right": {
+                          "id": "working-review",
+                          "from": "working",
+                          "to": "review",
+                          "label": "ready report",
+                          "collectionIndex": 5,
+                          "artifactIndex": 6
+                        },
+                        "point": [
+                          422.7999999999999,
+                          216.25384615385096
+                        ],
+                        "sharedNode": "working"
+                      },
+                      {
+                        "left": {
+                          "id": "answer-working",
+                          "from": "answer",
+                          "to": "working",
+                          "label": "person answers",
+                          "collectionIndex": 4,
+                          "artifactIndex": 5
+                        },
+                        "right": {
+                          "id": "working-review",
+                          "from": "working",
+                          "to": "review",
+                          "label": "ready report",
+                          "collectionIndex": 5,
+                          "artifactIndex": 6
+                        },
+                        "point": [
+                          457.6999999999999,
+                          234.00000000000009
+                        ],
+                        "sharedNode": "working"
+                      },
+                      {
+                        "left": {
+                          "id": "answer-working",
+                          "from": "answer",
+                          "to": "working",
+                          "label": "person answers",
+                          "collectionIndex": 4,
+                          "artifactIndex": 5
+                        },
+                        "right": {
+                          "id": "review-working",
+                          "from": "review",
+                          "to": "working",
+                          "label": "follow-up input",
+                          "collectionIndex": 6,
+                          "artifactIndex": 7
+                        },
+                        "point": [
+                          457.6999999999998,
+                          216
+                        ],
+                        "sharedNode": "working"
+                      }
+                    ],
+                    "detours": [
+                      {
+                        "relationship": {
+                          "id": "ended-working",
+                          "from": "ended",
+                          "to": "working",
+                          "label": "human resume",
+                          "collectionIndex": 10,
+                          "artifactIndex": 11
+                        },
+                        "bends": 2,
+                        "stretch": 1.406
+                      }
+                    ]
+                  },
+                  "leadingSpace": {
+                    "measured": false,
+                    "reviewSuggested": false
+                  },
+                  "desktopReadability": {
+                    "budgetBasis": "legacy-930",
+                    "readerContract": "declared-wide-v1",
+                    "availableDiagramWidth": 930,
+                    "actualBudgetPx": 930,
+                    "limit": "legacy",
+                    "requestedTargetPx": null,
+                    "requestedTargetMet": null,
+                    "hardFloorPx": 6,
+                    "hardFloorMet": true,
+                    "minimumOwner": {
+                      "kind": "node",
+                      "id": "queued"
+                    },
+                    "minimumSourceTextPx": 9,
+                    "minimumProjectedTextPx": 9,
+                    "semanticTextCount": 23
+                  },
+                  "issues": []
+                }
+              }
+            }
+          ]
+        },
+        "diagnostics": [],
+        "provenance": "current",
+        "deliveryReceiptId": "addda1c7-f2b7-402f-9c05-1485db78dc5d"
+      }
+    }
+  },
+  "browserCheck": {
+    "requested": false,
+    "ran": false
+  },
+  "diagnostics": [],
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/review-23/dsh-superagent.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/review-23/dsh-superagent.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "finishedAt": "2026-11-05T02:43:27.290Z",
+  "durationMs": 1218,
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "cache-valid"
+  }
+}
