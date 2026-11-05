@@ -1,6 +1,6 @@
 # DSH Super-Agent 原型：一页看懂主动式编码代理
 
-默认 `observe` 下，它只记录“若自动接单本来会接受”，不会建工单。只有把 `eval.mode` 改成 `auto` 且评估命中已启用规则，允许来源里的请求才会变成授权工单。Router 与 Worker 是同一个 DSH Host 进程里的两个平级 Session。准入由确定性 Policy 判断，授权事实由 Engine 落库，执行归每个 Ticket 一个 Worker Session。[](source:mode)
+默认 `observe` 下，它只记录“若自动接单本来会接受”，不会建工单。只有把 `eval.mode` 改成 `auto` 且评估命中已启用规则，允许来源里的请求才会变成授权工单。Router 与 Worker 是同一个 DSH Host 进程里的两类平级 Session。准入先由确定性 Policy gate 判定，授权事实由 Engine 落库，执行归每个 Ticket 一个 Worker Session。[](source:mode)
 
 - 来源先把 GitHub 或飞书事件标准化为 Trigger；GitHub 是轮询拉取，不是 webhook，默认 bundle 只启用 GitHub，飞书被禁用。[](source:bundle-patch)[](source:github-poll)
 - Intake 在一个事务里落 Trigger、按来源范围过滤、关联 Thread，并把输入扇出给已订阅的 Ticket；只有没有工单承接时才排队给 Eval。[](source:intake)
@@ -75,7 +75,7 @@ Runtime 的 Passes 每 2 秒一拍，踢 Effects 并推进到期评估。Effects
 | engine | channels | receipt + reply | return |
 | channels | requester | to thread | return |
 
-gate 在 Engine 的同步路径里判定准入，是纯函数、不调模型。Decision 为 accept 时，Engine 再用一个事务建 Ticket 与 Mandate；Assignment 之后由 Worker 执行，Engine 记录事实并驱动回复。后续外部消息可以补充输入或唤醒已结束 Ticket，但不能扩展 Mandate 的授权范围。
+gate 在 Engine 的同步路径里判定准入，是纯函数、不调模型。Decision 为 accept 时，Engine 用一个事务建 Ticket、Mandate 与首条 Assignment。Worker 执行 Assignment，Engine 记录事实并驱动回复。后续外部消息可以补充输入或唤醒已结束 Ticket，但不能扩展 Mandate 的授权范围。
 
 默认 observe 下，accept 分支不成立：Decision 落为 ignore，audit 记 would_accept，不建 Ticket，也不下发 Assignment。[](source:mode)
 
