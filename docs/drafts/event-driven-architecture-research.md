@@ -290,7 +290,7 @@
 | 3 | 判断只以主 Session 工具存在 | `orchestrator_eval*` / `orchestrator_route`（`src/app/tools/main.ts:202-220`）；工具只装在主 Session（`src/app/sessions.ts:149-153`） | 外部 Assessor 无法“回写判定”，端口不闭合 | 另立宿主中立的 `AssessorService`（架构文档 D7）；现有 `Assessor` 端口降为 DSH 适配器；工具只是其中一个适配器 | 高 | P0 |
 | 4 | 通知只能 steer/inject 到已存在 agent | relay 与 notice handler（`src/app/sessions.ts:104-105`、`src/app/sessions.ts:162-186`） | Router 不在线时通知丢失或长期挂起 | 通知改成按事件 id 持久投递；接收方上线后补投；非 DSH 适配器可降级为队列 | 中 | P1 |
 | 5 | effect 派发与 handler 注册都在进程内 | `Effects` 持有 handler 表并 `queueMicrotask` 派发（`src/app/effects.ts:46-88`） | 多节点无法共享队列；节点崩溃后无人 claim | 拆成 queue 服务（先 SQLite 表，后可换 Redis/SQS）：claim / heartbeat / ack / visibility timeout | 高 | P1 |
-| 6 | 域事件没有事务性事件流，只是回调 | `emit` 在事务内回调，`runtime` 直接处理（`src/core/part.ts:64-65`；`src/app/runtime.ts:138-153`） | 跨进程消费者收不到事件；崩溃后无法补投 | 拆成 Event Journal（seq、type、payload、dedupeKey）与 Delivery 表（consumerId、state、attempts、due）；同事务写事件与待投递行 | 高 | P0 |
+| 6 | 域事件没有事务性事件流，只是回调 | `emit` 在事务内回调，`runtime` 直接处理（`src/core/part.ts:64-65`；`src/app/runtime.ts:138-153`） | 跨进程消费者收不到事件；崩溃后无法补投 | 拆成 Event Journal（seq、type、payload、dedupeKey）与 Delivery 表（consumerId、state、deliveryAttempts、due）；同事务写事件与待投递行 | 高 | P0 |
 | 7 | Router 与 Worker 共享 OS 权限 | 两者都 `danger-full-access`（`src/app/sessions.ts:152`）；worker 以 operator OS 用户跑命令（`docs/003-execution.md:27`） | 判断侧可写仓库、执行侧可决定新工作，权限域没有拆开 | Router：只读上下文 + 判定提交 token；Worker：写工作区 + 授权范围内外部写；Watchdog：只读事件 | 高 | P1 |
 | 8 | Session/agent 注册表是进程内单写者 | 订阅 `agent/created`、`session/event`、`agent/status`（`src/app/sessions.ts:108-136`）；单写者约束见 DSH 绝对路径 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/session/session-persistence/README.md:90` | 不能跨节点直接操作同一个 agent | 一个 agent 只属于一个执行节点；跨节点只传协议消息，不共享 Session | 高 | P2 |
 
@@ -452,7 +452,7 @@
 | `trustLevel` | 不可信外部输入、已验证成员、系统内部 |
 | `schemaVersion` | 兼容升级用 |
 
-投递表字段建议：`tenantId`、`deliveryId`、`eventId`、`consumerId`、`state`、`attempts`、`dueAt`、`leaseId`、`leaseGeneration`、`deadline`、`lastError`、`result`。唯一键是 `(tenantId, eventId, consumerId)`，而不是单个事件行的 offset。信封与投递字段的目标形态（含 `schemaVersion`、`trustLevel`、`capabilitySnapshot`）见架构文档 §5.1；本节不再复制。
+投递表字段建议：`tenantId`、`deliveryId`、`eventId`、`consumerId`、`state`、`deliveryAttempts`、`dueAt`、`leaseId`、`leaseGeneration`、`deadline`、`lastError`、`result`。唯一键是 `(tenantId, eventId, consumerId)`，而不是单个事件行的 offset。信封与投递字段的目标形态（含 `schemaVersion`、`trustLevel`、`capabilitySnapshot`）见架构文档 §5.1；本节不再复制。
 
 〔判断〕这里修正了本文此前的建议：此前写“加一张事件 outbox 表 + 消费者按 offset 拉取”，这暗含“一个事件一个投递位”。本系统的事件有多个消费者（Router、Worker、审计、watchdog），每个消费者的失败与重试是独立的，因此应拆成 Event Journal + Delivery。两者都在业务事务内写入，但允许 Delivery 尚未创建（消费者后注册时由 Journal 补建）。
 
@@ -487,7 +487,7 @@
 | 判定输入 | 读什么 | 能回答的问题 | 不能替代什么 |
 | --- | --- | --- | --- |
 | 事件位点 | Event Journal 的 `seq`、`occurredAt`、`persistedAt`、消费者登记 | 事件是否落库、积压多久、是否有事件没有任何消费者 | 不能证明消费者已处理 |
-| 投递状态 | Delivery 的 `state`、`attempts`、`dueAt`、`deadline`、`lastError` | 是没送出、accepted 未 claimed、还是 claimed 未 processed | 不能判断业务结果对错 |
+| 投递状态 | Delivery 的 `state`、`deliveryAttempts`、`dueAt`、`deadline`、`lastError` | 是没送出、accepted 未 claimed、还是 claimed 未 processed | 不能判断业务结果对错 |
 | 租约与心跳 | `nodeId`、`leaseId`、`lease.generation`、`expiresAt`、`lastHeartbeat`、在途工作单元 | 节点是否失联、租约能否回收、迟到写入是否应拒 | 不能代替 fence 校验本身 |
 | 外部对账 | receipt 与外部事实（评论 / PR / 消息是否真实存在） | `timeout` / `unknown` 是已生效还是未生效 | 不能自动重试，只能给出建议 |
 

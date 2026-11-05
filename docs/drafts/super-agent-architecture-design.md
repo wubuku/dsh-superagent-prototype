@@ -124,11 +124,13 @@
 | Decision | 纯函数 gate、可插拔 assessor 的请求/结果、Decision 落库、Mandate 生成 | Decision*、Mandate*、Evaluation*、policyVersion 快照 | 不能直接写 Ticket；不能执行命令；不能改工作区 | `src/policy.ts:191-211`；`src/core/evals.ts:96-118`、`:131-163`；`src/app/assessment.ts:21-34` | 无；模型只能作为 assessor 适配器 |
 | Delivery | 把事实与输入按消费者投递、重试、保序、暂停；记录投递状态 | Effect*、Delivery 状态*、Receipt*（与 Outbox 共用） | 不能改业务事实；不能决定授权；不能“代为完成” | `src/app/effects.ts:46-160`；`src/app/delivery.ts:61-84`；`src/app/outbox.ts:26-51` | `steer/followup/inject` 是 inbox 语义，不是投递协议（`.../runtime-types.ts:215-241`） |
 | Agent Runtime | 承载 agent 实例，声明能力，接受输入，回报 `accepted/claimed/processed` 与进度 | Agent 实例状态、能力快照、inbox 内容 | 不能写域表；不能签发 Decision/Mandate；不能决定工作单元归属 | `src/app/sessions.ts:137-155`；`src/executor/dsh.ts:424-470` | Session/Agent Handle、inbox、presence（`.../core/agent/src/index.ts:235`） |
-| Work | 工作单元（Ticket/Assignment）的状态机、调度、容量、执行报告与结束语义 | Ticket*、Assignment*、Input*、Report*、调度队列* | 不能创建授权；不能把“模型说完成”当成验收（验收属第 2 阶段） | `src/core/tickets.ts:37-56`；`src/core/assignments.ts:34-77`；`src/executor/dsh.ts:263-343` | Session log 记录交互事实，不是业务账本（`/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/docs/drafts/dsh-superagent-prototype-research.md:138`） |
+| Work | 工作单元（Ticket/Input/Report）的状态机、调度、容量、执行报告与结束语义；**Assignment 的创建与 `attempt` 递增不在本平面** | Ticket*、Input*、Report*、调度队列*；Assignment 只读（由控制面授权事务创建） | 不能创建授权；不能写 Assignment/Lease；不能把“模型说完成”当成验收 | `src/core/tickets.ts:37-56`；`src/core/assignments.ts:34-77`；`src/executor/dsh.ts:263-343` | Session log 记录交互事实，不是业务账本（`/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/docs/drafts/dsh-superagent-prototype-research.md:138`） |
+| **Lease（控制面租约服务，不是第六个平面）** | 签发、续租、释放、过期；为 `delivery` / `eval` / `assignment` 三个 scope 提供 fencing | `Lease*`；`Assignment.attempt`*（随 Assignment 创建写入） | 不能决定授权；不能替 holder 续租；不能改写已释放/过期的租约 | 无；唯一跨进程互斥是 stateDir 的 `proper-lockfile`〔原型：`src/app/runtime.ts:93`〕 | 无 |
 
-三个跨平面的共用约束：
+四个跨平面的共用约束：
 
 - **单写者规则。** 标 * 的事实只允许一个写入者（可以是一个进程内模块，也可以是 T2 的一个控制面进程），其他平面只能读或提交“请求”。
+- **控制面单事务写 Assignment 与 Lease。** `Ticket`、首 `Assignment`（及其 `attempt`）与 `Lease` 的签发在 §5.3 第 8 步的同一事务内完成；Work 平面只读 Assignment，调度子层只能提交派发请求。**T1**：Work 调度子层与控制面同进程、共享同一个 SQLite 事务；**T2**：调度器已拆分，但只能调用控制面事务 API 提交“创建 Assignment / 签发 Lease”请求，**不得**直接写这两张表。单写者因此可验证：任何 Assignment/Lease 行的 `writer` 都必须是控制面事务。
 - **Version 约束。** 跨平面传输的请求都带 `policyVersion` 与 `schemaVersion`；接收方落库前比对（§5.3）。
 - **不突变原则。** 一个平面不能“顺手”改另一个平面的事实。原型已经基本遵守：`Executor.start/deliver/stop` 只排队，回报走 Engine 回调〔原型：`src/core/ports.ts:59-69`〕；这条要写进 T1/T2 的协议。
 
@@ -244,7 +246,7 @@
 | `tenantId` | 投递所属租户；唯一键第一段 | Delivery 行可能跨 tenant 投递；区隔离只靠应用层过滤 |
 | `deliveryId` / `eventId` / `consumerId` | 三元定位（在 tenant 内） | 多消费者共享一个进度位，任一成功即被当成全部完成 |
 | `state` | `routed→accepted→claimed→processed` / `failed/expired/unknown` | “已送达”被当成“已处理”，丢失与卡住无法区分 |
-| `attempts` / `nextAttemptAt` | 重试次数与下次时间 | 无退避的重试会打爆下游，且无法区分重试与新工作 |
+| `deliveryAttempts` / `nextAttemptAt` | 投递重试次数与下次时间；不是执行 attempt | 无退避的重试会打爆下游，且无法区分重试与新工作 |
 | `leaseId` / `leaseGeneration` / `lease.expiresAt` | 领取者、租约代次与到期 | 两个消费者可同时处理同一条；崩溃后无人回收；旧代次写入无法拒绝 |
 | `deadline` | 业务期限（评估/执行） | 慢与丢无法区分，只能无限等 |
 | `lastError` | 最近错误摘要 | 排障只能看日志，无法按消费者聚合 |
@@ -391,11 +393,11 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 | `state` | `active` / `released` / `expired` |
 | `issuedAt` / `renewedAt` | 签发与最近续租时间 |
 
-**唯一写入者**：控制面租约服务（与账本同库、同一事务边界）。holder 不能直接写 Lease；续租、释放都是发给控制面的命令，由控制面校验后写入。每个 `(tenantId, scope, subjectId)` 同时最多一条 `active` 租约。
+**唯一写入者**：控制面租约服务（与账本同库、同一事务边界）。holder 不能直接写 Lease；续租、释放都是发给控制面的命令，由控制面校验后写入。**Assignment 与 Lease 的签发只在控制面单事务内完成**（与 §5.3 第 8 步同事务；T1/T2 的进程归属见 §3.2），Work 平面与 Delivery 平面只读。每个 `(tenantId, scope, subjectId)` 同时最多一条 `active` 租约。
 
 | 操作 | 谁发起 | 语义 | 对 `generation` 的影响 |
 | --- | --- | --- | --- |
-| 签发 | 控制面 | `queued→assessing`、Assignment 派发、Delivery claim 时创建 | +1（首次为 1） |
+| 签发 | 控制面 | `queued→assessing`、**Assignment 创建（与控制面授权事务同事务）**、Delivery claim（Delivery 平面只提交请求，控制面签发） | +1（首次为 1） |
 | 续租 | holder | 出示 `(leaseId, token)`；只延长 `expiresAt`，不得超过 deadline | 不变 |
 | 释放 | holder 或控制面 | `state=released`；行保留用于审计 | 不变；同代次后续写入一律拒 |
 | 过期 | 控制面扫描 | `expiresAt` 已过 → `state=expired`；重派时签发新租约 | 新租约 +1 |
@@ -415,7 +417,7 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 
 **同名消歧（必须遵守）**：
 
-1. **Delivery** 的重试计数叫 `attempts`（复数），由投递平面写，**不参与 fencing**，不能用来判断“第几次执行”。
+1. **Delivery** 的重试计数叫 `deliveryAttempts`、**Effect** 的重试计数叫 `effectAttempts`（两者都由各自平面写），**都不参与 fencing**，不能用来判断“第几次执行”。
 2. **判定（Eval）** 没有 `attempt`：第几次判定由 `Lease.generation` 表达；重判次数由 `Eval.reassessCount` 表达（§13.2，仅控制面写）。`AssessmentResult` 因此携带 `leaseGeneration`，不携带 `attempt`。
 3. **引擎任务** 的 attempt 映射到同一次 Assignment 的 `attempt`，不引入第二套计数。
 
@@ -479,7 +481,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 
 | 改动 | 具体内容 | 不做的后果 |
 | --- | --- | --- |
-| 1. 队列可 claim | `Effects` 从进程内 handler 表改为 `queue + dispatcher + handler registry`，补 `leaseId/lease.expiresAt/attempts` | 多进程无法共享队列；节点崩溃后行无人回收 |
+| 1. 队列可 claim | `Effects` 从进程内 handler 表改为 `queue + dispatcher + handler registry`，补 `leaseId/lease.expiresAt/effectAttempts` | 多进程无法共享队列；节点崩溃后行无人回收 |
 | 2. 角色目标解析 | `deliver: (id) => sessions.prompt(masterId)` 改为 `RoleTarget.resolve(role)`〔原型写死：`src/app/runtime.ts:131-133`〕 | 换 Router 实现或进程必须改代码 |
 | 3. 准入端口闭合 | `AssessorService` 补 `submit/cancel/heartbeat/release` 与 §5.3 校验链；`Assessor` 端口保持 `request/release`，`decide` 不进端口〔原型：`src/core/ports.ts:48-53`〕 | 外部 Assessor 无法交回判定，T1 仍只有 DSH Router 可选 |
 | 4. 去掉 eager Router | 初始化不再 `await sessions.ensure(masterId)`〔原型：`src/app/runtime.ts:210`〕；无消费者时 Eval 保留 deadline | 控制面启动被 Router 绑定，Router 缺席=系统不可用 |
@@ -1057,7 +1059,7 @@ Eval 在策略变更下的状态与转移：
 **允许写**：`health`、`alert`、`finding` 三张表（各自 append-only）。
 **禁止**：任何域表写；任何外部副作用；任何自动重试；任何“自动修复”写路径；读取 Session transcript 当业务事实。
 
-**判定逻辑约束**：Watchdog 的规则必须是确定性阈值或计数（如 `oldest age > N`、`attempts > M`），不使用模型自由判断；若使用模型摘要，摘要只能进入 `finding.note`，不得触发动作。〔判断〕
+**判定逻辑约束**：Watchdog 的规则必须是确定性阈值或计数（如 `oldest age > N`、`deliveryAttempts > M`），不使用模型自由判断；若使用模型摘要，摘要只能进入 `finding.note`，不得触发动作。〔判断〕
 
 ### 15.3 审计日志的最小字段集
 
@@ -1349,7 +1351,7 @@ Eval 在策略变更下的状态与转移：
 
 | 操作 | 语义 | 幂等键 | correlation | 引擎原生 / 需适配 |
 | --- | --- | --- | --- | --- |
-| `claimTask(workerId, filters, lease)` | 领取一个可执行任务，返回任务 + 类型化变量 + 截止时间 | `(tenantId, taskId, workerId, leaseId, generation)` | `correlationId` 必带 | 原生（claim） |
+| `claimTask(workerId, filters, lease)` | 领取一个可执行任务，返回任务 + 类型化变量 + 截止时间 | `(tenantId, taskId, workerId, leaseId, leaseGeneration)` | `correlationId` 必带 | 原生（claim） |
 | `completeTask(taskId, leaseId, outputs, key)` | 完成并写回变量 | `(tenantId, taskId, attempt, leaseGeneration, key)` | 必带 | 原生完成；**幂等去重需适配**（引擎未必按 key 去重） |
 | `failTask(taskId, leaseId, errorClass, key)` | 失败分类回写（`business/technical/unknown`） | 同上 | 必带 | 需适配（错误模型统一） |
 | `signal(instanceId, name, payload, key)` | 外部事件驱动流程（审批、回调、超时） | `(tenantId, instanceId, name, key)` | 必带 | 原生（message correlation）；**去重需适配** |
@@ -1358,7 +1360,7 @@ Eval 在策略变更下的状态与转移：
 | `getInstance(instanceId)` | 读当前节点、变量、版本 | 只读 | — | 原生（runtime service） |
 | `subscribe(instanceId, cursor)` | 订阅状态变化（用于 Journal） | `(tenantId, instanceId, cursor)` | — | 需适配（事件标准化） |
 
-**契约字段（所有操作共用）**：`tenantId`、`principalId`（调用者）、`definitionVersion`、`schemaVersion`、`traceId`、`idempotencyKey`、`attempt`。
+**契约字段（所有操作共用）**：`tenantId`、`principalId`（调用者）、`definitionVersion`、`schemaVersion`、`traceId`、`idempotencyKey`；写操作另带 `attempt`（Assignment）或 `leaseGeneration`（判定/投递），只读操作（`getInstance`/`subscribe`/`listHumanTasks`）不带 `attempt`。
 
 **三条必须由我们适配、不能指望引擎原生**：
 
@@ -1493,7 +1495,7 @@ search(query, filters{tenantId, scope, type[], sensitivityMax, asOf}, topK)
 | --- | --- | --- |
 | `runId` / `instanceId` / `ticketId` | 归属与关联 | 无法定位状态属于哪次执行 |
 | `waitingOn{kind, ref, since, deadline}` | `kind ∈ agent/human/external/timer/system`；`ref` 是 agentId、humanTaskId、回调、定时器 id | 多 agent 协作时不知道卡在谁身上 |
-| `attempts[]` | 每次动作：`action, at, result(success/failed/unknown), receiptId, errorClass` | 会重复尝试同一动作，或无法判断“已试过” |
+| `actionAttempts[]` | 每次动作：`action, at, result(success/failed/unknown), receiptId, errorClass` | 会重复尝试同一动作，或无法判断“已试过” |
 | `hypotheses[]` | 当前假设：`text, confidence, evidenceRefs[]` | 多 agent 各自带着不同假设推进，结论冲突 |
 | `openQuestions[]` | 未决问题与需要谁回答 | 问题丢失，流程停在无人知道的点 |
 | `nextCheckpoint` | 下一次必须回写账本/引擎的节点 | 状态无限漂移，无法收敛 |
@@ -1514,7 +1516,7 @@ search(query, filters{tenantId, scope, type[], sensitivityMax, asOf}, topK)
 1. 从账本取该 `ticketId` 的 Ticket 状态、最近 Assignment、Report、receipt。
 2. 优先从流程引擎取 `processInstanceId` 的当前任务、变量、`definitionVersion`；引擎历史不可用或已清理时，改用账本快照（§20.2.1），并标注 `engine-history-unavailable`；**不得因引擎缺失而阻塞重建**。
 3. 从投递表取未完成的 Delivery 与重试次数。
-4. 生成新的 `waitingOn`、`attempts` 摘要；**不推断授权**，不生成 Mandate，不改变 Ticket 状态。
+4. 生成新的 `waitingOn`、`actionAttempts` 摘要；**不推断授权**，不生成 Mandate，不改变 Ticket 状态。
 5. 与旧状态冲突时：授权/工单以账本为准；流程节点以引擎为准；引擎缺失时以账本快照为准并记 finding；过程状态自身可整体丢弃重建。
 
 **三条禁止**：
