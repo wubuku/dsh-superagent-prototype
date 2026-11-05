@@ -18,7 +18,7 @@
 
 一句话结论：**先协议化，再进程化；保留“事务 + 持久队列 + 纯函数准入”的内核，把 Session、投递语义和权限绑定留在 DSH 适配器里。**
 
-**范围与文档关系：** 本文记录 `dsh-superagent` 原型的现状核对与迁移分析，是上游材料；后续整体设计见 [super-agent-architecture-design.md](./super-agent-architecture-design.md)（该文档 §1.2 也以本文为输入）。两份文档冲突时以架构设计文档为准，并应回改本文。§6.9 / §7.4 关于 `policyVersion` 的结论只描述原型现状，处置协议以架构文档 §13 为准。
+**范围与文档关系：** 本文记录 `dsh-superagent` 原型的现状核对与迁移分析，是上游材料；后续整体设计见 [super-agent-architecture-design.md](./super-agent-architecture-design.md)（该文档 §1.2 也以本文为输入）。两份文档冲突时以架构设计文档为准，并应回改本文。**§6.9 / §7.4 关于 `policyVersion` 的结论已按源码复核更正**：原型在 `decideEval` 已比对版本（`src/core/evals.ts:284-288`），`policyChanged` 会主动重排活跃 Eval（`:218-221`）；缺口是合并窗口、重判上限、lease/attempt fencing 与饥饿可观测。处置协议以架构文档 §5.3、§13.2 为准。
 
 ## 目录
 
@@ -300,14 +300,14 @@
 
 **P0：仍单进程，闭合 `AssessorService` 协议与事件/投递表**
 
-1. 另立宿主中立的 `AssessorService`（架构文档 D7、§10.2）：`request(candidate) → AssessmentResult`；现有 `Assessor` 端口降为 DSH 适配器。结果带 `evalId`、`policyVersion`、`assessorId`、`attempt`、`leaseId`、`actor`、`outcome`、`completedAt`、`evidence`；未持有租约的判定被拒绝。
-2. 新增 `DecisionCommand` 的认证与校验链：`evalId → policyVersion → Mandate rules → Engine.decide`；工具调用只是签发这个 command 的一种方式。
-3. 持久化 Eval → AssessmentTarget（runtimeType、sessionId、assessorProfile、policyVersion、deliveryState）；Engine 不再在构造期写死 session id，但默认仍解析到共享 Router，保留 eager ensure。
+1. 另立宿主中立的 `AssessorService`（架构文档 D7、§10.2）：`request(candidate) → AssessmentResult`；现有 `Assessor` 端口降为 DSH 适配器。结果带 `tenantId`、`evalId`、`policyVersion`、`assessorId`、`leaseGeneration`、`leaseId`、`actor`、`outcome`、`completedAt`、`evidence`；未持有租约的判定被拒绝。
+2. 新增 `DecisionCommand` 的认证与校验：校验顺序以架构文档 §5.3 的**唯一校验链**为准，本文不另列；工具调用只是签发这个 command 的一种方式。
+3. 持久化 Eval → AssessmentTarget（tenantId、runtimeType、sessionId、assessorProfile、policyVersion、deliveryState）；Engine 不再在构造期写死 session id，但默认仍解析到共享 Router，保留 eager ensure。
 4. `RoleTarget` 替代 `masterId` 直投：relay / notice / assessment 都按角色解析当前目标；解析不到时记录并排队，而不是静默丢弃。
 5. 拆出 Event Journal 与 Delivery 表；即使消费者进程尚未启动，事件事实与待投递行都不丢。
 6. 抽象 AssessorProvider / AssessorInstance（`create` / `assess` / `dispose`）与 SessionProvider（`resolve` / `ensure`）；`ensure` 必须稳定身份、幂等创建，同一 Eval 重试不能建两个 Assessor Session。
 
-验收信号：同一 Eval 重试只产生一个 Assessor Session；迟到或旧 policyVersion 的 AssessmentResult 被拒绝；共享 Router 形态仍可运行。 〔设想〕
+验收信号：同一 Eval 重试只产生一个 Assessor Session；迟到、旧 `policyVersion` 与越权 `evidence` 三类 `AssessmentResult` 被拒绝；共享 Router 形态仍可运行。 〔设想〕
 
 **P1：队列与租约服务化，允许消费者缺席**
 
@@ -476,7 +476,7 @@
 - 跨进程协议必须把 `DeliveryResult` 定义为 `accepted | rejected | unsupported`，而不是布尔成功；`claimed` / `processed` 通过后续事件回报。若外部 agent 无法提供 `claimed`，就用 deadline 加心跳把“慢”与“丢”区分开。 〔设想〕
 - 这直接补强 §6.5 的失败分类：`timeout` 应细分为“未 accepted 的超时”和“已 accepted 未 claimed 的超时”；后者更像投递丢失，前者更像连接失败。 〔判断〕
 
-〔原型 + 判断〕以上是原型现状：投递状态机没有 `policyVersion` 分支，版本不一致的迟到判定没有专门状态。后续设计见架构文档 §13 的有界重判协议：版本不匹配的判定先进入 `pending-policy`，等 30 秒合并窗口关闭后按最新版本重派；每个 Eval 最多重判 2 次，幂等键为 `reassess:{evalId}:{policyVersion}`，到上限转人工 `escalated`。
+〔原型 + 判断〕以上是原型现状：**投递状态机**没有 `policyVersion` 分支，版本不一致的迟到判定没有专门投递状态。注意这**不等于**判定链路不比对版本：`decideEval` 在回写时已比对并重排（`src/core/evals.ts:284-288`），`policyChanged` 也会主动重排所有活跃 Eval（`:218-221`）。真正缺的是有界处置（合并窗口、重判上限）与 fencing。后续设计见架构文档 §13.2：版本不匹配的判定先进入 `pending-policy`，等窗口关闭后按最新版本重派；每个 Eval 最多重判 2 次，到上限转人工 `escalated`。
 
 ### 6.10 Watchdog 的判定输入（页面未覆盖，本文设想）
 
@@ -551,15 +551,16 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 
 **历史方案（已被裁决取代）：** 曾考虑在现有 `Assessor` 端口上直接补 `assess` / `cancel` 与租约——这是改动最小的做法。它的问题是把 DSH 的 Session 生命周期与类型带进协议：非 DSH 的 Assessor 必须迁就 DSH 语义，跨宿主复用无从谈起。架构文档 D7 因此裁决为另立宿主中立的 `AssessorService`，现有 `Assessor` 端口只作该协议的 DSH 实现适配器（§10.2）；取代理由是“跨宿主复用 vs 绑死 DSH 类型”。下面的 `AssessmentResult` 合同归 `AssessorService`，不再作为 `Assessor` 端口的方法。
 
-〔设想〕`AssessmentResult` 的字段分两批：外部材料给出 `evalId`、`policyVersion`、`assessorId`、`outcome`、`completedAt` 五个；本文再补 `attempt`、`leaseId`、`actor`、`evidence` 四个。后四个不是装饰：
+〔设想〕`AssessmentResult` 的字段分两批：外部材料给出 `evalId`、`policyVersion`、`assessorId`、`outcome`、`completedAt` 五个；本文再补 `tenantId`、`leaseGeneration`、`leaseId`、`actor`、`evidence` 五个。后五个不是装饰：
 
-- `attempt` / `leaseId` 让重试与并发接管可区分，也让迟到结果能被拒绝。
+- `tenantId` 让判定与幂等键可跨租户隔离（架构文档 §11.2）。
+- `leaseGeneration` / `leaseId` 让重试与并发接管可区分，也让迟到结果能被拒绝（`attempt` 只用于 Assignment，见架构文档 §5.6）。
 - `actor` 让判定者身份进入审计，不能依赖进程内 initiator 归属。
 - `evidence` 承接原型工具 schema 的强制字段（`direction`、`rule_assessments`、`title`、`scope`、`intent_evidence`、`reason`，`src/app/assessment.ts:21-34`），保证换 Assessor 不会降低证据质量。
 
-〔判断〕校验链应为 `evalId → policyVersion → Mandate rules → Engine.decide`。原型的现状是：`evalId` 已严格校验（`src/core/evals.ts:135`），`Mandate` 规则在 `assessmentOutcome` 与 `Engine.decide` 内校验（`src/app/assessment.ts:275-277`；`src/core/evals.ts:152-154`），但 **`policyVersion` 只被记录、未被比对**：Eval 记录开始时的版本（`src/core/evals.ts:111`），Decision 也沿用它（`src/core/evals.ts:330`），而结果映射用的是当前设置（`src/app/assessment.ts:275`）。如果评估进行中策略被修改，迟到的结果会按新规则计算，却仍挂着旧版本号。外部材料说“迟到的结果不应无条件成为有效授权”，这一点在原型里只靠 `evalId` 与 deadline 兜底，没有版本兜底。 〔原型 + 判断〕
+〔判断〕校验链以架构文档 §5.3 的**唯一版本**为准（`evalId` 幂等 → attempt/fencing → lease → deadline（控制面 `receivedAt`）→ evidence 白名单 → `policyVersion` → outcome/Mandate → 单事务写入 + 审计）。原型的现状是：`evalId` 已严格校验（`src/core/evals.ts:135`），`policyVersion` 在判定回写时已比对（`src/core/evals.ts:284-288`），`Mandate` 规则在 `assessmentOutcome` 与 `Engine.decide` 内校验（`src/app/assessment.ts:275-277`；`src/core/evals.ts:152-154`）；**缺的是 lease/attempt fencing 与 evidence 类型白名单**。关于版本的实际行为：`assessmentOutcome` 用当前 settings 计算 outcome（`src/app/assessment.ts:275`），但 `decideEval` 会以 Eval 上记录的 `policyVersion`（`src/core/evals.ts:111`）与之比较；不一致时活跃 Eval 走 `reassess({code:'policyChanged'})`、非活跃 Eval 以 `unavailable` 结束（`:284-288`），不会把旧版本判定当作有效授权。〔原型〕
 
-上述是原型现状，不是最终处置。架构文档 §13 已把它升级为有界重判协议：版本不匹配的判定进入 `pending-policy`，30 秒合并窗口关闭后按最新版本重派，每个 Eval 最多重判 2 次，幂等键为 `reassess:{evalId}:{policyVersion}`，到上限转人工 `escalated`；本文不再重复其状态机。目标形态另有 `schemaVersion`（协议消息格式版本），与 `policyVersion` 不可合并，见架构文档 §13.1。
+上述是原型现状，不是最终处置。架构文档 §13 已把它升级为有界重判协议：版本不匹配的判定进入 `pending-policy`，合并窗口关闭后按最新版本重派，每个 Eval 最多重判 2 次，幂等键为 `reassess:{tenantId}:{evalId}:{policyVersion}`，到上限转人工 `escalated`（〔设想〕，原型无此状态）；本文不再重复其状态机。目标形态另有 `schemaVersion`（协议消息格式版本），与 `policyVersion` 不可合并，见架构文档 §13.1。
 
 ### 7.5 权属澄清：Decision 不在 Session 里
 
@@ -591,7 +592,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 
 1. **没有多进程原型。** 本文所有进程拆分与租约建议都是设计，不是实测。 〔设想〕
 2. **“候选已投递未判定”的补偿缺口是代码推断。** 未做崩溃注入验证；结论依据是 effect 成功即删行（`src/app/effects.ts:130-145`）与 deadline 路径（`src/core/evals.ts:35-69`）。 〔推断〕
-3. **没有评估瓶颈的量化数据。** 120 秒 deadline、单 Session 串行、`requeue ≤ 2` 都是代码事实，但“繁忙 Router 会导致多少 unavailable”没有压测。 〔判断〕
+3. **没有评估瓶颈的量化数据。** 120 秒 deadline、单 Session 串行、超时路径 `REQUEUES = 2` 都是代码事实，但“繁忙 Router 会导致多少 unavailable”没有压测。 〔判断〕
 4. **外部副作用的幂等性未逐 API 验证。** GitHub 评论、PR 创建、Feishu 消息在超时后是否可安全重试，取决于具体 API；原型用 receipt 防重复排队，但没有“结果未知 → 对账”的服务端状态。 〔判断〕
 5. **权限隔离没有实测。** 当前两个角色都是 `danger-full-access`，本文建议的只读 Router / 受限 Worker 尚未落地，也没有 OS 级沙箱验证。 〔设想〕
 6. **DSH 版本是 alpha。** `steer` / `followup` / `inject` 的语义可能变化；协议不应依赖它们，应通过适配器映射。 〔判断〕
@@ -600,7 +601,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 9. **全局顺序不存在。** 本文只主张按 key 保序；跨 key 的全局顺序没有保证，也不建议追求。 〔设想〕
 10. **外部材料的部分厂商细节无法核实。** 页面关于 Codex（`turn/steer`、`thread/inject_items`）与 Claude（`asyncRewake`、Streaming Input）的 API 描述，在本仓库与 DSH 仓库都没有对应代码或文档；本文只采用其结构性结论，未把这些名称当作协议依据。 〔判断〕
 11. **`ensure` 的并发幂等未验证。** 现有实现是 resolve-then-create（`src/app/sessions.ts:138-147`），两个并发调用是否只创建一个 Session 取决于 `sessionController.create`，未做并发测试。 〔推断〕
-12. **`policyVersion` 的现状只做了静态核对。** §7.4 指出判定链路没有比对版本，但“评估进行中修改策略”是否可实际复现未做运行验证；该缺口已由架构文档 §13.2 的有界重判协议接管。 〔推断〕
+12. **`policyVersion` 的比对在原型中已存在，缺的是有界处置。** `decideEval` 比较 `this.policy().version !== evaluation.policyVersion`，不一致时活跃 Eval 重排、非活跃 Eval 以 `unavailable` 结束（`src/core/evals.ts:284-288`）；`policyChanged` 主动重排所有活跃 Eval（`:218-221`）。仍缺四项：合并/去抖窗口（每次变更立即重排，`:218-221`）；重判上限（`reassess` 无条件回队，仅超时路径有 `REQUEUES = 2`，`:19`、`:222-230`）；lease + attempt fencing（`Assignment` 无 owner/租约/代际字段，`src/core/model.ts:218-233`；唯一跨进程互斥是 stateDir 锁，`src/app/runtime.ts:93`）；饥饿与升级不可观测（无 `escalated`、无重判指标，`src/core/reasons.ts:8`）。处置协议由架构文档 §5.3、§13.2 接管。 〔原型 + 判断〕
 
 ## 10. 建议的分阶段落地
 
@@ -622,9 +623,9 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 
 ### P0：协议闭合（仍单进程，保留 eager Router）
 
-1. 另立宿主中立的 `AssessorService`（架构文档 D7、§10.2）：`request(candidate) → AssessmentResult`；现有 `Assessor` 端口降为 DSH 适配器。结果带 `evalId`、`policyVersion`、`assessorId`、`attempt`、`leaseId`、`actor`、`outcome`、`completedAt`、`evidence`；未持有租约的判定被拒绝。
-2. `DecisionCommand` 的认证与校验链：`evalId → policyVersion → Mandate rules → Engine.decide`；工具调用只是签发这个 command 的一种方式；版本不一致时的处置见架构文档 §13（`pending-policy` / 有界重判）。
-3. 持久化 `AssessmentTarget`（runtimeType、sessionId、assessorProfile、policyVersion、deliveryState）；`Engine` 不再在构造期写死 session id，但默认仍解析到共享 Router。
+1. 另立宿主中立的 `AssessorService`（架构文档 D7、§10.2）：`request(candidate) → AssessmentResult`；现有 `Assessor` 端口降为 DSH 适配器。结果带 `tenantId`、`evalId`、`policyVersion`、`assessorId`、`leaseGeneration`、`leaseId`、`actor`、`outcome`、`completedAt`、`evidence`；未持有租约的判定被拒绝。
+2. `DecisionCommand` 的认证与校验：校验顺序、失败码与写入事务以架构文档 §5.3 的**唯一校验链**为准，本文不另列；工具调用只是签发这个 command 的一种方式。
+3. 持久化 `AssessmentTarget`（tenantId、runtimeType、sessionId、assessorProfile、policyVersion、deliveryState）；`Engine` 不再在构造期写死 session id，但默认仍解析到共享 Router。
 4. `RoleTarget` 替代 `masterId` 直投；relay / notice / assessment 统一走角色解析；解析不到时记录并排队。
 5. 拆出 Event Journal 与 Delivery 表：事件事实与每个消费者各自的投递行同事务写入。
 6. 抽象 `AssessorProvider` / `AssessorInstance`（`create` / `assess` / `dispose`）与 `SessionProvider`（`resolve` / `ensure`）；`AssessorProvider` 是 `AssessorService` 在 DSH 宿主内的装配，不是对外协议；`ensure` 以 `(evalId, assessorProfile)` 为键，重试不能建两个 Session。
@@ -649,7 +650,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 
 ### 每阶段的回归信号
 
-- P0：`pnpm check` 通过；新增“同一 Eval 重试”“迟到结果”“旧 policyVersion”三类测试；崩溃点注入至少覆盖“已投递未判定”。
+- P0：`pnpm check` 通过；新增“同一 Eval 重试”“迟到结果”“旧 policyVersion”“越权 evidence”四类测试；崩溃点注入至少覆盖“已投递未判定”。
 - P1：无 Router 时事件不丢；节点失联回收；fencing token；外部超时进入 unknown。
 - P2：同一引擎接两个不同实现的角色；替换其一不影响其他角色的测试。
 

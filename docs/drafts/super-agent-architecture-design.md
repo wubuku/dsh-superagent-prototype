@@ -12,7 +12,7 @@
 2. **角色必须按“谁拥有事实”切分，而不是按“谁在运行”切分。** 进程可以随部署变化，事实所有权不能。沿 Session 切分只会把进程内耦合换成网络耦合。〔判断〕
 3. **Assessor 端口未闭合是唯一“不做就无法异构”的缺口。** 其余缺口（队列服务化、权限拆分、节点注册）可以分批做；不做只会让“异构”退化成“同机多进程”。〔原型：`src/core/ports.ts:49-53`，`decide` 在 `src/app/assessment.ts:272-279` 而非端口〕
 4. **授权不可跨进程。** 远程 Assessor/Worker 只能交回判定或报告，Decision、Mandate、Ticket 必须由持有账本的单写者在单个事务内写入。〔判断，沿用上游 §3.1〕
-5. **`policyVersion` 必须从“记录”升级为“比对与拒绝”。** 当前它只被写入 Eval 与 Decision，判定回写时用当前设置计算规则〔原型：`src/core/evals.ts:107-111`、`src/app/assessment.ts:275`〕。单进程是隐患；跨进程会变成“用旧策略做的判定生效”。这是本文与上游文档的核心增量之一。
+5. **`policyVersion` 的比对在原型中已经存在；缺的是有界处置与 fencing。** `decideEval` 在回写时比较 `this.policy().version !== evaluation.policyVersion`，不一致时对活跃 Eval 触发 `reassess({code:'policyChanged'})`、对非活跃 Eval 以 `unavailable` 结束〔原型：`src/core/evals.ts:284-288`〕；`policyChanged` 还会主动重排所有活跃 Eval〔原型：`:218-221`〕；`evalId` 已含 `policy.version`〔原型：`:107`〕。本文的增量不是“补比对”，而是“合并窗口 + 重判上限 + lease/attempt fencing + 饥饿可观测”（§13.2）。
 6. **部署拓扑应按“故障域 / 凭据域 / 扩缩容曲线 / 运行时”四条判据选择，而不是按角色数量选择。** T0→T1 的最小改动面是“把 effect 派发改成可 claim 的队列 + 把角色目标改成解析而非写死”，不是拆包、不是换库。〔判断〕
 7. **T1 的合理形状不是一个角色一个进程，而是“控制面进程 + 执行面进程组”。** Router 与 Engine 共享授权事实，必须同进程或同节点强一致；Worker 天然可多节点；Watchdog 必须独立且只读。〔判断〕
 8. **协议先于进程。** 没有幂等键、`attempt`、`leaseId`、能力声明的“进程拆分”得到的只是分布式单体。〔沿用上游 §6、§8〕
@@ -66,7 +66,7 @@
 | 任务调度、容量、多节点分工 | **缺失** | §3.3、§6 |
 | 部署拓扑与四条判据的落点 | **缺失**（判据有，形状无） | §6 本文主体 |
 | 协议字段与“缺失后果” | 部分（上游 §6、§7.4） | §5 补全为可评审草案 |
-| 策略/协议版本一致性 | **未处理**（只指出 `policyVersion` 记录不比对） | §5.3、§7-D3 本文增量 |
+| 策略/协议版本一致性 | 部分：指出投递状态机没有版本分支（上游 §6.9）；判定回写已比对，但上游未核对 | §5.3 唯一校验链、§7-D3、§13.2 有界重排本文主体 |
 | 多租户、身份、安全、可观测性 | 明确列为局限（上游 §9.8） | 第 2 阶段，不在本文 |
 
 本文不复制上游的时序表与耦合点表；读者应先读上游 §2–§5。
@@ -312,7 +312,14 @@
 
 **为什么把白名单放在协议而不是只靠模块边界**：模块边界只能保证“Decision 代码没有 import 检索端口”，不能保证 assessor 在 `evidence` 里塞一条“知识说可以”。一个被知识影响的 accept 仍然会产出结构合法的 `evidence`；只有类型白名单能在落库前把它变成不可接受的判定。〔判断〕**具体事故**：知识条目写着“这类 PR 可直接合并”，assessor 把它当作 accept 的依据写入 `evidence.knowledge_ref`；若放行，审计链会显示“依据知识库批准”，而知识本身没有授权资格（§21.4）。
 
-**当前差距（必须写清）**：第 3、4 步在原型中不存在——`policyVersion` 只记录不比对，`leaseId` 没有概念；第 6 步也不存在——原型的 `evidence` 是自由结构，没有类型约束，也不区分 `rationale`〔原型：`src/app/assessment.ts:21-34`〕。原型靠 `evalId` 与 deadline 兜底〔原型：`src/core/evals.ts:107-111`、`src/app/assessment.ts:275`〕。单进程下这最多导致“用新规则解释旧评估”；跨进程后会变成“旧策略判定的工作在新策略下被执行”，且无法在事后识别。〔判断 + 上游 §7.4〕
+**当前差距（必须写清）**：原型已在判定回写时比对版本，并在策略变更时主动重排〔原型：`src/core/evals.ts:284-288`、`:218-221`〕。缺的不是比对，而是**有界处置**与 **fencing**：
+
+- **合并/去抖窗口缺失**：每个活跃 Eval 在 `policyChanged` 时立即重排，连续策略变更会反复取消评估〔原型：`src/core/evals.ts:218-221`〕。
+- **重判次数无上限**：`reassess` 无条件回队，只有超时路径有 `REQUEUES = 2`〔原型：`src/core/evals.ts:19`、`:222-230`、`:57-62`〕。
+- **缺 lease + attempt fencing**：`Assignment` 没有 owner/租约/代际/fencing 字段〔原型：`src/core/model.ts:218-233`〕，原型唯一的跨进程互斥是 stateDir 的 `proper-lockfile`〔原型：`src/app/runtime.ts:93`〕。
+- **饥饿与升级不可观测**：原型没有 `escalated` 状态，也没有重判/排队指标，只有 `policyChanged` 原因码〔原型：`src/core/evals.ts:285-288`、`src/core/reasons.ts:8`〕；`escalated` 属〔设想〕。
+
+deadline 与 evidence 白名单两步在原型中也不存在：原型的 `evidence` 是自由结构，没有类型约束，也不区分 `rationale`〔原型：`src/app/assessment.ts:21-34`〕；超时由 Eval 的 `deadline` 与 pass 超时兜底〔原型：`src/core/evals.ts:57-62`〕。〔判断〕
 
 ### 5.4 Agent 适配器能力声明
 
@@ -339,11 +346,11 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 
 ### 5.5 策略与协议版本的一致性（本文相对上游的增量）
 
-上游只指出“`policyVersion` 记录不比对”是隐患（上游 §7.4）。本文把它升级为一条协议约束，并给出三种处理方式：
+上游的原始观察是“投递状态机没有 `policyVersion` 分支”（上游 §6.9、§7.4），这一条成立；但**判定回写本身在原型已比对版本**（`src/core/evals.ts:284-288`），`policyChanged` 也会主动重排所有活跃 Eval（`:218-221`）。本文在其上补的不是比对，而是**有界处置**，并给出三种场景的处理方式：
 
 | 场景 | 处理 | 理由 | 代价 |
 | --- | --- | --- | --- |
-| 判定回写时版本不一致 | **拒绝**（`policyChanged`），Eval 重新排队一次 | 旧策略不能授权新工作；重排后可获得当前版本判定 | 策略频繁变更时会产生抖动，需要节流 |
+| 判定回写时版本不一致 | **拒绝**（`policyChanged`），进入 §13.2 状态机（`pending-policy` → 窗口 → 有界重判）；本节不另行定义“重排一次” | 旧策略不能授权新工作；重排后可获得当前版本判定 | 策略频繁变更时会产生抖动，必须配 §13.2.2 的窗口与上限 |
 | 工单执行中策略变更 | 不自动中止；写 `policy-changed` Input，由 worker 与 Router 处理〔原型已有 Input 类型：`src/core/model.ts:249-250`〕 | 中止会造成工作中断与副作用残留 | 旧工单可能完成在“已不鼓励”的方向上 |
 | 工单 resume 前 | `revalidate(mandate)`，失败则不 resume〔原型：`src/core/tickets.ts:106-114`〕 | resume 是重新授权的事实点 | 需要保留旧 basis 可计算 |
 
@@ -499,13 +506,13 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 - **代价**：每次回收要持久化 token；所有写回路径都要带 token 并校验；实现与测试面变大。
 - **可回退性**：**中**。去掉 token 校验需要同时接受“重复报告可被业务幂等吸收”的前提，风险不可静默接受。
 
-### D3 策略版本：记录 vs 比对
+### D3 策略版本：单进程内比对 vs 协议级有界处置
 
-- **选项**：A. 沿用现状，只记录 `policyVersion`；B. 回写时比对，不一致拒绝并重排；C. 比对后按新策略重新计算并接受。
+- **选项**：A. 沿用原型：只在 Engine 内比对并立即重排；B. 把“比对 + 有界处置”提升为协议不变量，由宿主中立的 `AssessorService` 合同与 §13.2 状态机承载；C. 比对后按新策略重新计算并接受。
 - **选择**：**B。**
-- **理由**：A 在跨进程时会把旧策略判定当成有效授权；C 会“用新规则解释旧证据”，审计上无法解释为什么接了。
-- **代价**：策略变更会让在途评估重排；需要节流与“重排上限”，否则抖动。
-- **可回退性**：**中**。改成 C 只影响 `AssessmentResult` 校验分支。
+- **理由**：原型已经有比对〔原型：`src/core/evals.ts:284-288`〕，所以 A 不是“补比对”，而是把处置留在单进程内的隐式行为里。**判定端口只覆盖 `request/release`，`decide` 不在端口内**〔原型：`src/core/ports.ts:48-53`；`src/app/tools/main.ts:202-220`〕；跨宿主 assessor 既看不到、也无法遵守 Engine 的内部比对。裁决需要宿主中立、可替换、可单独进程隔离，因此比对与处置必须成为 `AssessorService` 合同的一部分（§5.3、§10.2）；否则换 assessor 就换掉了版本语义。C 会“用新规则解释旧证据”，审计上无法解释为什么接了。
+- **代价**：策略变更会让在途评估进入窗口与重判；需要窗口、上限与观测（§13.2.2、§13.2.4）。
+- **可回退性**：**中**。A 可作为 B 在单进程内的实现细节，但外部协议不退回 A；改成 C 只影响 `AssessmentResult` 校验分支。
 
 ### D4 判定回写通道：HTTP vs 队列
 
@@ -535,7 +542,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 
 - **选项**：A. 在 `Assessor` 端口加 `decide/cancel/heartbeat`；B. 另立 `AssessorService` 协议，`Assessor` 端口降为 DSH 实现适配器；C. 让 Assessor 直接调 `Engine.decide`。
 - **选择**（第 2 阶段裁决）：**B。**
-- **理由**：协议宿主中立才能接入非 DSH 的 assessor；A 会把 DSH 的类型与生命周期泄漏进协议。C 违反 P2。字段映射与语义损失见 §10.2。
+- **理由**：**判定端口只覆盖 `request/release`，`decide` 不在端口内**〔原型：`src/core/ports.ts:48-53`；`src/app/tools/main.ts:202-220`〕，现有接缝无法承载“结果回写、租约、取消、身份”这些裁决语义。A 会把 DSH 的类型与 Session 生命周期泄漏进协议；C 违反“授权不可跨进程”（P2）。另立 `AssessorService` 的目的不是给旧端口补一个方法，而是让裁决宿主中立、可替换、可单独进程隔离。字段映射与语义损失见 §10.2。
 - **代价**：多一层装配与序列化；`MasterAssessor` 与工具入口要经适配器；能力不支持时必须显式降级。
 - **可回退性**：**中**。A 可作为 B 的内部实现细节，但外部协议保持 B。
 
@@ -625,7 +632,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 | 主 Session 急切创建 | `src/app/runtime.ts:210` |
 | 评估投递写死 masterId | `src/app/runtime.ts:131-133` |
 | 通知只能 steer 到已存在 agent | `src/app/sessions.ts:104-105` |
-| `policyVersion` 只记录不比对 | `src/core/evals.ts:107-111`；`src/app/assessment.ts:275` |
+| `policyVersion` 回写时比对，策略变更主动重排 | `src/core/evals.ts:284-288`（比对）、`:218-221`（主动重排）、`:107`（evalId 含版本） |
 | effect 队列有退避/限流/保序/暂停，但派发在进程内 | `src/app/effects.ts:46-160`、`:83-88` |
 | 投递幂等按 requestId | `src/app/delivery.ts:16`、`:61-84` |
 | 外部回复靠 receipt 去重 | `src/app/outbox.ts:26-51` |
@@ -645,7 +652,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 | --- | --- | --- | --- |
 | 1 | “已投递未判定”的崩溃窗口没有主动补偿 | 上游标〔推断〕；依据是 effect 成功即删行 + deadline 兜底 | 在投递后、decide 前强杀进程，观察是否只能等 deadline |
 | 2 | `ensure` 并发幂等（同一 Eval 重试不建两个 Session） | 上游标〔推断〕 | 并发调用 `ensure`，断言只创建一个 |
-| 3 | `policyVersion` 不一致的实际可复现性 | 上游标〔推断〕 | 评估进行中修改规则，提交旧版本结果，观察是否被接受 |
+| 3 | 策略变更后 Eval 的实际重排路径未运行验证 | 代码显示 `decideEval` 会比对并重排（`src/core/evals.ts:284-288`），但活跃与非活跃 Eval 两条路径的实际行为未注入验证 | 评估进行中修改规则，分别对活跃与非活跃 Eval 提交旧版本结果，断言前者重排、后者以 `unavailable` 结束 |
 | 4 | `durable_inbox` 在 DSH 重启后是否保留已 accepted 输入 | 未逐项实测 | 投递后强杀、重启，检查 inbox |
 | 5 | 外部副作用超时是否可安全重试 | 取决于 GitHub/Feishu API，未逐 API 验证 | 超时后查远端事实，再判断可否重放 |
 | 6 | T1 同机多进程下 SQLite 的锁竞争与 WAL 行为 | 本文为设计，无实测 | 起 2–3 个进程共享一个库，压测 claim/ack |
@@ -672,7 +679,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 12. **principal 与 actor 必须分两层：principal 是身份（人/服务/机器），actor 是“在某渠道上的可寻址主体”，agent 实例是“执行载体”，三者不能合并成一个 id。** 原型只有 `ActorRef`（source + id）〔原型：`src/core/model.ts:4-5`〕与 Session 身份〔原型：`src/app/sessions.ts:137-153`〕。合并会导致“agent 发的评论被人格化”或“人换了账号被当成新主体”。
 13. **租户边界不能靠应用层 `tenantId` 字段，必须同时落到凭据域、存储分区与出口。** 原型没有任何 tenant 字段（全仓库源码检索无 `tenant`），单 stateDir 单实例〔原型：`src/app/runtime.ts:91-98`；`docs/007-architecture.md:151`〕。字段级隔离只能防误读，防不了越权。
 14. **“agent 不接触凭据”可行的最小形态是命令 shim + 凭据代理，而不是把凭据放进环境变量。** 原型已用 `worker-bin` shim、`worker-gitconfig` 与剥离 `KEY/PASSWORD/SECRET/TOKEN` 环境变量〔原型：`docs/006-deployment.md:218-227`〕；但 shim 仍以操作者 OS 用户运行，agent 能读同用户的其他凭据〔原型：`docs/006-deployment.md:13-19`〕。
-15. **策略版本变更时，判定进入 `pending-policy` 合并窗口（默认 30s），窗口关闭后按最新版本有界重判（最多 2 次）；到上限转人工 `escalated`，不静默丢弃。工单执行不中止但写 `policy-changed`，resume 前用当前版本 revalidate。** 〔判断，§13.2 状态机〕原型只有 resume revalidate（`src/policy.ts:191-239`），判定回写不比对（`src/core/evals.ts:107-111`）。
+15. **策略版本变更时，判定进入 `pending-policy` 合并窗口（默认 30s），窗口关闭后按最新版本有界重判（最多 2 次）；到上限转人工 `escalated`，不静默丢弃。工单执行不中止但写 `policy-changed`，resume 前用当前版本 revalidate。** 〔设想，§13.2 状态机；`escalated` 在原型中不存在〕原型已有判定回写比对与主动重排〔原型：`src/core/evals.ts:284-288`、`:218-221`〕，但没有合并窗口、重判上限（`reassess` 无条件回队，仅超时路径有 `REQUEUES = 2`，`:19`、`:222-230`）、lease/attempt fencing〔原型：`src/core/model.ts:218-233`〕与饥饿观测。
 16. **威胁模型的第一优先级不是外部攻击者，而是“不可信事件驱动已授权执行”的提示词注入；第二是跨角色伪造。** 原型的事件准入是纯函数且与模型隔离〔原型：`src/policy.ts:191-211`〕，但 worker 以 `danger-full-access` 运行〔原型：`src/app/sessions.ts:152`〕，注入一旦进入 worker，权限无上限。
 17. **审计日志的最小字段集必须能重建一条“谁、以什么依据、批了什么、谁执行、结果如何”的链；仅保存 Session transcript 不足以不可否认。** Session log 是交互事实，不是业务账本〔DSH 研究：`dsh-superagent-prototype-research.md:138`〕。
 18. **持久化选型的触发条件是“写者数、数据量、恢复时间”三个数字，不是“要不要上云”。** 单机 SQLite 在单写者、十万级行、分钟级恢复内成立；任一越界才换 PostgreSQL/外部队列，且必须先有 schema 版本与迁移回滚。
@@ -838,7 +845,7 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 | `policyVersion` | 准入/规则内容版本（哪些人能请求、哪些规则生效） | Eval、Decision、Mandate | 每次策略保存 | 消息格式升级也会让在途评估全部失效 |
 | `schemaVersion` | 协议消息格式版本 | 每条协议消息 | 每次协议演进 | 无法判断“旧消息能否被新消费者解析” |
 
-原型已有 `policyVersion`（由影响授权设置的哈希计算）〔原型：`src/policy.ts:113-116`、`src/core/evals.ts:107-111`〕，但没有 `schemaVersion`，也没有比对。两者都写进 §5 协议。
+原型已有 `policyVersion`（由影响授权设置的哈希计算）〔原型：`src/policy.ts:113-116`、`src/core/evals.ts:107`〕，并在判定回写时比对〔原型：`src/core/evals.ts:284-288`〕；但没有 `schemaVersion`。比对发生在单进程 Engine 内部，尚未成为协议不变量；两者都写进 §5 协议。
 
 ### 13.2 “判定迟到、策略已变”的处置流程
 
@@ -1079,7 +1086,7 @@ Eval 在策略变更下的状态与转移：
 | # | 验收信号 | 证伪的假设 |
 | --- | --- | --- |
 | M0-1 | 投递后、`decide` 前强杀进程，重启后 1 小时内：要么完成判定，要么在 deadline 后明确 `unavailable`，二者都不产生第二张 Ticket | §9.2-1 的〔推断〕；若产生重复，需要主动补偿而非 deadline 兜底 |
-| M0-2 | 评估进行中修改策略，旧版本判定提交被拒，日志含 `policyChanged`，且重判在 2 次内收敛 | §13.2 的“拒绝即可收敛” |
+| M0-2 | 跨重启、无 `policyChanged` 回调时，陈旧 `policyVersion` 的判定必须被拒并重判；同一 trigger 第 3 次策略变更必须转 `escalated`（重判上限 2 次） | §13.2 的有界重判协议；若旧版本判定被接受，或第 3 次仍未升级，协议失效 |
 | M0-3 | 未授权账号 + 注入文本构造的 Issue，不产生 Assignment；拒绝原因落在审计 | S1 对策的“准入隔离足够” |
 | M0-4 | 同一 Ticket 重试 3 次，外部评论/PR 数量不增加（按 receipt 幂等） | §5.1 副作用幂等成立 |
 | M0-5 | `maxWorkers=3` 时并发 10 个 Ticket：排队顺序按 `seq`，人的 follow-up 能插队，且不超过 3 个执行体 | §3.3 调度规则可实现 |
@@ -1132,7 +1139,7 @@ Eval 在策略变更下的状态与转移：
 
 ## 18. 最脆弱的四个论断（作者自评）
 
-1. **“30 秒窗口 + 2 次上限 + 5% 饥饿线即可收敛”**（§13.2）。窗口长度、上限与饥饿阈值都是〔判断〕，没有实测基线；依据只有 2 秒 pass 周期与人工保存节奏。若策略由外部系统每分钟自动同步，窗口内合并失效，`eval_pending_policy_share` 会持续超线，最终只能降频或转人工。**证伪方式**：M0-2 中把策略变更频率提高到每分钟一次，跑 1 小时，检查 `eval_pending_policy_share` 是否回落到 5% 以下、`eval_reassess_exhausted_total` 是否为 0。
+1. **“有界重判即可收敛”的窗口、上限与饥饿线**（§13.2）。**已验证的是“比对与重排存在”**：`decideEval` 比对 `policyVersion`，不一致时活跃 Eval 重排、非活跃 Eval 以 `unavailable` 结束〔原型：`src/core/evals.ts:284-288`〕；`policyChanged` 主动重排所有活跃 Eval〔原型：`:218-221`〕。**仍缺的是有界性**：没有合并/去抖窗口（每次变更立即重排）、`reassess` 无重判上限（只有超时路径有 `REQUEUES = 2`〔原型：`:19`、`:222-230`〕）、没有 lease/attempt fencing〔原型：`src/core/model.ts:218-233`〕、没有 `escalated` 与饥饿指标〔原型：`src/core/reasons.ts:8`，`escalated` 属〔设想〕〕。窗口长度、上限与 5% 饥饿线都是〔判断〕，没有实测基线；依据只有 2 秒 pass 周期与人工保存节奏。**证伪方式**：用可控时钟在 20 秒内连续保存两次测合并；单独构造连续 3 次变更测上限；记录 `eval_pending_policy_share` 与 `eval_reassess_exhausted_total`，期间关闭自动同步断路器，避免把保护动作当成收敛失败。
 2. **“T1 的 Router 合并进控制面仍能保住写路径”**（§6.2 + §10.3）。它假设 Router 的模型调用与工具调用不会拖慢控制面事务；但 Router 与 Engine 共享事件循环时，长工具调用可能造成写入 p95 抖动。阈值不是结论，而是待测基线：测量方案与预注册判定口径见 §10.3.1。**证伪方式**：按 §10.3.1 在 M1 栈施压，若 `p95_loaded / p95_idle` ≥ 2.0 或写入成功率相对基线下降 ≥ 0.5 个百分点，T1 的默认形状就要改为 T1.5。
 3. **“流程引擎的状态历史足以支撑审计与补偿”**（§20.2、§20.4）。**待测，但影响面已收敛**：账本自留快照（`processInstanceId`、`definitionVersion`、人工决策 signal、`stateHash/stateSeq`）与 effect receipt 已能独立支撑审计与补偿；仍待测的是“快照字段是否足够覆盖所有流程形态”以及 `stateHash` 的对齐算法。**证伪方式**：M4-1 中把引擎历史保留期调到 7 天，90 天后仅用账本回放该实例，检查每一步依据与补偿证据是否完整。
 4. **“知识只影响怎么做”的语义层风险**（§21.4）。**已由 `evidence` 类型白名单降级为可控，但未消除**：模块边界保证代码路径，协议白名单保证 `evidence` 不含 `knowledge_ref`；知识仍可能进入 Router 上下文并影响候选取舍，但受影响的判定无法把知识写成授权依据。**证伪方式**：M4-3 的恶意知识条目 + M4-8 的 `unauthorized_evidence` 负向测试；若两者任一放行，白名单失效。
