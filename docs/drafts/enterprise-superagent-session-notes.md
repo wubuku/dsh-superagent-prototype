@@ -473,6 +473,7 @@ Q-F（隐性知识的提请→确认→落库）
 | **Q-AD** | 账本的租户与 BOS 的 Organization / Workspace 的关系 | **只存不透明 `tenant_id` 与引用键**：组织、工作空间、成员全归 BOS，账本不定义第二套组织模型 | 与 §5.4「不复制策略、只说引用」一致；否则两套租户语义会漂移，或 RLS 无法本地执行 |
 | **Q-AE**（已修正） | 账本的租户身份从哪里来 | **依赖抽象 port `TenantDirectory`**：能回答「这个租户 id 是否存在、是否有效、属于哪个组织」；账本只依赖此 port，**不依赖任何具体系统** | BOS 只是该 port 的**第一个 adapter**，置于防腐层；新增身份源（企业 IdP / SCIM 目录等）只需新增 adapter，账本不动。**这是 port 定义问题，adapter 的具体归属是后话** |
 | **Q-AF** | 与三个承载项目之间的 port 如何切分 | **按语义切分**：`FlowCatalog`（制度）、`KnowledgeQuery`（认知）、`CollaborationMemory`（运行）、`TenantDirectory`（身份）；不按系统切分 | port 描述「我们需要什么能力」，不描述「对方长什么样」；按系统切分会让 BOS 的对象链泄进我们的接口 |
+| **Q-AG** | `CollaborationMemory` 如何对外表达「会话」 | **只暴露「协作线程」（thread）的现状与推移**；会话 → thread 的映射留在 adapter 内 | 上层不感知四个「会话」的主语差异，Q-G 因此不必先答；符合 Q-AF 的按语义切分 |
 
 ## 6.3 已被讨论吸收、但值得作为「已关闭」留痕的
 
@@ -526,6 +527,7 @@ Q-F（隐性知识的提请→确认→落库）
 36. `[用户]` **账本只存不透明 tenant_id，不复制组织层级**（Q-AD 已拍板）：组织语义归 BOS。
 37. `[用户]` **每个系统只依赖抽象，不依赖特定的外部系统**（六边形架构，Q-AE 已修正）：租户身份由 `TenantDirectory` port 表达，BOS / IdP / SCIM 都是 adapter。此原则适用于 Super-Agent 与三个承载项目之间的**所有**接缝，而不仅是租户一处。
 38. `[用户]` **port 按语义切分，不按系统切分**（Q-AF 已拍板）：`FlowCatalog` / `KnowledgeQuery` / `CollaborationMemory` / `TenantDirectory`。
+39. `[用户]` **`CollaborationMemory` 只暴露协作线程，不暴露会话**（Q-AG 已拍板）：主语差异被挡在 adapter 里。
 
 ## 8. 术语收敛（防止在后续架构文档里各说各话）`[助手]`
 
