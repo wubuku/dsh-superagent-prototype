@@ -757,7 +757,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 | --- | --- | --- | --- |
 | `assess.request` | 控制面 → assessor | `tenantId, evalId, threadKey, policyVersion, schemaVersion, deadline, leaseId, leaseGeneration, candidate{triggerId, facts[], rules[], limits}` | assessor 不知道判什么、按哪版策略判；无 `leaseId/leaseGeneration` 无法阻止并发判定与旧代写入 |
 | `assess.read` | assessor → 控制面（或数据服务） | `tenantId, evalId, leaseId, leaseGeneration, selector{kind, id/cursor/page}, maxBytes` | 只能读候选初始窗口，无法按需取图片/文件/更多消息；跨租户读无法拒绝 |
-| `assess.heartbeat` | assessor → 控制面 | `tenantId, evalId, leaseId, leaseGeneration` → `leaseUntil` | 长判定被误判为失联并重派，产生双判定 |
+| `assess.heartbeat` | assessor → 控制面 | `tenantId, evalId, leaseId, leaseGeneration` → `lease.expiresAt` | 长判定被误判为失联并重派，产生双判定 |
 | `assess.submit` | assessor → 控制面 | §5.3 全部字段（`tenantId, evalId, leaseGeneration, leaseId, assessorId, policyVersion, outcome, completedAt, evidence`） | 无 `leaseId/leaseGeneration/policyVersion` 时旧判定可直接生效 |
 | `assess.release` | 双向 | `tenantId, evalId, leaseId, leaseGeneration, reason` | 判完不释放会让租约空转到 deadline，积压 |
 | `assess.cancel` | 控制面 → assessor | `tenantId, evalId, reason` | 停止工单/撤销时远端判定继续跑，浪费并在迟到时干扰 |
@@ -923,7 +923,7 @@ Eval 在策略变更下的状态与转移：
 | 状态 | 含义 | 可停留时长 | 谁写入 |
 | --- | --- | --- | --- |
 | `queued` | 可被 assessor 领取 | ≤ deadline | 控制面 |
-| `assessing` | 已被租约持有，判定进行中 | ≤ leaseUntil | assessor 持有，控制面监督 |
+| `assessing` | 已被租约持有，判定进行中 | ≤ `lease.expiresAt` | assessor 持有，控制面监督 |
 | `pending-policy` | 判定已到达、通过 §5.3 前 5 步，但 `policyVersion` 不匹配；**等待合并窗口关闭** | ≤ 窗口上限（默认 30s） | 控制面 |
 | `reassess-queued` | 窗口已关闭，按最新版本重新排队一次 | ≤ deadline | 控制面 |
 | `accepted` / `ignored` | 终态 | — | 控制面 |

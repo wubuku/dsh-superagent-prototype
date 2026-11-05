@@ -368,11 +368,11 @@
 | 幂等域 | key | 作用 | 原型证据 |
 | --- | --- | --- | --- |
 | 事件 | `trigger.id` | 同一外部事件只落一次 | `src/core/intake.ts:23`；`src/sources/github.ts:232` 依赖 Trigger id 去重 |
-| 评估/判定 | 原型用 `evalId` + `accepted(triggerId)`；协议建议再加 `attempt` | 同一 Eval 只接受一个有效 Decision；已建工单的 Trigger 重放不会建第二张 | `src/core/evals.ts:131-146` |
+| 评估/判定 | 原型用 `evalId` + `accepted(triggerId)`；协议建议再加 `leaseGeneration` | 同一 Eval 只接受一个有效 Decision；已建工单的 Trigger 重放不会建第二张 | `src/core/evals.ts:131-146` |
 | 执行/输入 | 原型用 `input.id`；协议建议加 `assignmentId` 作用域 | 同一输入只投递给同一 Assignment 一次 | `src/app/delivery.ts:16`；`src/executor/dsh.ts:342` |
 | 外部副作用 | `messageId` / receipt id / 外部操作 id | 同一条回复或评论只发一次 | `src/app/outbox.ts:26-32`；`src/app/outbox.ts:39-51` |
 
-〔设想〕跨进程协议要求每条 command 与 result 都携带同一组 key，并增加 `attempt`。只带业务 id 不带 attempt，无法区分“重试”与“新工作”。
+〔设想〕跨进程协议要求每条 command 与 result 都携带同一组 key（至少 `tenantId` + 业务 id + `leaseGeneration`），执行路径另带 `attempt`。只带业务 id，无法区分“重试”与“新工作”，也无法拒绝旧代次写入。
 
 ### 6.4 deadline、心跳与回收
 
@@ -418,7 +418,7 @@
 
 - 域事件已经是审计线索（`src/core/ports.ts:86-103`），但只存在内存回调，不构成可回放的日志。 〔原型〕
 - Decision 的证据要求已经很强：`AssessmentSchema` 要求 `direction`、`rule_assessments`、`title`、`scope`、`intent_evidence`、`reason`（`src/app/assessment.ts:21-34`）。跨进程后这些字段应随 `DecisionCommand` 一起传输并落库。 〔原型 + 设想〕
-- 需要补充：`traceId`（通常就是 `triggerId`）、`nodeId`、`attempt`、`leaseId`、`capability`。否则跨进程后无法回答“这条判定是谁、在哪个节点、第几次尝试做出的”。
+- 需要补充：`tenantId`、`traceId`（通常就是 `triggerId`）、`nodeId`、`leaseGeneration`（判定）或 `attempt`（执行）、`leaseId`、`capability`。否则跨进程后无法回答“这条判定是谁、在哪个节点、第几次尝试做出的、属于哪个租户”。
 
 ### 6.8 事件日志与投递队列：事实和投递不是一张表
 
@@ -452,7 +452,7 @@
 | `trustLevel` | 不可信外部输入、已验证成员、系统内部 |
 | `schemaVersion` | 兼容升级用 |
 
-投递表字段建议：`deliveryId`、`eventId`、`consumerId`、`state`、`attempts`、`dueAt`、`leaseId`、`deadline`、`lastError`、`result`。唯一键是 `(eventId, consumerId)`，而不是单个事件行的 offset。信封与投递字段的目标形态（含 `schemaVersion`、`trustLevel`、`capabilitySnapshot`）见架构文档 §5.1；本节不再复制。
+投递表字段建议：`tenantId`、`deliveryId`、`eventId`、`consumerId`、`state`、`attempts`、`dueAt`、`leaseId`、`leaseGeneration`、`deadline`、`lastError`、`result`。唯一键是 `(tenantId, eventId, consumerId)`，而不是单个事件行的 offset。信封与投递字段的目标形态（含 `schemaVersion`、`trustLevel`、`capabilitySnapshot`）见架构文档 §5.1；本节不再复制。
 
 〔判断〕这里修正了本文此前的建议：此前写“加一张事件 outbox 表 + 消费者按 offset 拉取”，这暗含“一个事件一个投递位”。本系统的事件有多个消费者（Router、Worker、审计、watchdog），每个消费者的失败与重试是独立的，因此应拆成 Event Journal + Delivery。两者都在业务事务内写入，但允许 Delivery 尚未创建（消费者后注册时由 Journal 补建）。
 
@@ -488,7 +488,7 @@
 | --- | --- | --- | --- |
 | 事件位点 | Event Journal 的 `seq`、`occurredAt`、`persistedAt`、消费者登记 | 事件是否落库、积压多久、是否有事件没有任何消费者 | 不能证明消费者已处理 |
 | 投递状态 | Delivery 的 `state`、`attempts`、`dueAt`、`deadline`、`lastError` | 是没送出、accepted 未 claimed、还是 claimed 未 processed | 不能判断业务结果对错 |
-| 租约与心跳 | `nodeId`、`leaseId`、`fencingToken`、`lastHeartbeat`、在途工作单元 | 节点是否失联、租约能否回收、迟到写入是否应拒 | 不能代替 fence 校验本身 |
+| 租约与心跳 | `nodeId`、`leaseId`、`lease.generation`、`expiresAt`、`lastHeartbeat`、在途工作单元 | 节点是否失联、租约能否回收、迟到写入是否应拒 | 不能代替 fence 校验本身 |
 | 外部对账 | receipt 与外部事实（评论 / PR / 消息是否真实存在） | `timeout` / `unknown` 是已生效还是未生效 | 不能自动重试，只能给出建议 |
 
 三条判定规则：
@@ -630,7 +630,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 5. 拆出 Event Journal 与 Delivery 表：事件事实与每个消费者各自的投递行同事务写入。
 6. 抽象 `AssessorProvider` / `AssessorInstance`（`create` / `assess` / `dispose`）与 `SessionProvider`（`resolve` / `ensure`）；`AssessorProvider` 是 `AssessorService` 在 DSH 宿主内的装配，不是对外协议；`ensure` 以 `(evalId, assessorProfile)` 为键，重试不能建两个 Session。
 
-验收信号：同一 Eval 重试只产生一个 Assessor Session；迟到或旧 `policyVersion` 的 `AssessmentResult` 被拒绝；共享 Router 形态仍可运行。
+验收信号：同一 Eval 重试只产生一个 Assessor Session；迟到、旧 `policyVersion` 与越权 `evidence` 三类 `AssessmentResult` 被拒绝；共享 Router 形态仍可运行。
 
 ### P1：队列与租约服务化，允许消费者缺席
 
