@@ -328,7 +328,7 @@
 
 **为什么第 5 步必须在第 6 步之前**：`pending-policy` 只暂存“已通过前 5 步”的提交；若先判版本，未过白名单的草稿会进入等待队列，窗口关闭后又被重新提升，等于绕过知识隔离（§21.4）。
 
-**唯一性**：§13.2 只定义 `policyChanged` 之后的处置，不重复本表；§21.4 是本表第 5 步的展开；§10.2 的 `assess.submit` 字段必须满足本表。新增检查只能插入本表并更新所有引用，不得另立第二份顺序。
+**唯一性**：§13.2 只定义 `policyChanged` 之后的处置，不重复本表；§21.4 是本表第 5 步的展开；§10.2 的 `assess.submit` 字段必须满足本表。**人工决策（§5.8 的 `accept`）同样是一条判定消息，必须走本表 1–8，不存在“人工已批准所以跳过第 5 步/第 6 步”的路径**。新增检查只能插入本表并更新所有引用，不得另立第二份顺序。
 
 **为什么把白名单放在协议而不是只靠模块边界**：模块边界只能保证“Decision 代码没有 import 检索端口”，不能保证 assessor 在 `evidence` 里塞一条“知识说可以”。一个被知识影响的 accept 仍然会产出结构合法的 `evidence`；只有类型白名单能在落库前把它变成不可接受的判定。〔判断〕**具体事故**：知识条目写着“这类 PR 可直接合并”，assessor 把它当作 accept 的依据写入 `evidence.knowledge_ref`；若放行，审计链会显示“依据知识库批准”，而知识本身没有授权资格（§21.4）。
 
@@ -403,7 +403,7 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 | 过期 | 控制面扫描 | `expiresAt` 已过 → `state=expired`；重派时签发新租约 | 新租约 +1 |
 | 撤销 | 控制面 | 收到 `revocation` → 立即 `state=revoked`（不等 `expiresAt`）；同代次及之后写入一律拒（fail-closed） | 不变；永不复用 |
 
-**eval scope 的 deadline 约束（固定）**：所有 eval 租约（**含首次签发**）必须满足 `expiresAt ≤ Eval.deadline`。签发时取 `expiresAt = min(now + ttl, Eval.deadline)`；若 `now > Eval.deadline`，控制面**拒绝签发**：`pending-policy` 走 T5（`budget_exhausted`），`reassess-queued` 走 T7（首次签发不涉及，`deadline` 在首次签发的同一事务内计算）。此约束保证 §13.2.1 的窗口上限、租约到期与 deadline 只有 §13.2.1 规定的唯一失效顺序。
+**eval scope 的 deadline 约束（固定）**：所有 eval 租约（**含首次签发**）必须满足 `expiresAt ≤ Eval.deadline`。签发时取 `expiresAt = min(now + ttl, Eval.deadline)`；若 `now > Eval.deadline`，控制面**拒绝签发**：`pending-policy` 走 T5（`budget_exhausted`），`reassess-queued` 走 T7，`escalated` 的人工 accept 在第 4 步直接返回 `late`（不进入 T5b 的接受分支）。`queued` 尚未领取、没有 `Eval.deadline`，它的等待上限是 `queuedAt + queueMaxAge`（T7b），不适用本段。首次签发时 `deadline` 在签发同一事务内计算。此约束保证 §13.2.1 的窗口上限、租约到期与 deadline 只有 §13.2.1 规定的唯一失效顺序。
 
 **fencing 规则**：任何结果写入必须带 `(tenantId, scope, subjectId, leaseId, token, generation)`。控制面以该 `(tenantId, scope, subjectId)` 当前 `active` 租约的 `generation` 为准：**只有当前 generation 可写**；token 只证明持有者身份，generation 才是 fence，二者缺一即拒（`leaseLost`）。过期、已释放或已撤销租约的写入不得“顺手接受”，即使业务内容正确；已撤销的 `generation` 不得再被任何路径复用。TTL 默认 60 秒，可按 scope 配置〔待测基线；M1-1 的回收目标〕。
 
@@ -455,6 +455,8 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 
 **执行端必须回应**：收到 stop 后回 `stopped{assignmentId, attempt, stoppedAt}` 或 `stopFailed{reason}`。控制面在 SLA（默认 30s〔设想〕）内未收到回应，把该 Assignment 的 `stopState` 置 `unresponsive` 并 P1 告警，**不得假设已停止**；其后的报告仍按 §5.3 拒收（`staleAttempt`/`leaseLost`）。
 
+**撤销回执不受 fencing 约束（显式豁免）**：`stopped` / `stopFailed` 是**撤销回执**，不是结果写入，**不受 §5.6 的“结果写入 fencing 规则”约束**（该规则要求结果写入携带 `leaseId/token/generation` 并校验当前代次）。控制面接受它们的条件是 `(tenantId, assignmentId, attempt)` 与当前 Assignment 匹配且 `stopState ∈ {requested, unresponsive}`；**不得**因该 Assignment 的租约已 `revoked`、或 `stopDeadline` 已过而丢弃回执——撤销后仍需记账。迟到回执只更新 `stopState` 与审计（`stop.late`），不回滚已完成的撤销、不改变 Assignment 业务状态、不产生 Decision/Mandate。`attempt` 不匹配的回执不更新 `stopState`，但同样必须记为 `stop.stale`，不得静默丢弃。
+
 **迟到结果**：撤销后到达的判定或报告一律按 §5.3 处理，拒绝原因写入 `revocation.enforced{rejectedCount, codes}`；撤销不修改判定链本身。
 
 **可测清单（撤销后 0/1/5 秒，供 M 系列验收）**
@@ -477,11 +479,45 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 
 | kind | 超时后果 | 其他决策的终态写回 |
 | --- | --- | --- |
-| `assessment_escalation` | `abandoned(escalation_timeout)` | `accept` → 以人工 Decision 走 §5.3 第 8 步；`reject` → `abandoned(human_rejected)` |
-| `approval` | 视为拒绝：`rejected(timeout)`，不产生 Mandate | `approve` → 同事务创建 Mandate；`reject` → `rejected(human_rejected)` |
+| `assessment_escalation` | `abandoned(escalation_timeout)` | `accept` → 把人工决定构造为判定消息，走 §5.3 **全链 1–8**（T5b）；6② 版本已变则 T5d 重判或 T5e 放弃；`reject` → `abandoned(human_rejected)` |
+| `approval` | 视为拒绝：`HumanTask → expired`、`ApprovalRecord{decision=timeout}`、落点 Ticket `approval-rejected(timeout)`，**不签发 Mandate** | `approve` → 同事务写 `ApprovalRecord{decision=approved}`（signal）；账本在随后的评估/签发环节校验后才签发 Mandate；`reject` → `ApprovalRecord{decision=rejected}` + Ticket `approval-rejected(human_rejected)`，不签发 Mandate |
 | `revocation_review` | 维持撤销（fail-closed），不恢复任何租约 | `uphold` 维持撤销；`reinstate` 只登记结论，**不自动恢复**租约与授权，须重新走准入 |
 
-**决策入口**：`POST /human-tasks/{id}/decide{decision, reason, decidedBy, leaseGeneration}`（`leaseGeneration` 即 `HumanTask.generation`），幂等键 `(tenantId, taskId, decisionSeq)`；重复提交返回首次结果。认领入口：`POST /human-tasks/{id}/claim`，需 `ownerRole` 且与 `ownerId` 匹配。
+**决策入口**：`POST /human-tasks/{id}/decide{decision, reason, decidedBy, generation}`（字段名就是 `HumanTask.generation`，**不是** `Lease.generation`，不得写成 `leaseGeneration`），幂等键 `(tenantId, taskId, decisionSeq)`；重复提交返回首次结果。认领入口：`POST /human-tasks/{id}/claim`，需 `ownerRole` 且与 `ownerId` 匹配。
+
+**`approval` 的创建路径（谁创建、`ref` 指向什么）**
+
+`approval` 任务只由控制面创建，其他角色只能提交 `approval.request`：
+
+| 入口 | 谁创建 | `ref` | 同事务动作 |
+| --- | --- | --- | --- |
+| 判定链第 8 步要求人工批准 | 控制面 | `{work_item, ticketId}` | 建 Ticket（`awaiting-approval`）+ `HumanTask(kind=approval, timeoutAction=approval-rejected(timeout))` + 通知 effect；**本事务不签发 Mandate** |
+| 已 `accept` 的 Ticket 执行不可逆动作前 | 控制面（收到 `approval.request{tenantId, ticketId, scope, reason}`） | `{work_item, ticketId}` | Ticket `pending/running → awaiting-approval` + `HumanTask(kind=approval)`；不改 Mandate 范围 |
+| 流程审批节点 | 流程适配器提交 `approval.request`，控制面创建 | `{process_task, taskId}`，并绑定 `ticketId` | 引擎侧只存 businessKey；账本 `ref` 以绑定工单为准 |
+
+- `ref.type ∈ {work_item, process_task}`；**不指向 `assessment_result`**——判定阶段的人工介入是 `assessment_escalation`（T5/T9），不复用 `approval`。
+- `ApprovalRecord{approvalId, tenantId, taskId, ref{type,id}, principalId, role, decision ∈ {approved, rejected, timeout}, approvedScope, evidenceDigest, decidedAt, signalSeq}` 与 `HumanTask.decide` **同一事务**写入，append-only；它只是 signal，**不产生 Mandate**。
+- 账本签发 Mandate 的校验点：主体（`principalId` 为 `human` 且非请求人）、角色（`ownerRole` 匹配）、时间（`decidedAt ≤ slaDueAt`）、范围（`approvedScope ⊆ 请求 scope`）、职责分离（审批人 ≠ 请求人 ≠ 执行 principal，放宽须记录依据）；任一失败建 finding，不签发。
+- `rejected(timeout)` / `rejected(human_rejected)` 是给请求者的**返回码**；落地实体状态是 Ticket → `approval-rejected`，`reason ∈ {timeout, human_rejected}`（终态）。通过时 Ticket 回到进入 `awaiting-approval` 之前的状态（`pending` 或 `running`），不新增状态。
+
+**Work 平面状态增量（本节明确，其余不变）**：Ticket 新增 `awaiting-approval`（非终态）、`approval-rejected`（终态，`reason ∈ {timeout, human_rejected}`）、`cancelled`（终态，唯一生产者 `workitem.cancel`，§13.2.1）；`suspended` 为既有状态（§13.2.3 revalidate 失败）。四者只由控制面写入，前两者与 `HumanTask` / `ApprovalRecord` 同事务。
+
+**`HumanTask` 状态转移（含 approval 路径）**
+
+| 转移 | 触发 | 同事务写入 |
+| --- | --- | --- |
+| `open → claimed` | `claim`（`expectedGeneration` 匹配） | `generation+1`、`ownerId` / `ownerRole` |
+| `claimed → decided` | `decide`：assessment 为 `accept` / `reject`；approval 为 `approve` / `reject` | `decision` / `decidedBy` / `decidedAt` / `reason`；assessment 触发 T5b/T5c/T5d/T5e，approval 写 `ApprovalRecord` |
+| `open / claimed → expired` | `now ≥ slaDueAt` 且未决 | `timeoutAction`；approval 写 `ApprovalRecord{decision=timeout}` 并把 Ticket 落 `approval-rejected(timeout)` |
+| `open / claimed → cancelled` | `revocation`（§5.7 第 4 项）或 `workitem.cancel` | 回写关联 Eval / Ticket |
+
+**Ticket 的审批路径（approval 三条边，固定）**
+
+| 转移 | 触发 | 结果 |
+| --- | --- | --- |
+| `pending → awaiting-approval`（入口 1 为直接以该状态建 Ticket） | 判定链第 8 步要求人工批准，或执行不可逆动作前收到 `approval.request` | 建/改 Ticket 状态 + `HumanTask(kind=approval)`；**不签发 Mandate** |
+| `awaiting-approval → pending / running` | `ApprovalRecord{decision=approved}` 落库且账本校验（主体/角色/时间/范围/职责分离）通过 | 回到进入前的状态；若该 Ticket 尚无 Mandate（入口 1），账本在本事务签发 Mandate 并入队 launch effect |
+| `awaiting-approval → approval-rejected` | `ApprovalRecord{decision=rejected}` 或 `{decision=timeout}` | 终态 `reason ∈ {human_rejected, timeout}`；不签发 Mandate |
 
 **与状态机的绑定（缺一即未实现）**：`escalated`（T5/T9）必须在**同一事务**内创建 `HumanTask(kind=assessment_escalation, ref={eval, evalId}, slaDueAt=now+SLA, timeoutAction=abandoned(escalation_timeout))` 并写通知 effect。`HumanTask` 进入终态时必须同事务回写触发它的 Eval/WorkItem；不允许“人工点了按钮但状态机没动”。
 
@@ -974,8 +1010,20 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 | 对象 | `immediate` | `drain` |
 | --- | --- | --- |
 | 凭据记录 `CredentialGrant{tenantId, principalId, assignmentId, scope, issuedAt, expiresAt, state}` | 立即 `state=revoked`；代理拒绝续签与任何新签发 | 不新签发；已签发 token 自然到期，到期后不再续 |
-| 已签发的 token | 剩余 TTL 内仍可能可用；因此 TTL ≤ 撤销 SLA（建议 ≤60s），且代理在每次代调用时校验 `assignmentId` 未撤销 | 同左，靠 TTL 收敛 |
+| 已签发的 token | 剩余 TTL 内仍可能可用；因此 **凭证 TTL ≤ stop SLA（默认 30s，§5.7）**，且代理在每次代调用时校验 `assignmentId` 未撤销 | 同左，靠 TTL 收敛 |
 | 新 Assignment | 拒绝创建（准入事务直接失败） | 拒绝创建，直到撤销解除 |
+
+**两个数字各自约束什么（必须先对齐，否则“已撤销”仍有可用窗口）**：
+
+| 数字 | 约束对象 | 默认 | 自洽条件 |
+| --- | --- | --- | --- |
+| stop SLA | 执行端从收到 `assignment.stop` 到回报 `stopped` / `stopFailed` 的时限 | 30s〔设想〕（§5.7） | — |
+| 凭证 TTL | 已签发 token 在撤销后还能被代理接受的最长时间 | ≤ stop SLA（即 ≤30s，取代原“建议 ≤60s”） | 必须满足 `credentialTTL ≤ stopSLA` |
+| 租约 TTL | `Lease.expiresAt` 的续租上限 | 60s（§5.6） | 与凭证 TTL 无关，不得合并成一个数字 |
+
+`credentialTTL ≤ stopSLA` 是硬约束：若 TTL 大于 SLA，会出现“控制面已把 stopState 判为 `unresponsive` 并告警、但旧 token 仍可通过代理”的窗口。要放宽 TTL，只能同时收紧 stop SLA，或把撤销改为“代理侧同步吊销”（仅 T2 具备该能力）。
+
+**每次代调用的校验预算与降级（fail-closed）**：代理在每次代调用前校验 `(tenantId, assignmentId, principalId)` 未被撤销，校验必须在 **≤100ms** 内返回（P99〔设想〕，硬超时 200ms）；代理订阅撤销事件并本地缓存撤销名单，缓存 TTL **≤1s**。校验超时、代理与账本失联或缓存未命中且回源失败，一律**拒绝本次调用**（`credential_check_unavailable`），**不得“先放行后补校验”**。校验不可用持续 30s 或拒绝率 >1% 时 P1 告警；恢复前该节点的所有代调用保持拒绝（fail-closed）。
 
 **硬约束**：撤销后不得为同一 `(tenantId, principalId, assignmentId)` 签发任何新凭据；`reinstate`（§5.8）也不恢复旧凭据，须重新走准入。撤销与 `policyChanged` 的凭据处理不得复用：策略收紧不撤销任何凭据，只影响后续准入与 resume 重验。
 
@@ -996,40 +1044,61 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 
 判定提交到达时**不在此处重复校验链**。唯一版本见 §5.3：`evalId`（幂等/去重）→ attempt/fencing → lease 有效 → deadline（控制面 `receivedAt`）→ evidence 白名单 → `policyVersion`（6① 提交版本 vs `targetPolicyVersion` + 6② 当前 `Policy.version` vs `targetPolicyVersion`）→ outcome/Mandate → 单事务写入并审计。只有**第 6 步②**返回 `policyChanged` 的提交才进入下面 13.2.1 的状态机；第 1–5、6①、7、8 步任一失败都按 §5.3 的失败码直接拒绝，不落草稿。
 
-**两个版本字段（固定，二者不合并）**：`Eval.policyVersion` 是 Eval 创建时写入的**不可变快照**，只用于审计与漂移分析，不参与 §5.3 第 6 步；`Eval.targetPolicyVersion` 是“下一次提交必须携带的版本”，创建时等于 `policyVersion`，之后**只由控制面**在 T3/T4/T6b 推进，assessor 不可写。§5.3 第 6 步的两个比较对象都是 `targetPolicyVersion`。
+**两个版本字段（固定，二者不合并）**：`Eval.policyVersion` 是 Eval 创建时写入的**不可变快照**，只用于审计与漂移分析，不参与 §5.3 第 6 步；`Eval.targetPolicyVersion` 是“下一次提交必须携带的版本”，创建时等于 `policyVersion`，之后**只由控制面**在 T1a/T3/T4/T5d/T6b 推进，assessor 与人工都不可写。§5.3 第 6 步的两个比较对象都是 `targetPolicyVersion`。
 
 **13.2.1 状态机（这是固定协议，不允许“拒绝后逐个重排”作为唯一手段）**
 
 **Eval 的 deadline 权威（固定预算）**：`Eval.claimedAt` 只在**首次** `queued → assessing` 时写入；`Eval.deadline = claimedAt + evalTimeoutMs` 只计算一次并落库。**重判不重置 deadline，也不更新 `claimedAt`**（T6 更新 `leaseId/leaseGeneration`，不触碰这两个字段）。`Eval.deadline` 是 §5.3 第 4 步唯一比较对象，也是**所有 eval 租约 `expiresAt` 的硬上限**（签发规则见 §5.6）。重判不延长预算；预算不足以容纳下一个窗口时提前升级（T5，`budget_exhausted`）。
 
+**`queued` 的等待上限（首次领取前没有 deadline）**：`Eval.deadline` 由 `claimedAt` 派生，而 `queued` 尚未领取，**不存在 `Eval.deadline`**，因此不能用它做 `queued` 的超时判据。`queued` 的唯一超时基准是创建时写入的 `Eval.queuedAt` 加 `queueMaxAge`（默认 = `evalTimeoutMs`，可按租户配置）；对应出口是 T7b。这条不改变 §5.3：`queued` 状态没有判定提交，第 4 步只在领取后生效。
+
 Eval 在策略变更下的状态与转移：
 
 | 状态 | 含义 | 可停留时长 | 谁写入 |
 | --- | --- | --- | --- |
-| `queued` | 可被 assessor 领取 | ≤ deadline | 控制面 |
+| `queued` | 可被 assessor 领取；未领取前**没有** `Eval.deadline` | ≤ `queuedAt + queueMaxAge`（T7b 出口） | 控制面 |
 | `assessing` | 已被租约持有，判定进行中 | ≤ `lease.expiresAt` | assessor 持有，控制面监督 |
 | `pending-policy` | 判定已到达、通过 §5.3 前 5 步与 6①，但 6② 判定 `policyChanged`；**等待合并窗口关闭** | ≤ min(窗口上限 30s, 剩余 deadline)；剩余预算不足 30s 时窗口在 deadline 处关闭并转 T5 | 控制面 |
 | `reassess-queued` | 窗口已关闭，按最新版本重新排队一次 | ≤ deadline | 控制面 |
 | `accepted` / `ignored` | 终态 | — | 控制面 |
 | `escalated` | 重判上限用尽、剩余预算容不下下一窗口，或 evidence/rationale 二次违规，转人工；**承载于 `HumanTask`（§5.8），无 `HumanTask` 视为未实现** | 直到人工处理或 SLA 超时 | 控制面（`HumanTask` 唯一写入者） |
-| `abandoned` | 超时/撤销，明确放弃；原因码 `policy_churn` / `cancelled` / `revoked` / `escalation_timeout` / `human_rejected` | 终态 | 控制面 |
+| `abandoned` | 超时/撤销/取消，明确放弃；原因码 `policy_churn` / `queue_expired` / `cancelled` / `revoked` / `escalation_timeout` / `human_rejected`（六个，不多不少；生产者见下方清单） | 终态 | 控制面 |
 
 | # | 转移 | 触发 | 守卫 | 动作 |
 | --- | --- | --- | --- | --- |
 | T1 | `queued → assessing` | assessor 领取 | 租约可用且 `Eval.targetPolicyVersion` 为当前版本 | **仅首次**记录 `claimedAt`，据此计算一次 `Eval.deadline`；后续重判不覆盖；记录 `leaseId/leaseGeneration`；签发租约 `expiresAt ≤ Eval.deadline` |
+| T1a | `queued → queued` | 领取前（含领取尝试）发现 `Eval.targetPolicyVersion` ≠ 当前 `Policy.version` | Eval 未终态、未领取（无 `claimedAt`）；无 `active` 租约 | **同一事务**把 `Eval.targetPolicyVersion` 写为当前版本并留在 `queued`；**不签发租约、不写 `claimedAt`/`deadline`、不计重判次数**；重复发生按同规则刷新，直到 T1 守卫通过或 T7b 到期 |
 | T2 | `assessing → pending-policy` | 判定提交通过 §5.3 第 1–5 步与第 6 步①，但第 6 步②返回 `policyChanged` | 前 5 步与 6① 全部通过（含 evidence 白名单与 `receivedAt ≤ deadline`） | 控制面**同事务强制** `release`（`state=released`）；`expiresAt` 自然过期只作恢复扫描兜底；暂存“候选判定”（不是 Decision） |
 | T3 | `pending-policy → pending-policy` | 窗口内又有新策略版本 | 同一 Eval 只保留最新版本 | 同一事务把 `Eval.targetPolicyVersion` 写为最新版本（草稿元数据随之为新目标）；不新增重判次数 |
 | T4 | `pending-policy → reassess-queued` | 窗口关闭 | 未达重判上限（默认 2 次）；**该 Eval 无 `active` 租约**（见下方规则）；`now + window ≤ deadline` | **同一事务原子完成三件事**：写回 `Eval.targetPolicyVersion = 窗口关闭时的最新版本`、转 `reassess-queued`、写重判幂等键与 effects；不得只转状态而不写回版本 |
 | T5 | `pending-policy → escalated` | 窗口关闭 | 已达重判上限，或 `now + window > deadline` | **同一事务**创建 `HumanTask(kind=assessment_escalation, ref={eval, evalId}, timeoutAction=abandoned(escalation_timeout))`、写通知 effect、生成 finding；原因码按顺序取第一个命中：① `budget_exhausted`（`now + window > deadline`，即使允许重判也来不及）；② `reassess_cap`（预算够但已达上限） |
-| T5b | `escalated → accepted` | `HumanTask` 决定 `accept` | 任务 `claimed` 且 `generation` 匹配；决策幂等 | **同一事务**：`HumanTask → decided`、写人工 Decision、走 §5.3 第 8 步 |
-| T5c | `escalated → abandoned` | `HumanTask` 决定 `reject`，或任务 `expired` | 同上（超时由 `timeoutAction` 触发） | **同一事务**：`HumanTask → decided/expired`、Eval 终态 `abandoned(human_rejected)` 或 `abandoned(escalation_timeout)` |
+| T5b | `escalated → accepted` | `HumanTask` 决定 `accept`（`kind=assessment_escalation`） | 任务 `claimed` 且 `HumanTask.generation` 匹配；决策幂等；**人工 accept 必须先被构造为一条判定消息**，并通过 §5.3 **全链 1–8**（不得只走第 8 步） | **同一事务**：① 控制面以 `assessorId=human:{principalId}` 签发本次提交专用的 `scope=eval` 租约（`Lease.generation` 递增 1，`expiresAt = min(now+ttl, Eval.deadline)`，与 `HumanTask.generation` 无关）；② 用人工提供的 `evidence` 与 `rationale`、`policyVersion=Eval.targetPolicyVersion` 组成 `AssessmentResult`；③ 逐项执行 §5.3 第 1–8 步（第 4 步用控制面 `receivedAt`，第 5 步白名单不因“人工批准”豁免）；④ 仅当 1–8 全部通过才 `HumanTask → decided` 并写 Decision/Mandate；Decision 必须同时携带 `policyVersion`（= 6① 比对通过的提交版本）与 `targetPolicyVersion`（= 6② 比对通过的当前版本，此刻二者相等，供审计“按哪一版接受”）。任一步失败按对应失败码拒绝，不写 Decision |
+| T5c | `escalated → abandoned` | `HumanTask` 决定 `reject`，或任务 `expired` | 任务 `claimed` 且 `HumanTask.generation` 匹配；决策幂等；`reject` 不进入判定链（它不产生判定） | **同一事务**：`HumanTask → decided/expired`、Eval 终态 `abandoned(human_rejected)` 或 `abandoned(escalation_timeout)` |
+| T5d | `escalated → reassess-queued` | 人工 `accept` 通过 §5.3 第 1–5 步与 6①，但 6② 返回 `policyChanged` | `reassessCount < 2`；`now + window ≤ Eval.deadline`；无 `active` 租约 | **同一事务**：`HumanTask → decided(reason=policyChanged)`（人工决定只作审计事实，**不转成新版本下的 Decision**）、写回 `Eval.targetPolicyVersion = 当前 Policy.version`、`reassessCount+1`、转 `reassess-queued` 并写重判幂等键；随后按 T6/T6b/T7 走完；人工 evidence 不自动复用，重判必须重新取证 |
+| T5e | `escalated → abandoned` | 人工 `accept` 通过 §5.3 第 1–5 步与 6①，但 6② 返回 `policyChanged` | `reassessCount ≥ 2` 或 `now + window > Eval.deadline`（预算不足以重判） | 终态 **`abandoned(policy_churn)`**；`HumanTask → decided(reason=policyChanged)`；**不签发 Mandate、不写 Decision**；同事务写 finding 并通知“人工批准因目标版本过期被拒” |
 | T6 | `reassess-queued → assessing` | assessor 再次领取 | **优先级从高到低**：① `now ≤ Eval.deadline`（否则转 T7，不回 `pending-policy`）；② 该 Eval 无 `active` 租约；③ `Eval.targetPolicyVersion` = 当前 `Policy.version`（不一致走 T6b） | 新 `leaseId` + `leaseGeneration+1`；**不重算 deadline、不更新 `claimedAt`**；签发租约 `expiresAt ≤ Eval.deadline` |
 | T6b | `reassess-queued → reassess-queued` | 领取时版本已变 | `now ≤ Eval.deadline`（deadline 优先：已过则走 T7）；无 `active` 租约；`Eval.targetPolicyVersion` ≠ 当前 `Policy.version` | 不签发租约；同事务把 `Eval.targetPolicyVersion` 写为当前版本，留在队列等下一次领取；**不计重判次数**（未发生评估） |
-| T7 | `reassess-queued → abandoned` | 超过 deadline | — | 通知请求者，原因码 `policy_churn`（撤销不走本行，见 T8） |
+| T7 | `reassess-queued → abandoned` | 超过 `Eval.deadline` | — | 通知请求者，原因码 `policy_churn`（撤销不走本行，见 T8） |
+| T7b | `queued → abandoned` | `now > queuedAt + queueMaxAge` | 该 Eval 从未领取（无 `claimedAt`，因此没有 `Eval.deadline`）；无 `active` 租约 | 终态 **`abandoned(queue_expired)`**；不签发租约、不写 `claimedAt`；写 finding 并通知请求者“排队期间未取得与当前策略一致的判定” |
 | T8 | 任意非终态 → `abandoned` | 收到 `revocation`（§5.7） | 撤销已落库且 `subject` 匹配 | 终态原因码 **`revoked`**；租约置 `revoked`（不是 `released`，不得等 `expiresAt`）；级联停止 Assignment；写 `revocation` 与 `revocation.enforced` 审计 |
 | T9 | `assessing → escalated` | 同一 `leaseGeneration` 第二次 evidence/rationale 违规 | 第一次更正已用尽（§21.4.1） | 释放租约；**同一事务**创建 `HumanTask(kind=assessment_escalation, ref={eval, evalId}, timeoutAction=abandoned(escalation_timeout))`；原因码 `unauthorized_evidence` 或 `invalid_rationale_ref`（与 §5.3 失败列一致） |
 
 **撤销优先于策略抖动（固定）**：`revocation` 命中时直接 T8 到终态 `abandoned(revoked)`，不得先进 `pending-policy`，也不得用 `policy_churn`/`policyChanged` 充当撤销原因码；反过来，策略变更不得调用 T8。撤销评审（`revocation_review`）是独立的 `HumanTask.kind`，不复用 `escalated` 的重判语义。
+
+**人工批准不能替代白名单校验（固定）**：由 T9 进入 `escalated` 的 Eval，人工 `accept` 同样要过 §5.3 第 5 步。人工只能提供**新的合法 evidence 来源**（`source_event` / `mandate` / `policy_rule` / `prior_decision`）或给出更正后的消息；若仍不合格，accept 返回 `rejected: unauthorized_evidence`（`rationale.knowledge_ref` 不可解析时为 `rejected: invalid_rationale_ref`），**不写 Decision、不签发 Mandate**，Eval 保持 `escalated`、`HumanTask` 回 `claimed` 允许再次提交。该次提交按 T9 的口径计入该 Eval 的 evidence 违规计数：第二次起写 finding 并 P1 告警，不再视为“可更正的一次”。`HumanTask.decision` 只记录“人点了接受”，不构成授权事实。
+
+**原因码生产者清单（与状态表一致，六个）**：
+
+| 原因码 | 唯一生产者 | 说明 |
+| --- | --- | --- |
+| `policy_churn` | T5e（人工 accept 因版本过期且无预算）、T7（`reassess-queued` 超 deadline） | 策略版本变化导致无法取得与当前版本一致的判定 |
+| `queue_expired` | T7b（`queued` 超过 `queuedAt + queueMaxAge`） | 首次领取前就长期未取得判定；不含策略变更语义 |
+| `cancelled` | 控制面收到 `workitem.cancel{tenantId, ticketId, reason, cancelledBy}`（人/请求者取消，**不是** `revocation`） | 同事务：Ticket → `cancelled`、其关联非终态 Eval → `abandoned(cancelled)`、其 `open/claimed` HumanTask → `cancelled`。除该消息外任何路径不得写此码 |
+| `revoked` | T8（§5.7 `revocation`） | 撤销 |
+| `escalation_timeout` | T5c（`HumanTask` 超 `slaDueAt` 未决） | 人工未处理 |
+| `human_rejected` | T5c（人工 `reject`） | 人工明确拒绝 |
+
+**“首次领取前即发生策略变更”的完整路径**（不留悬空节点）：Eval 建于 v0 → 策略变为 v1，assessor 尝试领取 → T1 守卫失败 → **T1a** 同事务把 `target` 刷为 v1，留在 `queued`，不签租约、不计重判 → 若在 v2、v3 再次发生，重复 T1a → 版本稳定后下次领取走 T1（首次写 `claimedAt`/`deadline`）→ 正常判定。若版本一直变化到 `queuedAt + queueMaxAge`，走 **T7b** `abandoned(queue_expired)`。该路径不进入 `pending-policy`、不消耗重判次数、不产生 `HumanTask`。
 
 **租约唯一性检查与等待路径（固定规则）**：T4/T6 入口必须先断言该 `(tenantId, scope='eval', subjectId=evalId)` 无 `active` 租约；有则拒绝转移并写 finding。窗口关闭时若仍有 `active` 租约（T2 的同步释放因控制面崩溃未执行），按 `expiresAt` 与 `Eval.deadline` 的比较分两种路径：
 
@@ -1049,7 +1118,7 @@ Eval 在策略变更下的状态与转移：
 
 **重判上限**：每个 Eval 最多 **2 次**重判〔判断〕。依据：第 1 次吸收单次策略变更，第 2 次吸收“重判期间又发生一次变更”；第 3 次起的原因已不是单个 Eval，而是策略抖动，继续重判只会放大成本。
 
-- **到上限后的责任与用户可见结果**：控制面负责把 Eval 置为 `escalated`、写 finding、通知请求者“工作未自动处理：策略频繁变更，需人工确认”；请求者在面板看到 `escalated` 与原因码，可手动接受、忽略或关闭。**不允许静默 `ignore`**。
+- **到上限后的责任与用户可见结果**：控制面负责把 Eval 置为 `escalated`、写 finding、通知请求者“工作未自动处理：策略频繁变更，需人工确认”；请求者在面板看到 `escalated` 与原因码，可手动接受（**走 T5b 全链 1–8，不是直接生效**）、忽略或关闭。**不允许静默 `ignore`**。
 - **成本**：最坏情况每个 Eval 多 2 次模型调用；转人工意味着工作延迟从秒级变为人工响应级。
 
 **13.2.3 幂等、去重与工单关系**
@@ -1082,6 +1151,17 @@ Eval 在策略变更下的状态与转移：
 
 要点：T4 只写 `targetPolicyVersion`，T6 只换 `leaseId/leaseGeneration`；`deadline` 始终是 120、`claimedAt` 始终是 0；第 3 个窗口关闭时剩余预算只有 20s，容不下 30s 窗口，因此提前升级而不是拖到 t=120 的 `late`/`abandoned`。测试可断言：t=30、t=65 产生 `reassess-queued`（target 分别为 v1、v2），t=100 产生 `escalated(budget_exhausted)` 且重判计数停在 2。
 
+**反例行：t=100 的人工 accept 不能绕过 6②（固定文本）**
+
+前提沿用上表：`deadline=120`、`target=v2`、变更 #3 使当前版本为 v3；人工在 t=100（`HumanTask` 已在 t=100 创建并被认领）点击 `accept`。
+
+| 时刻 | 事件 | 版本 / 预算 | §5.3 判定链 | 结果 |
+| --- | --- | --- | --- | --- |
+| t=100 | 人工 `accept`（`HumanTask.generation` 匹配） | `target=v2`；当前 `v3`；`deadline=120`；`reassessCount=2` | 构造 `AssessmentResult{policyVersion=v2, evidence=人工提供, assessorId=human:*}` 并签发本次专用 eval 租约；第 1–5 步通过（证据合法）、6① 通过、**6② 当前 v3 ≠ target v2 → `policyChanged`** | 不得进入 `accepted`；交 T5d/T5e 守卫 |
+| t=100（同一事务） | T5e | `100+30=130 > 120`，且已达重判上限 | — | Eval → **`abandoned(policy_churn)`**；`HumanTask → decided(reason=policyChanged)`；**不写 Decision、不签发 Mandate**；finding：`human_accept_rejected{code=policyChanged}` |
+
+**最终口径**：t=100 人工 accept（target=v2、当前=v3）→ **放弃** `abandoned(policy_churn)`（T5e：6② `policyChanged` 且 `100+30 > deadline=120`、`reassessCount=2`）。若同一场景把 deadline 放宽到 180，则走 **T5d 重判**（`reassessCount+1`、写回 `target=v3`、`HumanTask → decided(reason=policyChanged)`）；不会出现“直接接受”。三选一里不选 `escalated`，因为 Eval 已在 `escalated`，再升级没有新承载对象。
+
 **与工单的关系（固定）**：
 1. 已 `accept` 的工单**不因策略变更中止**；只写 `policy-changed` 标记（每工单每版本一条）。
 2. **resume 前 revalidate 使用“resume 当时的当前策略版本”**，不是工单创建时的版本；工单上的原 `policyVersion` 只用于审计。
@@ -1096,6 +1176,7 @@ Eval 在策略变更下的状态与转移：
 | `eval_pending_policy_age` | `pending-policy` 状态停留时长 | — | 面板与 Watchdog 的 P3 指标 |
 | `eval_pending_policy_share` | 停留超过 15 个 pass 周期（约 30 秒）的 Eval 占在途 Eval 比例 | 连续 3 个 1 分钟窗口 > 5% | 窗口从 30s 扩到 60s（仅一次） |
 | `eval_reassess_exhausted_total` | 达到重判上限的 Eval 数 | 任一 Eval 命中即计数 | 立即 P1 告警 + 生成 finding |
+| `eval_queue_expired_total` | `queued` 超过 `queuedAt + queueMaxAge` 转 T7b 的 Eval 数 | 任一命中即计数 | P2 告警 + finding；连续 3 个窗口非 0 → 检查 assessor 容量与策略变更频率 |
 | `policy_save_rate` | 策略保存次数/分钟 | > 1 次/分钟持续 5 分钟 | 暂停自动策略同步，要求人工确认；记录 `policy_churn` |
 
 触发后的顺序：**先扩窗口（只允许一次到 60s）→ 再降频（暂停自动同步）→ 最后转人工**。不得用“继续重判”作为缓解手段。
@@ -1439,8 +1520,8 @@ Eval 在策略变更下的状态与转移：
 
 | 规则 | 说明 | 违反后果 |
 | --- | --- | --- |
-| 审批只产生证据 | 完成人工任务产生 `ApprovalRecord{taskId, principalId, role, decision, evidenceDigest, at}`，作为 signal 回账本 | 把“任务完成”当授权，会绕过 Mandate |
-| Mandate 只由账本签发 | 账本校验审批记录（主体、角色、时间、范围）后才生成 Mandate | 引擎被攻陷即可签发授权 |
+| 审批只产生证据 | 完成人工任务产生 `ApprovalRecord{approvalId, taskId, ref, principalId, role, decision ∈ {approved, rejected, timeout}, approvedScope, evidenceDigest, decidedAt, signalSeq}`（定义见 §5.8），作为 signal 回账本 | 把“任务完成”当授权，会绕过 Mandate |
+| Mandate 只由账本签发 | 账本校验审批记录（主体、角色、时间、范围、职责分离）后才生成 Mandate；`ApprovalRecord` 本身不产生任何授权效力 | 引擎被攻陷即可签发授权 |
 | 职责分离 | 审批人 ≠ 请求人 ≠ 执行 principal（可由策略配置放宽，但必须记录放宽依据） | 自己批自己，审计失效 |
 | 代理与转办 | 只能由具名主体显式转办，记录 `delegatedFrom`；系统不得自动代签 | 无法追责 |
 | 审批后撤销 | 撤销产生 `revocation`，账本新增撤销记录（Mandate 行不可变，不改写，授权效力按撤销记录判定）；未开始的工单与在途 Eval 直接终态 `abandoned(revoked)`；执行中的 Assignment 按 mode 停止（`cancelled`+stop 或 `draining`），租约置 `revoked`；**不再写 `policy-changed`、不走 §13.2** | 已撤销的授权继续生效 |
@@ -1474,7 +1555,7 @@ Eval 在策略变更下的状态与转移：
 | `failTask(taskId, leaseId, errorClass, key)` | 失败分类回写（`business/technical/unknown`） | 同上 | 必带 | 需适配（错误模型统一） |
 | `signal(instanceId, name, payload, key)` | 外部事件驱动流程（审批、回调、超时） | `(tenantId, instanceId, name, key)` | 必带 | 原生（message correlation）；**去重需适配** |
 | `listHumanTasks(principal, role)` | 列出控制面 `HumanTask` 待办（§5.8） | 只读 | — | 控制面只读投影；流程引擎的任务查询只作补充，不是权威 |
-| `completeHumanTask(taskId, principalId, decision, evidence, key)` | 完成人工任务 | `(tenantId, taskId, decisionSeq)` | 必带 | **必须经控制面 `decide`**；主体/角色校验与职责分离由控制面执行，不得直写流程引擎或账本 |
+| `completeHumanTask(taskId, principalId, decision, evidence, key)` | 完成人工任务：控制面写 `HumanTask` 终态 + `ApprovalRecord`（signal），不签发 Mandate | `(tenantId, taskId, decisionSeq)` | 必带 | **必须经控制面 `decide`**；主体/角色校验与职责分离由控制面执行，不得直写流程引擎或账本；Mandate 只由账本后续校验后签发 |
 | `getInstance(instanceId)` | 读当前节点、变量、版本 | 只读 | — | 原生（runtime service） |
 | `subscribe(instanceId, cursor)` | 订阅状态变化（用于 Journal） | `(tenantId, instanceId, cursor)` | — | 需适配（事件标准化） |
 
@@ -1484,7 +1565,7 @@ Eval 在策略变更下的状态与转移：
 
 1. **幂等去重**：引擎通常按“任务已结束”拒绝重复完成，但不保证“同一业务动作只生效一次”；适配器必须在账本侧维护 `(taskId, key)` 去重表。
 2. **主体与租户**：引擎的 candidate group/assignee 是字符串，不携带 principal 语义；适配器负责映射与跨租户拒绝。
-3. **审批 → 授权**：引擎只认“任务完成”，账本只认 `ApprovalRecord`；适配器负责把前者转成后者，并拒绝无记录的批准。
+3. **审批完成 → `ApprovalRecord` → 账本签发**：引擎只认“任务完成”，账本只认 `ApprovalRecord`（可校验 signal）；适配器负责把前者转成后者，并拒绝无记录的批准。**任何路径都不得由“任务完成”直接写 Mandate**。
 
 **能力声明（参照 §5.4）**：`supportsSignalDedupe`、`supportsTaskClaim`、`supportsHistoryQuery`、`supportsCompensation`、`supportsDefinitionVersion`。任一为 false，对应流程类型不得启用，不能“先用再补”。
 
