@@ -196,7 +196,7 @@
 
 **Assessor。** 现状是 Router 内部的一段逻辑，端口只有 `request/release`〔原型：`src/core/ports.ts:49-53`〕。它的禁止项最关键：**不能写 Decision**。上游已经说明：让远程 Assessor 直接写 Decision，就把授权事实跨进程了（上游 §7.5）。本文补充一条：Assessor 也不能修改 `Candidate` 里的 `policyVersion`，否则版本比对失效。
 
-**Executor。** 端口已存在且语义正确（只排队 + 回调）〔原型：`src/core/ports.ts:59-69`〕。差距在权限与归属：同一 OS 用户、`danger-full-access`〔原型：`src/app/sessions.ts:152`〕；没有节点身份、没有租约。T1 起必须补 `nodeId`、`leaseId`、`fencingToken`。
+**Executor。** 端口已存在且语义正确（只排队 + 回调）〔原型：`src/core/ports.ts:59-69`〕。差距在权限与归属：同一 OS 用户、`danger-full-access`〔原型：`src/app/sessions.ts:152`〕；没有节点身份、没有租约。T1 起必须补 `nodeId`、`leaseId` 与 `lease.generation`（§5.6）。
 
 **Watchdog。** 原型没有此角色，全部是〔设想〕。定义上它与上游一致：只读输入、只写发现（上游 §6.10）。本文加一条禁止：**不得以 Session transcript 作为判定依据**，业务事实只在域表与 Journal。
 
@@ -214,7 +214,7 @@
 
 ## 5. 协议草案（第 1 版）
 
-只定义可评审的最小形状。所有协议共享三条规则：**每条消息带 `schemaVersion`；每条命令带幂等键与 `attempt`；每条结果带产生它的 `leaseId` 与 `attempt`。**
+只定义可评审的最小形状。所有协议共享四条规则：**每条消息带 `tenantId` 与 `schemaVersion`；每条命令带幂等键；`attempt` 只属于 Assignment，由控制面在创建时递增写入；每条结果带产生它的 `leaseId` 与 `leaseGeneration`。** 租约与 attempt 的实体定义只在 §5.6 一处，其余小节只引用。
 
 ### 5.1 事件（Event）与投递（Delivery）
 
@@ -224,6 +224,7 @@
 
 | 字段 | 说明 | 缺失后果 |
 | --- | --- | --- |
+| `tenantId` | 租户边界；所有下游键的第一段 | 跨租户串数据；`(eventId, consumerId)` 在不同租户复用会覆盖 |
 | `eventId` | 来源稳定 id，重放不变 | 重复事件会重复建工作；幂等退化到“靠文本+时间猜” |
 | `source` / `resourceType` / `resourceId` | 事件来自哪、作用于什么 | 无法按资源做订阅与权限过滤；跨租户时无法隔离 |
 | `eventType` | 领域事件类型（不是厂商事件名） | 消费者绑定厂商，换 Source 要改所有消费者 |
@@ -236,26 +237,28 @@
 | `schemaVersion` | 兼容升级 | 老消费者解析新事件时静默丢字段 |
 | `persistedAt` | 入库时间 | 无法区分“外部慢”与“系统积压” |
 
-**Delivery 行（按消费者一条，唯一键 `(eventId, consumerId)`）**
+**Delivery 行（按消费者一条，唯一键 `(tenantId, eventId, consumerId)`）**
 
 | 字段 | 说明 | 缺失后果 |
 | --- | --- | --- |
-| `deliveryId` / `eventId` / `consumerId` | 三元定位 | 多消费者共享一个进度位，任一成功即被当成全部完成 |
+| `tenantId` | 投递所属租户；唯一键第一段 | Delivery 行可能跨 tenant 投递；区隔离只靠应用层过滤 |
+| `deliveryId` / `eventId` / `consumerId` | 三元定位（在 tenant 内） | 多消费者共享一个进度位，任一成功即被当成全部完成 |
 | `state` | `routed→accepted→claimed→processed` / `failed/expired/unknown` | “已送达”被当成“已处理”，丢失与卡住无法区分 |
 | `attempts` / `nextAttemptAt` | 重试次数与下次时间 | 无退避的重试会打爆下游，且无法区分重试与新工作 |
-| `leaseId` / `leaseUntil` | 领取者与租约到期 | 两个消费者可同时处理同一条；崩溃后无人回收 |
+| `leaseId` / `leaseGeneration` / `lease.expiresAt` | 领取者、租约代次与到期 | 两个消费者可同时处理同一条；崩溃后无人回收；旧代次写入无法拒绝 |
 | `deadline` | 业务期限（评估/执行） | 慢与丢无法区分，只能无限等 |
 | `lastError` | 最近错误摘要 | 排障只能看日志，无法按消费者聚合 |
 | `capabilitySnapshot` | 交付时的适配器能力 | 适配器降级后沿用旧假设，例如把 `next_step` 静默变成 `next_turn` |
 
-**幂等键（四类，沿用上游 §6.3，但补 `attempt` 语义）**
+**幂等键（五类，沿用上游 §6.3，但补 `leaseGeneration`、`tenantId` 与租约键）**
 
 | 幂等域 | key | 缺失后果 |
 | --- | --- | --- |
-| 事件 | `trigger.id`（= `eventId`） | 重复落库、重复评估、重复建工单 |
-| 评估 | `(evalId, attempt)`，且 `accepted(triggerId)` 兜底 | 迟到结果覆盖已生效判定；重试被当成新判断 |
-| 执行/输入 | `(assignmentId, inputId)` | 同一输入投递给两个 Assignment，worker 重复执行 |
-| 外部副作用 | `receiptId`，外部 API 幂等键能映射就映射 | 超时重试造成重复评论/重复 PR |
+| 事件 | `(tenantId, eventId)` | 重复落库、重复评估、重复建工单 |
+| 评估 | `(tenantId, evalId, leaseGeneration)`，且 `accepted(triggerId)` 兜底 | 迟到结果覆盖已生效判定；重试被当成新判断 |
+| 执行/输入 | `(tenantId, assignmentId, inputId)` | 同一输入投递给两个 Assignment，worker 重复执行 |
+| 外部副作用 | `(tenantId, receiptId)`，外部 API 幂等键能映射就映射 | 超时重试造成重复评论/重复 PR |
+| 租约签发 | `(tenantId, scope, subjectId, generation)`（§5.6） | 跨租户复用 lease 或重复签发同代租约，fencing 失效 |
 
 ### 5.2 工作单元与授权
 
@@ -263,6 +266,7 @@
 
 | 字段 | 不可变 | 说明 | 缺失后果 |
 | --- | --- | --- | --- |
+| `tenantId` | 是 | 租户边界；所有键与外键的第一段 | 工单可被跨租户改派或查询 |
 | `id` | 是 | 工单 id，也是执行体命名与目录派生的依据 | 改名会让 worker、目录、回执对不上 |
 | `decisionId` | 是 | 授权来源 | 无法回答“谁批的”，审计链断裂 |
 | `mandate` | 是 | 见下表 | 执行失去边界，后续输入可被当成扩大授权 |
@@ -275,6 +279,7 @@
 
 | 字段 | 说明 | 缺失后果 |
 | --- | --- | --- |
+| `tenantId` | 授权所属租户；与 Ticket 必须同租户 | 授权可被跨租户引用 |
 | `strength` | `explicit` / `inferred` | 推断的工作与明确请求混为一谈，无法按强度收敛 |
 | `policyVersion` | 准入时的策略版本 | 策略变更后无法判断工单是否仍被授权 |
 | `basis` | `via` 与接收范围、发送者、匹配规则 | 重启重验时无法复现准入依据（原型已具备，`src/core/model.ts:116-133`） |
@@ -289,13 +294,15 @@
 
 | 字段 | 说明 | 缺失后果 |
 | --- | --- | --- |
+| `tenantId` | 判定所属租户；幂等键与所有引用同租户 | 判定可被跨租户复用，键冲突 |
 | `evalId` | 被判定的是哪个 Eval | 无法拒绝“评估已结束后又来的判定”；原型此处已严格校验〔原型：`src/core/evals.ts:135`〕 |
-| `attempt` | 第几次尝试 | 重试与新判断无法区分；迟到的旧尝试会覆盖新的 |
+| `leaseGeneration` | 签发该判定的租约代次（fencing 值，§5.6） | 重试与接管无法区分；旧代次的迟到判定会覆盖新判定 |
 | `leaseId` | 判定者领取任务时拿到的租约 | 无法拒绝未持有租约的判定；两个 assessor 可同时提交 |
 | `assessorId` | 判定者实例身份（不是 Session id） | 审计无法回答“谁判的”；A/B 与回溯不可能 |
 | `policyVersion` | 领取时快照，必须与 Eval 上的一致 | 用旧策略得出的判定被当成当前有效授权（见 §5.5） |
 | `outcome` | `accept / ignore / unavailable / stop` | 无法区分“不接”与“判不了”，重试策略错误 |
-| `completedAt` | 判定完成时间 | 超过 deadline 的迟到结果无法识别 |
+| `completedAt` | 判定完成时间（assessor 自报，仅用于延迟观测） | 无法区分“判定跑了多久” |
+| `receivedAt` | 控制面接收时间（控制面盖戳，唯一迟到判据） | 用 assessor 自报时间判迟到，可被伪造或受时钟漂移影响 |
 | `evidence` | **只能放授权链内类型**：`source_event`、`mandate`、`policy_rule`、`prior_decision`。每条含 `type` + 引用 id + 摘要 | 换 Assessor 后证据质量下降；无法复核“为什么接”；若允许知识引用混入，等于让文档内容参与授权〔原型 schema：`src/app/assessment.ts:21-34`〕 |
 | `rationale` | 执行说明：可含自由文本与 `knowledge_ref`（`knowledgeId/version`），**不参与授权** | 无法回答“在哪一版知识下做的决定”；缺失只影响可追溯性，不影响授权正确性 |
 | `cost` / `model` | 可选，但建议记 | 无法做成本与质量的后续分析（第 2 阶段） |
@@ -303,11 +310,11 @@
 **校验链（接收方必须按顺序执行）**：
 
 1. `evalId` 对应的 Eval 仍存在且未判定（否则 `rejected: evalFinished`）。
-2. `attempt` 是当前 Eval 的最大 attempt（否则 `rejected: staleAttempt`）。
-3. `leaseId` 仍是该 Eval 的有效租约（否则 `rejected: leaseLost`，即 fencing 校验）。
+2. `leaseGeneration` 是当前代次（否则 `rejected: staleAttempt`，即 fencing 校验）。
+3. `leaseId` 仍是该 Eval 的有效租约（否则 `rejected: leaseLost`）。
 4. `policyVersion` 等于 Eval 上记录的版本（否则 `rejected: policyChanged`，由 Engine 决定重排还是放弃）。
 5. `outcome` 与 `Mandate` 规则一致（推断候选仍需匹配已启用规则）〔原型：`src/core/evals.ts:152-154`〕。
-6. **`evidence` 类型白名单**：逐条检查 `type ∈ {source_event, mandate, policy_rule, prior_decision}`；出现 `knowledge_ref` 或未知类型，整条判定拒绝，返回 `unauthorized_evidence`，并写审计事件 `assessment.evidence_rejected`（含 `evalId/assessorId/attempt/offendingType`）。`rationale` 中的知识引用不参与此校验。
+6. **`evidence` 类型白名单**：逐条检查 `type ∈ {source_event, mandate, policy_rule, prior_decision}`；出现 `knowledge_ref` 或未知类型，整条判定拒绝，返回 `unauthorized_evidence`，并写审计事件 `assessment.evidence_rejected`（含 `tenantId/evalId/assessorId/leaseGeneration/offendingType`）。`rationale` 中的知识引用不参与此校验。
 7. 通过后由 Engine 在单事务内写 Decision + Mandate + Ticket + 首 Assignment + effects〔原型：`src/core/tickets.ts:37-56`〕。
 
 **为什么把白名单放在协议而不是只靠模块边界**：模块边界只能保证“Decision 代码没有 import 检索端口”，不能保证 assessor 在 `evidence` 里塞一条“知识说可以”。一个被知识影响的 accept 仍然会产出结构合法的 `evidence`；只有类型白名单能在落库前把它变成不可接受的判定。〔判断〕**具体事故**：知识条目写着“这类 PR 可直接合并”，assessor 把它当作 accept 的依据写入 `evidence.knowledge_ref`；若放行，审计链会显示“依据知识库批准”，而知识本身没有授权资格（§21.4）。
@@ -355,6 +362,53 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 | 工单 resume 前 | `revalidate(mandate)`，失败则不 resume〔原型：`src/core/tickets.ts:106-114`〕 | resume 是重新授权的事实点 | 需要保留旧 basis 可计算 |
 
 协议侧还要求：`schemaVersion`（消息格式）与 `policyVersion`（策略内容）**分开**。合并成一个版本号会导致“仅消息格式升级也要重排所有在途评估”。〔判断〕
+
+### 5.6 租约（Lease）与尝试（attempt）：唯一实体与唯一权威
+
+**Lease（全文唯一实体）**
+
+| 字段 | 说明 |
+| --- | --- |
+| `leaseId` | 全局唯一；消息与审计只引用它 |
+| `tenantId` | 租户边界；租约键的第一段 |
+| `scope` | `delivery` / `eval` / `assignment` |
+| `subjectId` | scope 内的被租用对象：`deliveryId` / `evalId` / `assignmentId` |
+| `holderId` | 持有者身份：`consumerId` / `assessorId` / `nodeId` |
+| `token` | 不可猜测的持有凭证，只发给 holder；证明“你是被签发者”，**不做 fence** |
+| `generation` | fencing 值；对同一 `(tenantId, scope, subjectId)` 单调递增，从 1 开始 |
+| `expiresAt` | 到期时刻（控制面时钟） |
+| `state` | `active` / `released` / `expired` |
+| `issuedAt` / `renewedAt` | 签发与最近续租时间 |
+
+**唯一写入者**：控制面租约服务（与账本同库、同一事务边界）。holder 不能直接写 Lease；续租、释放都是发给控制面的命令，由控制面校验后写入。每个 `(tenantId, scope, subjectId)` 同时最多一条 `active` 租约。
+
+| 操作 | 谁发起 | 语义 | 对 `generation` 的影响 |
+| --- | --- | --- | --- |
+| 签发 | 控制面 | `queued→assessing`、Assignment 派发、Delivery claim 时创建 | +1（首次为 1） |
+| 续租 | holder | 出示 `(leaseId, token)`；只延长 `expiresAt`，不得超过 deadline | 不变 |
+| 释放 | holder 或控制面 | `state=released`；行保留用于审计 | 不变；同代次后续写入一律拒 |
+| 过期 | 控制面扫描 | `expiresAt` 已过 → `state=expired`；重派时签发新租约 | 新租约 +1 |
+
+**fencing 规则**：任何结果写入必须带 `(tenantId, scope, subjectId, leaseId, token, generation)`。控制面以该 `(tenantId, scope, subjectId)` 当前 `active` 租约的 `generation` 为准：**只有当前 generation 可写**；token 只证明持有者身份，generation 才是 fence，二者缺一即拒（`leaseLost`）。过期或已释放租约的写入不得“顺手接受”，即使业务内容正确。TTL 默认 60 秒，可按 scope 配置〔待测基线；M1-1 的回收目标〕。
+
+**attempt（唯一语义）**
+
+| 项 | 定义 |
+| --- | --- |
+| 实体 | **只存在于 Assignment**：`Assignment.attempt` |
+| 语义 | 同一 Ticket 的第 n 次执行尝试，从 1 开始 |
+| 写入者 | 唯一：控制面在创建 Assignment 时递增写入 |
+| 读取者 | worker / 引擎适配器只读，不得自行递增 |
+| 判定口径 | 报告所属 Assignment 必须是该 Ticket 的当前最大 `attempt`，否则 `staleAttempt` |
+| 唯一权威 | 账本（控制面）；引擎任务的 attempt 只是同一值的映射，不单独存在 |
+
+**同名消歧（必须遵守）**：
+
+1. **Delivery** 的重试计数叫 `attempts`（复数），由投递平面写，**不参与 fencing**，不能用来判断“第几次执行”。
+2. **判定（Eval）** 没有 `attempt`：第几次判定由 `Lease.generation` 表达；重判次数由 `Eval.reassessCount` 表达（§13.2，仅控制面写）。`AssessmentResult` 因此携带 `leaseGeneration`，不携带 `attempt`。
+3. **引擎任务** 的 attempt 映射到同一次 Assignment 的 `attempt`，不引入第二套计数。
+
+**两个权威，不重叠**：`Lease` 的权威是控制面租约服务（决定“谁现在持有、哪一代可写”）；`attempt` 的权威是账本控制面（决定“这是第几次执行”）。二者不能互相替代：只有 attempt 没有 lease 时，被回收的节点仍能写回；只有 lease 没有 attempt 时，无法区分“新执行”与“同一次执行的重复提交”。
 
 ---
 
@@ -414,11 +468,11 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 
 | 改动 | 具体内容 | 不做的后果 |
 | --- | --- | --- |
-| 1. 队列可 claim | `Effects` 从进程内 handler 表改为 `queue + dispatcher + handler registry`，补 `leaseId/leaseUntil/attempts` | 多进程无法共享队列；节点崩溃后行无人回收 |
+| 1. 队列可 claim | `Effects` 从进程内 handler 表改为 `queue + dispatcher + handler registry`，补 `leaseId/lease.expiresAt/attempts` | 多进程无法共享队列；节点崩溃后行无人回收 |
 | 2. 角色目标解析 | `deliver: (id) => sessions.prompt(masterId)` 改为 `RoleTarget.resolve(role)`〔原型写死：`src/app/runtime.ts:131-133`〕 | 换 Router 实现或进程必须改代码 |
 | 3. 准入端口闭合 | `Assessor` 端口补 `decide/cancel/heartbeat` 与 §5.3 校验链〔原型：`src/core/ports.ts:49-53`〕 | 外部 Assessor 无法交回判定，T1 仍只有 DSH Router 可选 |
 | 4. 去掉 eager Router | 初始化不再 `await sessions.ensure(masterId)`〔原型：`src/app/runtime.ts:210`〕；无消费者时 Eval 保留 deadline | 控制面启动被 Router 绑定，Router 缺席=系统不可用 |
-| 5. 节点身份 | Executor 带 `nodeId`；Assignment 带 `leaseId/fencingToken` | 无法判断“这个报告来自哪个节点、是否已过期” |
+| 5. 节点身份 | Executor 带 `nodeId`；Assignment 带 `leaseId` + `lease.generation` | 无法判断“这个报告来自哪个节点、是否已过期” |
 | 6. 权限拆分 | Router 只读 + decide token；Worker 写工作区；Watchdog 只读〔现状统一 `danger-full-access`：`src/app/sessions.ts:152`〕 | 拆了进程仍同权限，等于只是多了 IPC 开销 |
 
 **不需要改的**：SQLite（同机共享仍成立）、gate（纯函数）、域事务、outbox receipt、2 秒 pass 定时器、Ticket/Mandate 模型。这六项沿用上游 §8 的反向约束。
@@ -457,7 +511,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 | --- | --- | --- |
 | 节点注册 | 不知道谁在线、谁能接什么 | 控制面存 `nodeId/roles/capacity/version/capabilities/lastHeartbeat` |
 | 租约与心跳 | 节点失联后任务永久卡住 | Assignment 级租约 + TTL；心跳续租；到期可改派 |
-| fencing token | 被回收的节点恢复后继续写，造成重复报告 | 每次租约回收递增 token；节点写入携带 token，旧 token 被拒 |
+| fencing 代次 | 被回收的节点恢复后继续写，造成重复报告 | 每次租约回收使 `generation` 递增（§5.6）；节点写入携带 `leaseId + generation`，旧代次被拒 |
 | drain | 优雅下线会硬杀在途任务 | 节点先停止 claim，等在途结束或到超时 |
 | 结果未知 | 网络超时被当成失败重试，重复外部副作用 | `timeout` 与 `unknown` 分离，先对账再决定 |
 | 跨机读一致 | router 读到旧 Ticket 建错工单 | 所有读带 `policyVersion` + `seq`；判定回写做 §5.3 校验 |
@@ -498,13 +552,13 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 - **代价**：SQLite 单写者限制吞吐；跨机共享文件系统不可靠，T2 必须由控制面进程独占写。
 - **可回退性**：**易**。队列接口只要求 `enqueue/claim/ack/nack/heartbeat`，换 B 是替换实现。
 
-### D2 执行归属：只用 lease vs lease + fencing token
+### D2 执行归属：只用 lease vs lease + generation
 
-- **选项**：A. 只用租约（到期回收，不校验旧持有者）；B. 租约 + 单调递增 fencing token，写入必须带 token。
+- **选项**：A. 只用租约（到期回收，不校验旧持有者）；B. 租约 + 单调递增 `generation`，写入必须带 `leaseId + generation`（§5.6）。
 - **选择**：**B。**
-- **理由**：只有租约时，被回收的节点恢复后仍可写回，制造重复报告（上游 §6.2 的〔推断〕）。token 让“过期写入”可判定，而不是靠时间窗猜。
-- **代价**：每次回收要持久化 token；所有写回路径都要带 token 并校验；实现与测试面变大。
-- **可回退性**：**中**。去掉 token 校验需要同时接受“重复报告可被业务幂等吸收”的前提，风险不可静默接受。
+- **理由**：只有租约时，被回收的节点恢复后仍可写回，制造重复报告（上游 §6.2 的〔推断〕）。`generation` 让“过期写入”可判定，而不是靠时间窗猜。
+- **代价**：每次回收要持久化 `generation`；所有写回路径都要带 `leaseId + generation` 并校验；实现与测试面变大。
+- **可回退性**：**中**。去掉代次校验需要同时接受“重复报告可被业务幂等吸收”的前提，风险不可静默接受。
 
 ### D3 策略版本：单进程内比对 vs 协议级有界处置
 
@@ -690,12 +744,12 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 
 | 消息 | 方向 | 字段 | 缺失后果 |
 | --- | --- | --- | --- |
-| `assess.request` | 控制面 → assessor | `evalId, threadKey, policyVersion, schemaVersion, deadline, leaseId, candidate{triggerId, facts[], rules[], limits}` | assessor 不知道判什么、按哪版策略判；无 `leaseId` 无法阻止并发判定 |
-| `assess.read` | assessor → 控制面（或数据服务） | `evalId, leaseId, selector{kind, id/cursor/page}, maxBytes` | 只能读候选初始窗口，无法按需取图片/文件/更多消息 |
-| `assess.heartbeat` | assessor → 控制面 | `evalId, leaseId` → `leaseUntil` | 长判定被误判为失联并重派，产生双判定 |
-| `assess.submit` | assessor → 控制面 | §5.3 全部字段（`evalId, attempt, leaseId, assessorId, policyVersion, outcome, completedAt, evidence`） | 无 `leaseId/policyVersion` 时旧判定可直接生效 |
-| `assess.release` | 双向 | `evalId, leaseId, reason` | 判完不释放会让租约空转到 deadline，积压 |
-| `assess.cancel` | 控制面 → assessor | `evalId, reason` | 停止工单/撤销时远端判定继续跑，浪费并在迟到时干扰 |
+| `assess.request` | 控制面 → assessor | `tenantId, evalId, threadKey, policyVersion, schemaVersion, deadline, leaseId, leaseGeneration, candidate{triggerId, facts[], rules[], limits}` | assessor 不知道判什么、按哪版策略判；无 `leaseId/leaseGeneration` 无法阻止并发判定与旧代写入 |
+| `assess.read` | assessor → 控制面（或数据服务） | `tenantId, evalId, leaseId, leaseGeneration, selector{kind, id/cursor/page}, maxBytes` | 只能读候选初始窗口，无法按需取图片/文件/更多消息；跨租户读无法拒绝 |
+| `assess.heartbeat` | assessor → 控制面 | `tenantId, evalId, leaseId, leaseGeneration` → `leaseUntil` | 长判定被误判为失联并重派，产生双判定 |
+| `assess.submit` | assessor → 控制面 | §5.3 全部字段（`tenantId, evalId, leaseGeneration, leaseId, assessorId, policyVersion, outcome, completedAt, evidence`） | 无 `leaseId/leaseGeneration/policyVersion` 时旧判定可直接生效 |
+| `assess.release` | 双向 | `tenantId, evalId, leaseId, leaseGeneration, reason` | 判完不释放会让租约空转到 deadline，积压 |
+| `assess.cancel` | 控制面 → assessor | `tenantId, evalId, reason` | 停止工单/撤销时远端判定继续跑，浪费并在迟到时干扰 |
 
 **DSH 适配层字段映射**
 
@@ -704,8 +758,8 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 | `Assessor.request(candidate)`〔`src/core/ports.ts:50`〕 | `assess.request` | 序列化 `Candidate` 的有界快照 | DSH 的 `Candidate` 含本地对象引用与窗口游标，远端只能拿快照；游标语义需降级为“按 id/页” |
 | `Assessor.release(evalId)`〔`src/core/ports.ts:52`〕 | `assess.release` | 直接映射 | 无 |
 | `host.assessor.context(triggerId, signal)`〔`src/app/tools/main.ts:202`〕 | `assess.read(selector=window)` | 工具名与参数转 selector | 工具的“重复调用复用窗口”缓存语义丢失；远端每次都是新读 |
-| `host.assessor.read(agent, read, signal)`〔`src/app/tools/main.ts:205`〕 | `assess.read(selector)` | `agent` 不再传输，改为 `evalId` + `actor` | 读取权限原先依赖本地 agent 的工作区上下文；远端必须显式带 tenant/actor，否则按协议默认拒绝 |
-| `host.assessor.decide(triggerId, AssessmentSchema, signal)`〔`src/app/tools/main.ts:212-216`〕 | `assess.submit` | 字段直译 + 强制补齐 `attempt/leaseId/assessorId/policyVersion` | DSH 的 `AssessmentSchema` 允许 `audit` 任意对象；协议要求 `evidence` 可序列化且有大小上限 |
+| `host.assessor.read(agent, read, signal)`〔`src/app/tools/main.ts:205`〕 | `assess.read(selector)` | `agent` 不再传输，改为 `tenantId` + `evalId` + `leaseId` + `actor` | 读取权限原先依赖本地 agent 的工作区上下文；远端必须显式带 tenant/actor，否则按协议默认拒绝 |
+| `host.assessor.decide(triggerId, AssessmentSchema, signal)`〔`src/app/tools/main.ts:212-216`〕 | `assess.submit` | 字段直译 + 强制补齐 `tenantId/leaseId/leaseGeneration/assessorId/policyVersion` | DSH 的 `AssessmentSchema` 允许 `audit` 任意对象；协议要求 `evidence` 可序列化且有大小上限 |
 | `Agent` 句柄（`ctx.agents.get`）〔`src/app/delivery.ts:66-71`〕 | 无 | 适配器内部保存 `assessorId ↔ Agent` 映射 | 进程内对象身份校验（替换即拒绝）无法跨进程复现；远端靠 `assessorId` + 注册表 |
 | 进程内抛出的错误类型 | `rejected{code}` | 适配器枚举错误码 | 堆栈与本地上下文丢失；排障需靠 `assessorId` 日志关联 |
 | `signal` 取消 | `assess.cancel` + `deadline` | 两条独立路径 | 取消不是同步生效；在途工具调用可能继续 |
@@ -767,9 +821,9 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 | --- | --- | --- |
 | Event | `principalId, actorRef, trustLevel, tenantId` | 无法回答“谁触发的”；跨租户无法过滤 |
 | AssessmentResult | `assessorId, tenantId, policyVersion` | 判定无法归属；跨租户复用判定会串数据 |
-| Decision | `principalId（请求者）, assessorId（判定者）, policyVersion` | 追责链缺中间环节 |
+| Decision | `tenantId, principalId（请求者）, assessorId（判定者）, policyVersion` | 追责链缺中间环节；跨租户复用判定会串数据 |
 | Ticket | `tenantId, requesterPrincipalId, actorRef` | 恢复与撤销找不到人；跨租户改派 |
-| Report | `agentInstanceId, nodeId, leaseId` | 无法判断报告是否来自有效执行体 |
+| Report | `tenantId, agentInstanceId, nodeId, assignmentId, attempt, leaseId, leaseGeneration` | 无法判断报告是否来自有效执行体，也无法判断是第几次执行 |
 
 ### 11.2 tenant / workspace 边界
 
@@ -854,9 +908,9 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 | # | 检查 | 失败时的分类 | 谁决定后续 |
 | --- | --- | --- | --- |
 | 1 | Eval 仍存在且未判定 | `rejected: evalFinished` | 控制面，丢弃 |
-| 2 | `attempt` 是当前最大 attempt | `rejected: staleAttempt` | 控制面，丢弃 |
+| 2 | `leaseGeneration` 是当前代次 | `rejected: staleAttempt` | 控制面，丢弃 |
 | 3 | `leaseId` 仍是有效租约 | `rejected: leaseLost` | 控制面，可能重派 |
-| 4 | `completedAt` ≤ `deadline` | `rejected: late` | 控制面，按策略决定重判或放弃 |
+| 4 | `receivedAt` ≤ `deadline` | `rejected: late` | 控制面，按策略决定重判或放弃 |
 | 5 | `policyVersion` 与 Eval 一致 | `policyChanged`：进入 `pending-policy`，不直接丢弃（§13.2） | 控制面，按状态机 |
 
 **13.2.1 状态机（这是固定协议，不允许“拒绝后逐个重排”作为唯一手段）**
@@ -875,12 +929,12 @@ Eval 在策略变更下的状态与转移：
 
 | # | 转移 | 触发 | 守卫 | 动作 |
 | --- | --- | --- | --- | --- |
-| T1 | `queued → assessing` | assessor 领取 | 租约可用且 `policyVersion` 为当前版本 | 记录 `leaseId/attempt` |
-| T2 | `assessing → pending-policy` | 判定提交，版本不匹配 | `evalId` 未判定、`attempt` 最新、租约仍有效 | 落库判定草稿；**不写 Decision**；等待窗口 |
+| T1 | `queued → assessing` | assessor 领取 | 租约可用且 `policyVersion` 为当前版本 | 记录 `leaseId/leaseGeneration` |
+| T2 | `assessing → pending-policy` | 判定提交，版本不匹配 | `evalId` 未判定、`leaseGeneration` 为当前代次、租约仍有效 | 落库判定草稿；**不写 Decision**；等待窗口 |
 | T3 | `pending-policy → pending-policy` | 窗口内又有新策略版本 | 同一 Eval 只保留最新版本 | 覆盖“目标版本”，不新增重判次数 |
 | T4 | `pending-policy → reassess-queued` | 窗口关闭 | 未达重判上限（默认 2 次） | 以最新 `policyVersion` 重派；写幂等键 |
 | T5 | `pending-policy → escalated` | 窗口关闭 | 已达重判上限 | 转人工；通知请求者；生成 finding |
-| T6 | `reassess-queued → assessing` | assessor 再次领取 | 版本仍为最新（否则回 T2） | 新 `attempt` + 新 `leaseId` |
+| T6 | `reassess-queued → assessing` | assessor 再次领取 | 版本仍为最新（否则回 T2） | 新 `leaseId` + `generation+1` |
 | T7 | `reassess-queued → abandoned` | 超过 deadline 或工单被撤销 | — | 通知请求者，原因码 `policy_churn` 或 `cancelled` |
 | T8 | 任意非终态 → `abandoned` | 撤销/停止 | 有撤销主体 | 释放租约，通知 |
 
@@ -902,10 +956,10 @@ Eval 在策略变更下的状态与转移：
 
 | 对象 | 键 | 规则 | 缺失后果 |
 | --- | --- | --- | --- |
-| 重判请求 | `reassess:{evalId}:{policyVersion}`（唯一约束） | 同一 Eval 对同一目标版本最多重判一次 | 同一版本反复入队，饥饿无法收敛 |
-| 判定提交 | `(evalId, attempt)` | 重试不产生新判定 | 迟到尝试覆盖新尝试 |
-| 策略变更合并 | `policyChangeSeq`（单调递增）+ 窗口截止时间 | 窗口内多次变更只取最大 `seq` | 每次保存都触发一轮重判 |
-| 工单标记 | `policy-changed:{ticketId}:{policyVersion}` | 每工单每版本最多一条 Input | 同一变更反复写 Input，worker 重复处理 |
+| 重判请求 | `reassess:{tenantId}:{evalId}:{policyVersion}`（唯一约束） | 同一 Eval 对同一目标版本最多重判一次 | 同一版本反复入队，饥饿无法收敛 |
+| 判定提交 | `(tenantId, evalId, leaseGeneration)` | 重试不产生新判定 | 迟到代次覆盖新代次 |
+| 策略变更合并 | `(tenantId, policyChangeSeq)`（单调递增）+ 窗口截止时间 | 窗口内多次变更只取最大 `seq` | 每次保存都触发一轮重判 |
+| 工单标记 | `policy-changed:{tenantId}:{ticketId}:{policyVersion}` | 每工单每版本最多一条 Input | 同一变更反复写 Input，worker 重复处理 |
 
 **与工单的关系（固定）**：
 
@@ -1005,9 +1059,9 @@ Eval 在策略变更下的状态与转移：
 | 事件 | 必带字段 | 缺失后果 |
 | --- | --- | --- |
 | 准入 | `eventId, principalId, actorRef, policyVersion, outcome(admit/reject), reason, at` | 无法回答“为什么没接/为什么接” |
-| 判定 | `evalId, attempt, assessorId, policyVersion, outcome, evidenceHash, at` | 无法复核判定依据是否被篡改 |
+| 判定 | `tenantId, evalId, leaseGeneration, assessorId, policyVersion, outcome, evidenceHash, at` | 无法复核判定依据是否被篡改 |
 | 授权 | `decisionId, principalId, assessorId, mandateHash, at` | 无法证明“谁批的、批了什么” |
-| 执行 | `assignmentId, agentInstanceId, nodeId, leaseId, startedAt/endedAt, reportHash` | 无法判断报告来源与时效 |
+| 执行 | `tenantId, assignmentId, attempt, agentInstanceId, nodeId, leaseId, leaseGeneration, startedAt/endedAt, reportHash` | 无法判断报告来源、第几次执行与时效 |
 | 副作用 | `receiptId, channel, externalId, status, at` | 无法对账与去重 |
 | 撤销/停止 | `ticketId, principalId, reason, at` | 无法解释为何中止 |
 
@@ -1098,7 +1152,7 @@ Eval 在策略变更下的状态与转移：
 | M1-1 | 控制面与 worker 分进程运行 24h，claim/ack 无重复领取；杀掉 worker 后 60 秒内租约回收 | 队列 claim 语义足够（D1/D2） |
 | M1-2 | 杀掉控制面后重启：在途 Assignment 全部可恢复或标记为中断待恢复，无“永久 running” | 账本恢复不依赖进程内状态 |
 | M1-3 | Router 未启动时，事件仍入库、Eval 积压可见；Router 启动后按序处理，deadline 从领取计时 | D5“可缺席”成立 |
-| M1-4 | 外部 assessor（非 DSH 进程）通过 `AssessorService` 完成一次判定，控制面校验 `leaseId/policyVersion` 后落库 | §10.2 协议宿主中立成立 |
+| M1-4 | 外部 assessor（非 DSH 进程）通过 `AssessorService` 完成一次判定，控制面校验 `leaseId/leaseGeneration/policyVersion` 后落库 | §10.2 协议宿主中立成立 |
 | M1-5 | worker 伪造 router 提交判定被拒，审计记录 `assessorId` 不匹配 | S2 对策有效 |
 | M1-6 | 两个 tenant 各自事件与 Ticket 检索互不可见；删除其一后另一不受影响 | §11.2 分区成立 |
 
@@ -1114,7 +1168,7 @@ Eval 在策略变更下的状态与转移：
 
 | # | 验收信号 | 证伪的假设 |
 | --- | --- | --- |
-| M3-1 | 强杀执行节点后，租约到期改派；旧节点恢复后携带旧 `fencingToken` 的写入全部被拒 | D2 fencing 有效 |
+| M3-1 | 强杀执行节点后，租约到期改派；旧节点恢复后携带旧 `generation` 的写入全部被拒 | D2 fencing 有效 |
 | M3-2 | 网络分区期间控制面拒绝写入、执行节点不接新任务；恢复后无重复外部副作用 | §6.3 CP 选择可运维 |
 | M3-3 | 节点 drain：停止接单后 5 分钟内完成在途或标记超时，不硬杀 | T2 生命周期可控 |
 | M3-4 | 跨机节点异构：DSH 与一个非 DSH 适配器各完成一次 Assignment，报告语义一致 | §5.4 能力声明可用 |
@@ -1290,14 +1344,14 @@ Eval 在策略变更下的状态与转移：
 
 | 操作 | 语义 | 幂等键 | correlation | 引擎原生 / 需适配 |
 | --- | --- | --- | --- | --- |
-| `claimTask(workerId, filters, lease)` | 领取一个可执行任务，返回任务 + 类型化变量 + 截止时间 | `(taskId, workerId, lease attempt)` | `correlationId` 必带 | 原生（claim） |
-| `completeTask(taskId, leaseId, outputs, key)` | 完成并写回变量 | `(taskId, attempt, key)` | 必带 | 原生完成；**幂等去重需适配**（引擎未必按 key 去重） |
+| `claimTask(workerId, filters, lease)` | 领取一个可执行任务，返回任务 + 类型化变量 + 截止时间 | `(tenantId, taskId, workerId, leaseId, generation)` | `correlationId` 必带 | 原生（claim） |
+| `completeTask(taskId, leaseId, outputs, key)` | 完成并写回变量 | `(tenantId, taskId, attempt, leaseGeneration, key)` | 必带 | 原生完成；**幂等去重需适配**（引擎未必按 key 去重） |
 | `failTask(taskId, leaseId, errorClass, key)` | 失败分类回写（`business/technical/unknown`） | 同上 | 必带 | 需适配（错误模型统一） |
-| `signal(instanceId, name, payload, key)` | 外部事件驱动流程（审批、回调、超时） | `(instanceId, name, key)` | 必带 | 原生（message correlation）；**去重需适配** |
+| `signal(instanceId, name, payload, key)` | 外部事件驱动流程（审批、回调、超时） | `(tenantId, instanceId, name, key)` | 必带 | 原生（message correlation）；**去重需适配** |
 | `listHumanTasks(principal, role)` | 列出待办人工任务 | 只读 | — | 原生（task query） |
-| `completeHumanTask(taskId, principalId, decision, evidence, key)` | 完成人工任务 | `(taskId, principalId, key)` | 必带 | 原生完成；**主体/角色校验与职责分离需适配** |
+| `completeHumanTask(taskId, principalId, decision, evidence, key)` | 完成人工任务 | `(tenantId, taskId, principalId, key)` | 必带 | 原生完成；**主体/角色校验与职责分离需适配** |
 | `getInstance(instanceId)` | 读当前节点、变量、版本 | 只读 | — | 原生（runtime service） |
-| `subscribe(instanceId, cursor)` | 订阅状态变化（用于 Journal） | `(instanceId, cursor)` | — | 需适配（事件标准化） |
+| `subscribe(instanceId, cursor)` | 订阅状态变化（用于 Journal） | `(tenantId, instanceId, cursor)` | — | 需适配（事件标准化） |
 
 **契约字段（所有操作共用）**：`tenantId`、`principalId`（调用者）、`definitionVersion`、`schemaVersion`、`traceId`、`idempotencyKey`、`attempt`。
 
@@ -1389,9 +1443,9 @@ search(query, filters{tenantId, scope, type[], sensitivityMax, asOf}, topK)
 | 校验点 | `assess.submit` 的接收处理器，在 Engine 写 Decision/Mandate/Ticket **之前**；进程内 DSH 适配器与远端 `AssessorService` 走同一个校验函数 |
 | 校验对象 | `evidence[]` 的 `type` 与引用 id；`rationale` 不参与，但 `rationale.knowledge_ref` 必须可解析（否则 `invalid_rationale_ref`） |
 | 失败返回 | `rejected: unauthorized_evidence`（附 `offendingType` 与 `evalId`）；**不写任何授权事实**，不产生 Ticket |
-| 审计事件 | `assessment.evidence_rejected{evalId, attempt, assessorId, offendingType, at}`，append-only |
-| 后续处置 | 由控制面按 §13.2 决定重派或转人工；被拒的提交**不消耗** Eval 的重判次数，但同一 attempt 的重复违规按一次计 |
-| 允许的补救 | assessor 可在同一 attempt 内重交一次“去知识引用”的判定；再违规即转人工，防止无限重试 |
+| 审计事件 | `assessment.evidence_rejected{tenantId, evalId, leaseGeneration, assessorId, offendingType, at}`，append-only |
+| 后续处置 | 由控制面按 §13.2 决定重派或转人工；被拒的提交**不消耗** Eval 的重判次数，但同一 `leaseGeneration` 的重复违规按一次计 |
+| 允许的补救 | assessor 可在同一 `leaseGeneration` 内重交一次“去知识引用”的判定；再违规即转人工，防止无限重试 |
 
 **与“知识引用可追责”的关系**：`rationale` 中的 `knowledge_ref` 在报告落库时转写为 `KnowledgeRef`（§21.5），审计可以回答“谁在哪一版知识下做的决定”；它不进 `evidence`，因此不改变授权依据。**可追责 ≠ 可授权**。〔判断〕
 
