@@ -439,8 +439,12 @@ agent 只能提交**提案**：一份草案、它依据的证据、以及它建�
 
 一个可参照的项目是 HarnessRouter 与它的 Unified Harness Protocol（下称 UHP）。它把「产品如何驱动一个异构 harness」做成了开放协议，对本问题有三点启发，但都只是**候选**：
 
-- **协议是分层的，不是一揽子。** UHP 连接「产品 ↔ 完整 harness」（任务、会话、流式、文件、结果）；**agent ↔ agent 的协作走 A2A**（Agent2Agent Protocol）；MCP 管「agent ↔ 工具与数据」；ACP（Agent Client Protocol）管「编辑器 ↔ 编码 agent」。因此 Router/Worker/Watchdog 之间的互通，未必需要发明新协议——可能只是要在 A2A 与 UHP 之间选一条。
+- **协议是分层的，不是一揽子，而且是互补而非竞争。** UHP 连接「产品 ↔ 完整 harness」（任务、会话、流式、文件、结果）；**agent ↔ agent 的协作走 A2A**（Agent2Agent Protocol）；MCP 管「agent ↔ 工具与数据」；ACP（Agent Client Protocol）管「编辑器 ↔ 编码 agent」。UHP 原文说它与 A2A 互补：UHP 是调用方驱动 harness 的契约，A2A 是 agent 之间对等互通协议，两段边界不同，可能同时需要。因此 Router/Worker/Watchdog 的互通未必需要发明新协议。
+- **委托与扇出可以靠「重复同一个契约」搭出来。** UHP 把这种组合命名为 H2H（Harness-to-Harness）：协调方反复调用同一个契约去启动不同 harness，委派与并行 fan-out 就搭出来了；协调住在调用方，而契约本身不变。这与本项目「编排层持有协调、agent 只被驱动」的分工同向。
+- **agent 之间的互相发现还没有现成答案。** UHP 的 harness 目录（`/v1/harnesses`）是按用户权限隔离的能力清单，不是跨 agent 注册中心；A2A 能力发现是候选，或者另建一份 agent 注册表。这本身是本问题的子问题：Router、Worker、Watchdog 怎么知道彼此存在。
 - **UHP 允许 client 是「另一个 agent」。** 它把 client 定义为「想要把工作做掉的应用：产品后端、CLI、CI 任务、或另一个 agent」。也就是说一个 agent 可以像产品一样去驱动另一个 harness。
 - **交换单位是一次任务（job），不是一次模型回应（completion）。** 模型接口给一次回合，UHP 给一次任务：活儿进去，agent 用自带的工具与会话做，结果和工件出来。这与本项目的 thread / 任务域语义同向。
 
-已确定的仍是那一点：**编排事实是它们唯一共享的事实面**（结论 77）。通道怎么定，留作待讨论。
+已确定的仍是那一点：**编排事实是它们唯一共享的事实面**（结论 77）。通道怎么定、彼此怎么发现，都留作待讨论。
+
+调研中还有两点不写进设计，但记在这里免得再查一遍：UHP 把同一契约的不同命名（AHP / HAP / HCP / MHP / OHP / H2H）解释成「一个契约的不同侧面」，而不是不同协议——这种命名纪律值得借鉴，与本项目「port 按语义切分」同源；至于某些材料提到的「协作黑板」与「SSE 广播给多个观察者」，在 UHP 的规范文本里找不到，不予采信。
