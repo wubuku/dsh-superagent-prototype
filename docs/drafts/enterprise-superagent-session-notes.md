@@ -475,6 +475,7 @@ Q-F（隐性知识的提请→确认→落库）
 | **Q-AF** | 与三个承载项目之间的 port 如何切分 | **按语义切分**：`FlowCatalog`（制度）、`KnowledgeQuery`（认知）、`CollaborationMemory`（运行）、`TenantDirectory`（身份）；不按系统切分 | port 描述「我们需要什么能力」，不描述「对方长什么样」；按系统切分会让 BOS 的对象链泄进我们的接口 |
 | **Q-AG** | `CollaborationMemory` 如何对外表达「会话」 | **只暴露「协作线程」（thread）的现状与推移**；会话 → thread 的映射留在 adapter 内 | 上层不感知四个「会话」的主语差异，Q-G 因此不必先答；符合 Q-AF 的按语义切分 |
 | **Q-AH** | 协作 thread 的 id 由谁生成 | **Super-Agent 生成不透明 thread id**；与承载对象的映射存账本，承载项目只把它当外部引用键 | 标识规则归我们，不随承载实现漂移；一个 thread 可跨多个来源（H1），故不沿用来源 id |
+| **Q-AI** | 同一 thread 的事件来自多个来源时，thread 归谁所有 | **归属唯一实例，创建时写定 owner**；其他实例只能引用并另建自己的 thread，再由 adapter 关联 | 归属不随事件来源漂移；跨实例共享写入权会直接破坏隔离 |
 
 ## 6.3 已被讨论吸收、但值得作为「已关闭」留痕的
 
@@ -530,6 +531,7 @@ Q-F（隐性知识的提请→确认→落库）
 38. `[用户]` **port 按语义切分，不按系统切分**（Q-AF 已拍板）：`FlowCatalog` / `KnowledgeQuery` / `CollaborationMemory` / `TenantDirectory`。
 39. `[用户]` **`CollaborationMemory` 只暴露协作线程，不暴露会话**（Q-AG 已拍板）：主语差异被挡在 adapter 里。
 40. `[用户]` **thread id 由 Super-Agent 生成，承载项目只当外部引用键**（Q-AH 已拍板）。
+41. `[用户]` **thread 归属唯一实例，创建时写定**（Q-AI 已拍板）；跨实例只能引用，不能共同写入。
 
 ## 8. 术语收敛（防止在后续架构文档里各说各话）`[助手]`
 
