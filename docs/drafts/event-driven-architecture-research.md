@@ -9,7 +9,7 @@
 1. **原型的可迁移内核不是 Cordis 事件，也不是 DSH Session，而是“域事务 + 持久副作用队列 + 确定性准入”。** 触发器落库、准入、Decision、Ticket、Assignment 与副作用入队都在同一个 SQLite 事务里完成；跨角色的评估投递、执行启动、输入投递和外部回复则全部落到持久队列里重试。这条边界比“Session 即 agent”更稳定。
 2. **角色应该按“谁拥有事实”切分，而不是按“谁在运行”切分。** Source 拥有外部世界的事实，Engine 拥有授权与工作单元的事实，Assessor 产生判断，Executor 执行并回报事实。进程隔离沿这条线切才有意义；沿 Session 切只会把同一套耦合换成网络耦合。
 3. **当前形态确实是 daemon-first。** 主 Session 在初始化中被急切创建（`src/app/runtime.ts:210`），评估投递目标写死为主 Session（`src/app/runtime.ts:131-133`），判断只以主 Session 的工具协议存在（`src/app/tools/main.ts:202-220`），通知只能 steer 到已存在的 agent（`src/app/sessions.ts:104-105`）。因此“没有 Router agent 就没有评估”是结构性的，不是配置问题。
-4. **Assessor 端口的“接缝”已经存在，但端口没有闭合。** `Assessor` 只有 `request` / `release`（`src/core/ports.ts:49-53`），判定结果从主 Session 的 `orchestrator_eval_decide` 工具回写（`src/app/tools/main.ts:214-220`）。要做可插拔 Assessor，第一刀不是换模型，而是把 `decide`、取消、租约与身份纳入协议。
+4. **Assessor 端口的“接缝”已经存在，但端口没有闭合。** `Assessor` 只有 `request` / `release`（`src/core/ports.ts:49-53`），判定结果从主 Session 的 `orchestrator_eval_decide` 工具回写（`src/app/tools/main.ts:214-220`）。要做可插拔 Assessor，第一刀不是换模型，而是在新协议 `AssessorService` 里定义 `submit`、取消、租约与身份；`decide` 不进端口。
 5. **DSH 的 `steer` / `followup` / `inject` 是适配器内部语义，不应进入跨进程协议。** 跨进程协议只应表达“向某个工作单元追加一条带幂等键的输入”，以及“这条输入在下一轮、下一步还是仅上下文生效”；具体怎么映射由 DSH 适配器决定。DSH 的三段语义见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/core/agent/src/runtime-types.ts:215-241`。
 6. **必须同步完成的只有授权事实和工作单元事实；跨角色投递和外部副作用都可以异步。** 具体边界见 §3。把 gate、域事务、Ticket+Mandate 创建拆成远程调用，收益为负。
 7. **进程隔离真正新增的是协议能力，不是线程/进程数量：** 跨进程事件总线、执行节点注册与租约、四类幂等键、deadline 与心跳、失败与“结果未知”的区分、按角色拆权限域。没有这六样，拆进程只会得到更难排查的分布式单体。
@@ -291,7 +291,7 @@
 | 4 | 通知只能 steer/inject 到已存在 agent | relay 与 notice handler（`src/app/sessions.ts:104-105`、`src/app/sessions.ts:162-186`） | Router 不在线时通知丢失或长期挂起 | 通知改成按事件 id 持久投递；接收方上线后补投；非 DSH 适配器可降级为队列 | 中 | P1 |
 | 5 | effect 派发与 handler 注册都在进程内 | `Effects` 持有 handler 表并 `queueMicrotask` 派发（`src/app/effects.ts:46-88`） | 多节点无法共享队列；节点崩溃后无人 claim | 拆成 queue 服务（先 SQLite 表，后可换 Redis/SQS）：claim / heartbeat / ack / visibility timeout | 高 | P1 |
 | 6 | 域事件没有事务性事件流，只是回调 | `emit` 在事务内回调，`runtime` 直接处理（`src/core/part.ts:64-65`；`src/app/runtime.ts:138-153`） | 跨进程消费者收不到事件；崩溃后无法补投 | 拆成 Event Journal（seq、type、payload、dedupeKey）与 Delivery 表（consumerId、state、attempts、due）；同事务写事件与待投递行 | 高 | P0 |
-| 7 | Router 与 Worker 共享 OS 权限 | 两者都 `danger-full-access`（`src/app/sessions.ts:152`）；worker 以 operator OS 用户跑命令（`docs/003-execution.md:27`） | 判断侧可写仓库、执行侧可决定新工作，权限域没有拆开 | Router：只读上下文 + decide token；Worker：写工作区 + 授权范围内外部写；Watchdog：只读事件 | 高 | P1 |
+| 7 | Router 与 Worker 共享 OS 权限 | 两者都 `danger-full-access`（`src/app/sessions.ts:152`）；worker 以 operator OS 用户跑命令（`docs/003-execution.md:27`） | 判断侧可写仓库、执行侧可决定新工作，权限域没有拆开 | Router：只读上下文 + 判定提交 token；Worker：写工作区 + 授权范围内外部写；Watchdog：只读事件 | 高 | P1 |
 | 8 | Session/agent 注册表是进程内单写者 | 订阅 `agent/created`、`session/event`、`agent/status`（`src/app/sessions.ts:108-136`）；单写者约束见 DSH 绝对路径 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/packages/session/session-persistence/README.md:90` | 不能跨节点直接操作同一个 agent | 一个 agent 只属于一个执行节点；跨节点只传协议消息，不共享 Session | 高 | P2 |
 
 ### 5.2 改造的先后顺序
@@ -518,7 +518,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 | A. 常驻 Router 会话（现状） | 主 Session 的一个 turn | 完整：可多步读 Thread、仓库、图片 | 无隔离；单 Session 串行 | 无 | 上下文污染、单点、难 A/B；启动耦合 | 单机、低负载 |
 | B. 每个 Eval 一个临时 DSH Session | 临时 Session | 完整；prompt/skill 可按评估配置 | 进程内并发；崩溃可丢 Session | 新增 Session 池/生命周期；`AssessorService` 接入；工具身份校验 | 创建成本；仍依赖 DSH；清理复杂 | 想保留工具能力但去串行 |
 | C. 一次性模型调用 | 一次 `ctx.llm.stream` | 仅预取上下文 + 结构化输出；不能多步读 | 最轻；易并发、易替换 provider | 预取 Thread/文件/图片；组装 prompt；schema 校验；重试与审计 | 复杂候选判断质量下降；无工具探索 | 低风险、规则明确、量大 |
-| D. 外部 agent 进程 | 一个工作单元 | 由外部 agent 决定；能力需声明 | 进程级隔离；可异构、可横向扩展 | 定义 AssessorService 协议（request/read/decide/cancel）、认证、租约、deadline、结果未知 | 协议与运维成本最高；需要节点注册与对账 | 多厂商、强隔离、规模化 |
+| D. 外部 agent 进程 | 一个工作单元 | 由外部 agent 决定；能力需声明 | 进程级隔离；可异构、可横向扩展 | 定义 AssessorService 协议（`request/read/heartbeat/submit/cancel/release`）、认证、租约、deadline、结果未知 | 协议与运维成本最高；需要节点注册与对账 | 多厂商、强隔离、规模化 |
 | E. 混合：预取 + C，复杂升级 B/D | 分级 | 简单走 C，复杂走 B/D | 按需 | 路由器/分级策略、预算、审计 | 策略复杂；需要质量基线 | 规模化且质量敏感 |
 
 〔判断〕对“比原型更通用 + agent 异构 + 角色进程隔离”的目标，推荐顺序是 **先做 D 的 `AssessorService` 协议，再把 B 作为 DSH 适配器、C 作为轻量适配器**。不要先做 B 再改 D，否则 Session 语义会渗进协议。
@@ -533,7 +533,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 | 初始化 | `src/app/runtime.ts:210-216` | P1：去掉 eager ensure；Router 作为消费者注册后再启动评估投递（P0 保留 eager Router） | 中；需要“无消费者”态与 deadline 规则 |
 | 事件 | `src/core/part.ts:64-65`；`src/app/runtime.ts:138-153` | P0：Event Journal + Delivery 表（按消费者），不是单表加 offset | 高 |
 | 队列派发 | `src/app/effects.ts:46-160` | P1：claim/lease/ack/visibility timeout；handler registry 可远程发现 | 高 |
-| 权限 | `src/app/sessions.ts:152` | P1：Router 只读 + decide；Worker 写工作区 + 受限外部写；Watchdog 只读 | 高 |
+| 权限 | `src/app/sessions.ts:152` | P1：Router 只读 + 判定提交；Worker 写工作区 + 受限外部写；Watchdog 只读 | 高 |
 
 〔判断〕其中“`AssessorService` 协议落地”是唯一一个**不做就无法真正异构**的改动；其余（队列服务化、权限拆分）可以分批做，但不做会让异构变成“同机多进程”。
 

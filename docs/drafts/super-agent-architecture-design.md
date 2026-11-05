@@ -66,7 +66,7 @@
 | 任务调度、容量、多节点分工 | **缺失** | §3.3、§6 |
 | 部署拓扑与四条判据的落点 | **缺失**（判据有，形状无） | §6 本文主体 |
 | 协议字段与“缺失后果” | 部分（上游 §6、§7.4） | §5 补全为可评审草案 |
-| 策略/协议版本一致性 | 部分：指出投递状态机没有版本分支（上游 §6.9）；判定回写已比对，但上游未核对 | §5.3 唯一校验链、§7-D3、§13.2 有界重排本文主体 |
+| 策略/协议版本一致性 | 部分：指出投递状态机没有版本分支（上游 §6.9）；判定回写已比对，上游已核对（research:479、:561），但未给有界处置 | §5.3 唯一校验链、§7-D3、§13.2 有界重排本文主体 |
 | 多租户、身份、安全、可观测性 | 明确列为局限（上游 §9.8） | 第 2 阶段，不在本文 |
 
 本文不复制上游的时序表与耦合点表；读者应先读上游 §2–§5。
@@ -481,10 +481,10 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 | --- | --- | --- |
 | 1. 队列可 claim | `Effects` 从进程内 handler 表改为 `queue + dispatcher + handler registry`，补 `leaseId/lease.expiresAt/attempts` | 多进程无法共享队列；节点崩溃后行无人回收 |
 | 2. 角色目标解析 | `deliver: (id) => sessions.prompt(masterId)` 改为 `RoleTarget.resolve(role)`〔原型写死：`src/app/runtime.ts:131-133`〕 | 换 Router 实现或进程必须改代码 |
-| 3. 准入端口闭合 | `Assessor` 端口补 `decide/cancel/heartbeat` 与 §5.3 校验链〔原型：`src/core/ports.ts:49-53`〕 | 外部 Assessor 无法交回判定，T1 仍只有 DSH Router 可选 |
+| 3. 准入端口闭合 | `AssessorService` 补 `submit/cancel/heartbeat/release` 与 §5.3 校验链；`Assessor` 端口保持 `request/release`，`decide` 不进端口〔原型：`src/core/ports.ts:48-53`〕 | 外部 Assessor 无法交回判定，T1 仍只有 DSH Router 可选 |
 | 4. 去掉 eager Router | 初始化不再 `await sessions.ensure(masterId)`〔原型：`src/app/runtime.ts:210`〕；无消费者时 Eval 保留 deadline | 控制面启动被 Router 绑定，Router 缺席=系统不可用 |
 | 5. 节点身份 | Executor 带 `nodeId`；Assignment 带 `leaseId` + `lease.generation` | 无法判断“这个报告来自哪个节点、是否已过期” |
-| 6. 权限拆分 | Router 只读 + decide token；Worker 写工作区；Watchdog 只读〔现状统一 `danger-full-access`：`src/app/sessions.ts:152`〕 | 拆了进程仍同权限，等于只是多了 IPC 开销 |
+| 6. 权限拆分 | Router 只读 + 判定提交 token；Worker 写工作区；Watchdog 只读〔现状统一 `danger-full-access`：`src/app/sessions.ts:152`〕 | 拆了进程仍同权限，等于只是多了 IPC 开销 |
 
 **不需要改的**：SQLite（同机共享仍成立）、gate（纯函数）、域事务、outbox receipt、2 秒 pass 定时器、Ticket/Mandate 模型。这六项沿用上游 §8 的反向约束。
 
@@ -605,7 +605,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 
 ### D7 Assessor 端口：扩展现有端口 vs 另立服务
 
-- **选项**：A. 在 `Assessor` 端口加 `decide/cancel/heartbeat`；B. 另立 `AssessorService` 协议，`Assessor` 端口降为 DSH 实现适配器；C. 让 Assessor 直接调 `Engine.decide`。
+- **选项**：A. 在旧 `Assessor` 端口上加 `decide/cancel/heartbeat`（已否决）；B. 另立 `AssessorService` 协议，`Assessor` 端口降为 DSH 实现适配器；C. 让 Assessor 直接调 `Engine.decide`。
 - **选择**（第 2 阶段裁决）：**B。**
 - **理由**：**判定端口只覆盖 `request/release`，`decide` 不在端口内**〔原型：`src/core/ports.ts:48-53`；`src/app/tools/main.ts:202-220`〕，现有接缝无法承载“结果回写、租约、取消、身份”这些裁决语义。A 会把 DSH 的类型与 Session 生命周期泄漏进协议；C 违反“授权不可跨进程”（P2）。另立 `AssessorService` 的目的不是给旧端口补一个方法，而是让裁决宿主中立、可替换、可单独进程隔离。字段映射与语义损失见 §10.2。
 - **代价**：多一层装配与序列化；`MasterAssessor` 与工具入口要经适配器；能力不支持时必须显式降级。
@@ -659,7 +659,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 1. `Effects` 服务化：claim / heartbeat / ack / visibility timeout / dead-letter。
 2. 节点注册与容量声明（T1 的本地注册表）。
 3. 失败分类六态落地，含 `timeout → unknown → 对账` 的状态机。
-4. 按角色拆凭据：Router 只读 + decide token；Worker 受限写；Watchdog 只读。
+4. 按角色拆凭据：Router 只读 + 判定提交 token；Worker 受限写；Watchdog 只读。
 5. 移除 eager Router，补“无消费者态”的健康与积压。
 6. Event Journal + Delivery 表落地（含按消费者注册后补建投递行）。
 
@@ -715,7 +715,7 @@ Router 与控制面同进程对写路径的影响**没有基线**〔判断，无
 
 | # | 待验证 | 现状 | 验证方式 |
 | --- | --- | --- | --- |
-| 1 | “已投递未判定”的崩溃窗口没有主动补偿 | 上游标〔推断〕；依据是 effect 成功即删行 + deadline 兜底 | 在投递后、decide 前强杀进程，观察是否只能等 deadline |
+| 1 | “已投递未判定”的崩溃窗口没有主动补偿 | 上游标〔推断〕；依据是 effect 成功即删行 + deadline 兜底 | 在投递后、判定提交前强杀进程，观察是否只能等 deadline |
 | 2 | `ensure` 并发幂等（同一 Eval 重试不建两个 Session） | 上游标〔推断〕 | 并发调用 `ensure`，断言只创建一个 |
 | 3 | 策略变更后 Eval 的实际重排路径未运行验证 | 代码显示 `decideEval` 会比对并重排（`src/core/evals.ts:284-288`），但活跃与非活跃 Eval 两条路径的实际行为未注入验证 | 评估进行中修改规则，分别对活跃与非活跃 Eval 提交旧版本结果，断言前者重排、后者以 `unavailable` 结束 |
 | 4 | `durable_inbox` 在 DSH 重启后是否保留已 accepted 输入 | 未逐项实测 | 投递后强杀、重启，检查 inbox |
@@ -872,7 +872,7 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 **对齐规则（缺一即判失败）**
 
 1. **交集原则**：实际可执行动作 = Mandate ∩ 工具权限 ∩ OS 权限。任一层为空则拒绝启动，不“尽力而为”。
-2. **最小权限按角色**：Router 只读 + `decide` token；Worker 写自己 workspace；Watchdog 只读；Source 只写 Trigger/游标。
+2. **最小权限按角色**：Router 只读 + 判定提交 token；Worker 写自己 workspace；Watchdog 只读；Source 只写 Trigger/游标。
 3. **权限随工单而非随进程**：同一进程内的两个 Assignment 不得共享一个“宽权限”工具集；按 Assignment 派生权限面。
 4. **越界即失败**：执行侧发现动作超出 Mandate 时，报告 `rejected: out_of_scope`，不继续执行。
 
@@ -1144,7 +1144,7 @@ Eval 在策略变更下的状态与转移：
 
 | # | 验收信号 | 证伪的假设 |
 | --- | --- | --- |
-| M0-1 | 投递后、`decide` 前强杀进程，重启后 1 小时内：要么完成判定，要么在 deadline 后明确 `unavailable`，二者都不产生第二张 Ticket | §9.2-1 的〔推断〕；若产生重复，需要主动补偿而非 deadline 兜底 |
+| M0-1 | 投递后、判定提交前强杀进程，重启后 1 小时内：要么完成判定，要么在 deadline 后明确 `unavailable`，二者都不产生第二张 Ticket | §9.2-1 的〔推断〕；若产生重复，需要主动补偿而非 deadline 兜底 |
 | M0-2 | 跨重启、无 `policyChanged` 回调时，陈旧 `policyVersion` 的判定必须被拒并重判；同一 trigger 第 3 次策略变更必须转 `escalated`（重判上限 2 次） | §13.2 的有界重判协议；若旧版本判定被接受，或第 3 次仍未升级，协议失效 |
 | M0-3 | 未授权账号 + 注入文本构造的 Issue，不产生 Assignment；拒绝原因落在审计 | S1 对策的“准入隔离足够” |
 | M0-4 | 同一 Ticket 重试 3 次，外部评论/PR 数量不增加（按 receipt 幂等） | §5.1 副作用幂等成立 |
