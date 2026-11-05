@@ -5,16 +5,16 @@
   "status": "pass",
   "type": "explainer",
   "quality": "showcase",
-  "startedAt": "2026-11-05T02:06:59.429Z",
+  "startedAt": "2026-11-05T02:09:38.472Z",
   "specification": {
     "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
-    "sha256": "749addfdaece490b494fc4252854246176ba0948459d86ef82b67db479de4c5d",
-    "bytes": 10163
+    "sha256": "53b9c65db76db7d3b8a843ccdeb077c4130d211834c3d5a54861305db7f3c7b7",
+    "bytes": 10320
   },
   "artifact": {
     "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
-    "sha256": "03c335dfb6bd71e3c17da0cacab2218de41b2afcaeb72206adb42326b695d24a",
-    "bytes": 2286929
+    "sha256": "579e09ff4e4587638fe4ec435b6fa7d429d6ddd1afa0b07c9643805213df3122",
+    "bytes": 2287475
   },
   "stages": {
     "browser-check": {
@@ -44,8 +44,8 @@
         "ok": true,
         "command": "validate",
         "specification": {
-          "sha256": "749addfdaece490b494fc4252854246176ba0948459d86ef82b67db479de4c5d",
-          "bytes": 10163
+          "sha256": "53b9c65db76db7d3b8a843ccdeb077c4130d211834c3d5a54861305db7f3c7b7",
+          "bytes": 10320
         },
         "validation": {
           "checksPassed": 4,
@@ -60,7 +60,7 @@
     "deliver": {
       "status": "pass",
       "exitCode": 0,
-      "durationMs": 642,
+      "durationMs": 758,
       "command": [
         "/Users/yangjiefeng/.nvm/versions/node/v24.21.0/bin/node",
         "/Users/yangjiefeng/.agents/skills/archify/bin/archify.mjs",
@@ -76,14 +76,14 @@
       ],
       "receipt": {
         "schemaVersion": 1,
-        "receiptId": "0b8e7c36-1909-4790-8cc7-021e2eec1fc2",
+        "receiptId": "1c3133f3-c142-4da9-b5c0-5413bc68ed59",
         "ok": true,
         "command": "deliver",
         "type": "explainer",
         "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/candidate.archify.md",
         "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
         "explainer": {
-          "preparedSha256": "20fc1542b13d8231e8399c3b7a3b0a20f29054472bae1be9f920914444049ce2",
+          "preparedSha256": "e707551f9dce24fb2b54e800fc6c4637a771422abe352b364fa172eda86c4fa2",
           "dependencies": [
             {
               "kind": "repository",
@@ -343,12 +343,12 @@
           ]
         },
         "specification": {
-          "sha256": "749addfdaece490b494fc4252854246176ba0948459d86ef82b67db479de4c5d",
-          "bytes": 10163
+          "sha256": "53b9c65db76db7d3b8a843ccdeb077c4130d211834c3d5a54861305db7f3c7b7",
+          "bytes": 10320
         },
         "artifact": {
-          "sha256": "03c335dfb6bd71e3c17da0cacab2218de41b2afcaeb72206adb42326b695d24a",
-          "bytes": 2286929
+          "sha256": "579e09ff4e4587638fe4ec435b6fa7d429d6ddd1afa0b07c9643805213df3122",
+          "bytes": 2287475
         },
         "validation": {
           "checksPassed": 4,
@@ -374,7 +374,7 @@
     "check": {
       "status": "pass",
       "exitCode": 0,
-      "durationMs": 349,
+      "durationMs": 442,
       "command": [
         "/Users/yangjiefeng/.nvm/versions/node/v24.21.0/bin/node",
         "/Users/yangjiefeng/.agents/skills/archify/bin/archify.mjs",
@@ -387,8 +387,8 @@
         "file": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html",
         "family": "explainer",
         "artifact": {
-          "sha256": "03c335dfb6bd71e3c17da0cacab2218de41b2afcaeb72206adb42326b695d24a",
-          "bytes": 2286929
+          "sha256": "579e09ff4e4587638fe4ec435b6fa7d429d6ddd1afa0b07c9643805213df3122",
+          "bytes": 2287475
         },
         "checks": [
           {
@@ -434,7 +434,7 @@
               "id": "system-overview",
               "receipt": {
                 "ok": true,
-                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-TSffZ2/child.html",
+                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-zn2bbK/child.html",
                 "artifact": {
                   "sha256": "e26fabbad20bc9ec9244bde08aa1cc3f52f7052c8474d7eded6f0041ab896d32",
                   "bytes": 856770
@@ -698,7 +698,7 @@
               "id": "request-flow",
               "receipt": {
                 "ok": true,
-                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-1J5y5Y/child.html",
+                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-x0DwD3/child.html",
                 "artifact": {
                   "sha256": "59caf685c51ccf5bc3cbb6786d032555b51dc1927c99f36fed9f1a354d62907b",
                   "bytes": 837185
@@ -835,7 +835,7 @@
               "id": "ticket-lifecycle-diagram",
               "receipt": {
                 "ok": true,
-                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-ToaBEn/child.html",
+                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-jJNRnc/child.html",
                 "artifact": {
                   "sha256": "dca70c4bbb3d57f526fd09ab5e5956de15ca4f31f58f6b4741e9e4e796dd3325",
                   "bytes": 841034
@@ -1043,7 +1043,7 @@
         },
         "diagnostics": [],
         "provenance": "current",
-        "deliveryReceiptId": "0b8e7c36-1909-4790-8cc7-021e2eec1fc2"
+        "deliveryReceiptId": "1c3133f3-c142-4da9-b5c0-5413bc68ed59"
       }
     }
   },
@@ -1053,12 +1053,12 @@
   },
   "diagnostics": [],
   "evidence": {
-    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/review-12/dsh-superagent.finalize.json",
-    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/review-12/dsh-superagent.finalize-summary.json"
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/review-14/dsh-superagent.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/explainer-dsh-superagent-20261105-021749/review-14/dsh-superagent.finalize-summary.json"
   },
   "visualReview": "not-requested",
-  "finishedAt": "2026-11-05T02:07:00.510Z",
-  "durationMs": 1080,
+  "finishedAt": "2026-11-05T02:09:39.766Z",
+  "durationMs": 1293,
   "update": {
     "status": "unavailable",
     "installedVersion": null,

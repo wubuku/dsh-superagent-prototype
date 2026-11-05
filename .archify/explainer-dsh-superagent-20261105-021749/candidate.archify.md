@@ -46,7 +46,7 @@
 
 左侧是外部来源；中间是 Runtime 组装层与 core/ 领域逻辑；下方是持久化与控制面。右侧是同一 Host 进程里的两类 Session：Router 在启动时创建并常驻，Worker 每个 Ticket 一个、按需创建。[](source:router)[](source:executor)
 
-Router 与 Worker 不是 Subagent 父子；Subagent 只在 Worker 内部使用。飞书连线用虚线，因为默认 bundle 中它被禁用。[](source:bundle-patch)[](source:subagent)
+Router 与 Worker 不是 Subagent 父子；Subagent 只在 Worker 内部使用。Engine 只把 launch 入队；Effects 派发后，Executor 按需创建 Worker Session 并下发 assignment。飞书连线用虚线，因为默认 bundle 中它被禁用。[](source:bundle-patch)[](source:subagent)[](source:executor)[](source:effects)
 
 Runtime 的 Passes 每 2 秒一拍，踢 Effects 并推进到期评估。Effects 是 SQLite 持久队列，事件驱动、退避重试；消息投递另用 requestId 去重。域事件是进程内回调，没有可回放的 event log。[](source:rhythm)[](source:effects)[](source:events)
 
@@ -75,7 +75,7 @@ Runtime 的 Passes 每 2 秒一拍，踢 Effects 并推进到期评估。Effects
 | engine | channels | receipt + reply | return |
 | channels | requester | to thread | return |
 
-gate 在 Engine 的同步路径里判定准入，是纯函数、不调模型。Decision 之后 Engine 再用一个事务建 Ticket 与 Mandate；Assignment 之后由 Worker 执行，Engine 记录事实并驱动回复。后续外部消息可以补充输入或唤醒已结束 Ticket，但不能扩展 Mandate 的授权范围。
+gate 在 Engine 的同步路径里判定准入，是纯函数、不调模型。Decision 为 accept 时，Engine 再用一个事务建 Ticket 与 Mandate；Assignment 之后由 Worker 执行，Engine 记录事实并驱动回复。后续外部消息可以补充输入或唤醒已结束 Ticket，但不能扩展 Mandate 的授权范围。
 
 默认 observe 下，accept 分支不成立：Decision 落为 ignore，audit 记 would_accept，不建 Ticket，也不下发 Assignment。[](source:mode)
 
