@@ -390,7 +390,7 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 | `token` | 不可猜测的持有凭证，只发给 holder；证明“你是被签发者”，**不做 fence** |
 | `generation` | fencing 值；对同一 `(tenantId, scope, subjectId)` 单调递增，从 1 开始 |
 | `expiresAt` | 到期时刻（控制面时钟） |
-| `state` | `active` / `released` / `expired` |
+| `state` | `active` / `released` / `expired` / `revoked` |
 | `issuedAt` / `renewedAt` | 签发与最近续租时间 |
 
 **唯一写入者**：控制面租约服务（与账本同库、同一事务边界）。holder 不能直接写 Lease；续租、释放都是发给控制面的命令，由控制面校验后写入。**Assignment 与 Lease 的签发只在控制面单事务内完成**（与 §5.3 第 8 步同事务；T1/T2 的进程归属见 §3.2），Work 平面与 Delivery 平面只读。每个 `(tenantId, scope, subjectId)` 同时最多一条 `active` 租约。
@@ -401,10 +401,11 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 | 续租 | holder | 出示 `(leaseId, token)`；只延长 `expiresAt`，不得超过 deadline | 不变 |
 | 释放 | holder 或控制面 | `state=released`；行保留用于审计 | 不变；同代次后续写入一律拒 |
 | 过期 | 控制面扫描 | `expiresAt` 已过 → `state=expired`；重派时签发新租约 | 新租约 +1 |
+| 撤销 | 控制面 | 收到 `revocation` → 立即 `state=revoked`（不等 `expiresAt`）；同代次及之后写入一律拒（fail-closed） | 不变；永不复用 |
 
 **eval scope 的 deadline 约束（固定）**：所有 eval 租约（**含首次签发**）必须满足 `expiresAt ≤ Eval.deadline`。签发时取 `expiresAt = min(now + ttl, Eval.deadline)`；若 `now > Eval.deadline`，控制面**拒绝签发**：`pending-policy` 走 T5（`budget_exhausted`），`reassess-queued` 走 T7（首次签发不涉及，`deadline` 在首次签发的同一事务内计算）。此约束保证 §13.2.1 的窗口上限、租约到期与 deadline 只有 §13.2.1 规定的唯一失效顺序。
 
-**fencing 规则**：任何结果写入必须带 `(tenantId, scope, subjectId, leaseId, token, generation)`。控制面以该 `(tenantId, scope, subjectId)` 当前 `active` 租约的 `generation` 为准：**只有当前 generation 可写**；token 只证明持有者身份，generation 才是 fence，二者缺一即拒（`leaseLost`）。过期或已释放租约的写入不得“顺手接受”，即使业务内容正确。TTL 默认 60 秒，可按 scope 配置〔待测基线；M1-1 的回收目标〕。
+**fencing 规则**：任何结果写入必须带 `(tenantId, scope, subjectId, leaseId, token, generation)`。控制面以该 `(tenantId, scope, subjectId)` 当前 `active` 租约的 `generation` 为准：**只有当前 generation 可写**；token 只证明持有者身份，generation 才是 fence，二者缺一即拒（`leaseLost`）。过期、已释放或已撤销租约的写入不得“顺手接受”，即使业务内容正确；已撤销的 `generation` 不得再被任何路径复用。TTL 默认 60 秒，可按 scope 配置〔待测基线；M1-1 的回收目标〕。
 
 **attempt（唯一语义）**
 
@@ -424,6 +425,69 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 3. **引擎任务** 的 attempt 映射到同一次 Assignment 的 `attempt`，不引入第二套计数。
 
 **两个权威，不重叠**：`Lease` 的权威是控制面租约服务（决定“谁现在持有、哪一代可写”）；`attempt` 的权威是账本控制面（决定“这是第几次执行”）。二者不能互相替代：只有 attempt 没有 lease 时，被回收的节点仍能写回；只有 lease 没有 attempt 时，无法区分“新执行”与“同一次执行的重复提交”。
+
+### 5.7 撤销（Revocation）协议
+
+**撤销与策略收紧是两条机制，不得复用**：`revocation` 停止执行并让授权失效；`policyChanged`（§13.2）只让在途判定重跑，已 `accept` 的工单**不因策略变更中止**（§13.2.3）。两者的原因码、状态转移、审计事件分开：撤销用 `revoked`，策略抖动用 `policy_churn` / `policyChanged`。
+
+**消息**：`revocation{revocationId, tenantId, scope, subjectId, reason, revokedBy, revokedAt, mode}`（幂等键 `(tenantId, revocationId)`，重复投递不得重复停止或重复计数），`mode ∈ {immediate, drain}`，默认 `immediate`；`immediate` = 立即停，`drain` = 当前动作允许收尾但不再接新动作。`scope ∈ {ticket, assignment, eval}`：`ticket` 级联到其全部 Assignment 与在途 Eval；`assignment`/`eval` 只作用于该对象。这是**撤销对象**，与 §5.6 的 `Lease.scope`（delivery/eval/assignment）不同名同义：撤销时按对象级联到三种 Lease scope。
+
+**消息表（新增，不在 §5.3 判定链内）**
+
+| 消息 | 方向 | 字段 |
+| --- | --- | --- |
+| `revocation` | 人或上游系统 → 控制面 | `revocationId, tenantId, scope, subjectId, reason, revokedBy, revokedAt, mode` |
+| `assignment.stop` | 控制面 → 执行端 | `tenantId, assignmentId, attempt, leaseId, leaseGeneration, reason, stopDeadline` |
+| `stopped` | 执行端 → 控制面 | `tenantId, assignmentId, attempt, stoppedAt` |
+| `stopFailed` | 执行端 → 控制面 | `tenantId, assignmentId, attempt, reason, at` |
+
+**字段最小增量**：Assignment 既有状态机不变，只新增 `draining`（`drain` 模式）与 `stopState ∈ {none, requested, stopped, failed, unresponsive}`；收到 `stopped` 写 `stopState=stopped`，`stopFailed` 写 `failed`。不新增 `Assignment` 的其它字段。
+
+**撤销落库后同一控制面事务（缺一即未实现）**：
+
+| # | 动作 | 判据 |
+| --- | --- | --- |
+| 1 | 该 subject 及级联对象的 `active` Lease（delivery/eval/assignment 三种 scope）立即置 `revoked`，不等 `expiresAt`；`generation` 不再被接受 | 撤销后任何带旧代次的提交返回 `leaseLost` |
+| 2 | 未终态 Assignment：`immediate` → `cancelled` + 投递 stop effect；`drain` → `draining`，完成当前动作后不再接新动作 | 撤销事务提交时 Assignment 已处于对应状态，stop effect 已入队 |
+| 3 | 所有非终态 Eval（`queued` / `assessing` / `pending-policy` / `reassess-queued` / `escalated`）直接终态 `abandoned(revoked)`；`drain` 只影响 Assignment，不影响 Eval 的立即终止 | 无 Eval 停在非终态等待重判或人工 |
+| 4 | 同一 `ref` 的 `open / claimed` HumanTask → `cancelled`，同事务回写其触发的 Eval/WorkItem | 无孤立 HumanTask 继续等待人工 |
+| 5 | 写审计 `revocation{...}` 与 `revocation.enforced{...}`（见 §15.3） | 审计可按 `tenantId + subjectId` 检索到一条撤销与一条执行结果 |
+
+**执行端必须回应**：收到 stop 后回 `stopped{assignmentId, attempt, stoppedAt}` 或 `stopFailed{reason}`。控制面在 SLA（默认 30s〔设想〕）内未收到回应，把该 Assignment 的 `stopState` 置 `unresponsive` 并 P1 告警，**不得假设已停止**；其后的报告仍按 §5.3 拒收（`staleAttempt`/`leaseLost`）。
+
+**迟到结果**：撤销后到达的判定或报告一律按 §5.3 处理，拒绝原因写入 `revocation.enforced{rejectedCount, codes}`；撤销不修改判定链本身。
+
+**可测清单（撤销后 0/1/5 秒，供 M 系列验收）**
+
+| 时间 | 必须观察到 | 反例（视为未实现） |
+| --- | --- | --- |
+| 0s（事务提交点） | `revocation` 行落库；租约 `state=revoked`；`immediate` 的 Assignment 为 `cancelled` 且 stop effect 已入队；所有 Eval（含 `escalated`）为 `abandoned(revoked)` 且其 HumanTask 为 `cancelled`；`pending-policy` 不再等待窗口 | 任一租约仍 `active`；有 Eval 停在 `pending-policy`/`escalated` |
+| ≤1s | 新提交一律被拒（`leaseLost`/`staleAttempt`）；不再产生该 subject 的 launch/新 Assignment effect；`revocation.enforced` 计数递增 | 仍能领取新工作或产生新 effect |
+| ≤5s | 收到 `stopped` 并把 `stopState=stopped`；未收到则 SLA（≤30s）后 `unresponsive` 且告警 | 无回应但状态显示 `stopped`，或静默无告警 |
+
+### 5.8 人工队列（HumanTask）协议
+
+`escalated` 必须有承载它的队列，否则“转人工”只是状态名。最小契约如下，不要求 UI，CLI/API 均可实现。
+
+**实体**：`HumanTask{taskId, tenantId, kind ∈ {assessment_escalation, approval, revocation_review}, ref{type,id}, ownerRole, ownerId?, generation, createdAt, slaDueAt, state ∈ {open, claimed, decided, expired, cancelled}, decision?, decidedBy?, decidedAt?, reason?, timeoutAction}`。`generation` 每次 `claim` +1，`decide` 必须出示当前值（防两个认领者各点一次）。
+
+**归属与写入**：控制面唯一写入；其他角色只能提交 `claim`/`decide` 请求。`claim{ownerId, ownerRole, expectedGeneration}` 幂等键 `(tenantId, taskId, claimSeq)`；同一 `ref` 同时最多一条 `open / claimed`。
+
+**超时动作按 kind 固定，默认不批准**：
+
+| kind | 超时后果 | 其他决策的终态写回 |
+| --- | --- | --- |
+| `assessment_escalation` | `abandoned(escalation_timeout)` | `accept` → 以人工 Decision 走 §5.3 第 8 步；`reject` → `abandoned(human_rejected)` |
+| `approval` | 视为拒绝：`rejected(timeout)`，不产生 Mandate | `approve` → 同事务创建 Mandate；`reject` → `rejected(human_rejected)` |
+| `revocation_review` | 维持撤销（fail-closed），不恢复任何租约 | `uphold` 维持撤销；`reinstate` 只登记结论，**不自动恢复**租约与授权，须重新走准入 |
+
+**决策入口**：`POST /human-tasks/{id}/decide{decision, reason, decidedBy, leaseGeneration}`（`leaseGeneration` 即 `HumanTask.generation`），幂等键 `(tenantId, taskId, decisionSeq)`；重复提交返回首次结果。认领入口：`POST /human-tasks/{id}/claim`，需 `ownerRole` 且与 `ownerId` 匹配。
+
+**与状态机的绑定（缺一即未实现）**：`escalated`（T5/T9）必须在**同一事务**内创建 `HumanTask(kind=assessment_escalation, ref={eval, evalId}, slaDueAt=now+SLA, timeoutAction=abandoned(escalation_timeout))` 并写通知 effect。`HumanTask` 进入终态时必须同事务回写触发它的 Eval/WorkItem；不允许“人工点了按钮但状态机没动”。
+
+**`revocation_review` 的创建**：撤销时若策略要求复核，控制面在同事务创建 `HumanTask(kind=revocation_review, ref={revocation, revocationId}, timeoutAction=维持撤销)`；复核**不阻塞撤销执行**（fail-closed），超时仍维持撤销。
+
+**可测断言**：`escalated` 后人工不处理 → 到 `slaDueAt` 自动进 `expired` 并按 `timeoutAction` 落地；SLA 内无 owner 认领必须告警（指标 `human_task_unclaimed_total`），且不得静默 `decided`。
 
 ---
 
@@ -903,6 +967,18 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 | shim 绕过 | 直接调用非 shim 路径 | 权限面失效 | 隔离 OS 用户 + 文件权限；shim 目录之外不可写 |
 | 凭据落到工作区 | prepare 命令或依赖写入 `.git/config` | 提交/推送泄露 | 原型已检测并拒绝 Ticket〔原型：`docs/006-deployment.md:227`〕，T2 需同样校验 |
 
+### 12.4 撤销后的凭据状态
+
+凭据记录与租约是两条独立失效链：租约撤销立即生效（§5.7），已签发的短时 token **无法召回**，只能靠“短 TTL + 每次调用校验”收敛。
+
+| 对象 | `immediate` | `drain` |
+| --- | --- | --- |
+| 凭据记录 `CredentialGrant{tenantId, principalId, assignmentId, scope, issuedAt, expiresAt, state}` | 立即 `state=revoked`；代理拒绝续签与任何新签发 | 不新签发；已签发 token 自然到期，到期后不再续 |
+| 已签发的 token | 剩余 TTL 内仍可能可用；因此 TTL ≤ 撤销 SLA（建议 ≤60s），且代理在每次代调用时校验 `assignmentId` 未撤销 | 同左，靠 TTL 收敛 |
+| 新 Assignment | 拒绝创建（准入事务直接失败） | 拒绝创建，直到撤销解除 |
+
+**硬约束**：撤销后不得为同一 `(tenantId, principalId, assignmentId)` 签发任何新凭据；`reinstate`（§5.8）也不恢复旧凭据，须重新走准入。撤销与 `policyChanged` 的凭据处理不得复用：策略收紧不撤销任何凭据，只影响后续准入与 resume 重验。
+
 ---
 
 ## 13. 策略与协议版本一致性
@@ -935,8 +1011,8 @@ Eval 在策略变更下的状态与转移：
 | `pending-policy` | 判定已到达、通过 §5.3 前 5 步与 6①，但 6② 判定 `policyChanged`；**等待合并窗口关闭** | ≤ min(窗口上限 30s, 剩余 deadline)；剩余预算不足 30s 时窗口在 deadline 处关闭并转 T5 | 控制面 |
 | `reassess-queued` | 窗口已关闭，按最新版本重新排队一次 | ≤ deadline | 控制面 |
 | `accepted` / `ignored` | 终态 | — | 控制面 |
-| `escalated` | 重判上限用尽、剩余预算容不下下一窗口，或 evidence/rationale 二次违规，转人工 | 直到人工处理或 SLA 超时 | 控制面 |
-| `abandoned` | 超时/撤销，明确放弃 | 终态 | 控制面 |
+| `escalated` | 重判上限用尽、剩余预算容不下下一窗口，或 evidence/rationale 二次违规，转人工；**承载于 `HumanTask`（§5.8），无 `HumanTask` 视为未实现** | 直到人工处理或 SLA 超时 | 控制面（`HumanTask` 唯一写入者） |
+| `abandoned` | 超时/撤销，明确放弃；原因码 `policy_churn` / `cancelled` / `revoked` / `escalation_timeout` / `human_rejected` | 终态 | 控制面 |
 
 | # | 转移 | 触发 | 守卫 | 动作 |
 | --- | --- | --- | --- | --- |
@@ -944,12 +1020,16 @@ Eval 在策略变更下的状态与转移：
 | T2 | `assessing → pending-policy` | 判定提交通过 §5.3 第 1–5 步与第 6 步①，但第 6 步②返回 `policyChanged` | 前 5 步与 6① 全部通过（含 evidence 白名单与 `receivedAt ≤ deadline`） | 控制面**同事务强制** `release`（`state=released`）；`expiresAt` 自然过期只作恢复扫描兜底；暂存“候选判定”（不是 Decision） |
 | T3 | `pending-policy → pending-policy` | 窗口内又有新策略版本 | 同一 Eval 只保留最新版本 | 同一事务把 `Eval.targetPolicyVersion` 写为最新版本（草稿元数据随之为新目标）；不新增重判次数 |
 | T4 | `pending-policy → reassess-queued` | 窗口关闭 | 未达重判上限（默认 2 次）；**该 Eval 无 `active` 租约**（见下方规则）；`now + window ≤ deadline` | **同一事务原子完成三件事**：写回 `Eval.targetPolicyVersion = 窗口关闭时的最新版本`、转 `reassess-queued`、写重判幂等键与 effects；不得只转状态而不写回版本 |
-| T5 | `pending-policy → escalated` | 窗口关闭 | 已达重判上限，或 `now + window > deadline` | 转人工；原因码按顺序取第一个命中：① `budget_exhausted`（`now + window > deadline`，即使允许重判也来不及）；② `reassess_cap`（预算够但已达上限）；通知请求者；生成 finding |
+| T5 | `pending-policy → escalated` | 窗口关闭 | 已达重判上限，或 `now + window > deadline` | **同一事务**创建 `HumanTask(kind=assessment_escalation, ref={eval, evalId}, timeoutAction=abandoned(escalation_timeout))`、写通知 effect、生成 finding；原因码按顺序取第一个命中：① `budget_exhausted`（`now + window > deadline`，即使允许重判也来不及）；② `reassess_cap`（预算够但已达上限） |
+| T5b | `escalated → accepted` | `HumanTask` 决定 `accept` | 任务 `claimed` 且 `generation` 匹配；决策幂等 | **同一事务**：`HumanTask → decided`、写人工 Decision、走 §5.3 第 8 步 |
+| T5c | `escalated → abandoned` | `HumanTask` 决定 `reject`，或任务 `expired` | 同上（超时由 `timeoutAction` 触发） | **同一事务**：`HumanTask → decided/expired`、Eval 终态 `abandoned(human_rejected)` 或 `abandoned(escalation_timeout)` |
 | T6 | `reassess-queued → assessing` | assessor 再次领取 | **优先级从高到低**：① `now ≤ Eval.deadline`（否则转 T7，不回 `pending-policy`）；② 该 Eval 无 `active` 租约；③ `Eval.targetPolicyVersion` = 当前 `Policy.version`（不一致走 T6b） | 新 `leaseId` + `leaseGeneration+1`；**不重算 deadline、不更新 `claimedAt`**；签发租约 `expiresAt ≤ Eval.deadline` |
 | T6b | `reassess-queued → reassess-queued` | 领取时版本已变 | `now ≤ Eval.deadline`（deadline 优先：已过则走 T7）；无 `active` 租约；`Eval.targetPolicyVersion` ≠ 当前 `Policy.version` | 不签发租约；同事务把 `Eval.targetPolicyVersion` 写为当前版本，留在队列等下一次领取；**不计重判次数**（未发生评估） |
-| T7 | `reassess-queued → abandoned` | 超过 deadline 或工单被撤销 | — | 通知请求者，原因码 `policy_churn` 或 `cancelled` |
-| T8 | 任意非终态 → `abandoned` | 撤销/停止 | 有撤销主体 | 释放租约，通知 |
-| T9 | `assessing → escalated` | 同一 `leaseGeneration` 第二次 evidence/rationale 违规 | 第一次更正已用尽（§21.4.1） | 释放租约；转人工；原因码 `unauthorized_evidence` 或 `invalid_rationale_ref`（与 §5.3 失败列一致） |
+| T7 | `reassess-queued → abandoned` | 超过 deadline | — | 通知请求者，原因码 `policy_churn`（撤销不走本行，见 T8） |
+| T8 | 任意非终态 → `abandoned` | 收到 `revocation`（§5.7） | 撤销已落库且 `subject` 匹配 | 终态原因码 **`revoked`**；租约置 `revoked`（不是 `released`，不得等 `expiresAt`）；级联停止 Assignment；写 `revocation` 与 `revocation.enforced` 审计 |
+| T9 | `assessing → escalated` | 同一 `leaseGeneration` 第二次 evidence/rationale 违规 | 第一次更正已用尽（§21.4.1） | 释放租约；**同一事务**创建 `HumanTask(kind=assessment_escalation, ref={eval, evalId}, timeoutAction=abandoned(escalation_timeout))`；原因码 `unauthorized_evidence` 或 `invalid_rationale_ref`（与 §5.3 失败列一致） |
+
+**撤销优先于策略抖动（固定）**：`revocation` 命中时直接 T8 到终态 `abandoned(revoked)`，不得先进 `pending-policy`，也不得用 `policy_churn`/`policyChanged` 充当撤销原因码；反过来，策略变更不得调用 T8。撤销评审（`revocation_review`）是独立的 `HumanTask.kind`，不复用 `escalated` 的重判语义。
 
 **租约唯一性检查与等待路径（固定规则）**：T4/T6 入口必须先断言该 `(tenantId, scope='eval', subjectId=evalId)` 无 `active` 租约；有则拒绝转移并写 finding。窗口关闭时若仍有 `active` 租约（T2 的同步释放因控制面崩溃未执行），按 `expiresAt` 与 `Eval.deadline` 的比较分两种路径：
 
@@ -995,7 +1075,7 @@ Eval 在策略变更下的状态与转移：
 | t=35 | 变更 #2；交回 v1（t≈30 下发） | 6① 提交 v1 = target v1 通过；6② 当前 v2 ≠ target v1 | 35 < 90，租约未过期 | T2 → `pending-policy`，同步释放租约 |
 | t=65 | 窗口关闭 | T4 **写回 `target=v2`**；T6 签发租约 `expiresAt=min(65+60,120)=120`（被 deadline 截断） | `65+30=95 ≤ 120` | T4 → `reassess-queued` → T6 领取（第 2 次重判） |
 | t=70 | 变更 #3；交回 v2 | 6① 通过；6② 当前 v3 ≠ target v2 | 租约未过期 | T2 → `pending-policy`，同步释放租约 |
-| t=100 | 窗口关闭 | `target=v2`（T3 未触发，T4 未执行）；无 `active` 租约 | `100+30=130 > 120` | T5 → `escalated(budget_exhausted)`；**不产生第 3 次重判** |
+| t=100 | 窗口关闭 | `target=v2`（T3 未触发，T4 未执行）；无 `active` 租约 | `100+30=130 > 120` | T5 → `escalated(budget_exhausted)`，同事务创建 `HumanTask(assessment_escalation)`；**不产生第 3 次重判** |
 | t=120 | `deadline` 到期 | — | — | 已为终态，不再变化 |
 
 **t=65 租约的处理**：`expiresAt` 被截断到 120，与 deadline 相同；t=70 的 T2 同步释放使其提前结束，因此 t=100 没有 `active` 租约，直接走 T4 守卫失败分支。**崩溃变体**：若 t=70 的同步释放未执行，t=100 时租约仍 `active` 且 `expiresAt=120 ≥ deadline=120`，按 §13.2.1 等待路径**直接 T5 `escalated(budget_exhausted)`**，不等到 t=120，也不报 `leaseLost`。**T6b 变体**：若变更 #2 发生在 t=31（T4 之后、领取之前），T6b 把 `target` 写回 v2 并留在队列，不计重判次数，t=35 不会出现版本不匹配。
@@ -1084,7 +1164,7 @@ Eval 在策略变更下的状态与转移：
 | 运行健康 | 组件是否在工作 | 进程存活、轮询成功、模型预算重试、投递失败、Source 错误 | 组件自报 health | 已有分组 health（`runtime/models/evals/assessment/launch/delivery/relay/notice/reply/worker/github/feishu/history/sync`）〔原型：`docs/006-deployment.md:181-191`〕 |
 | 业务进展 | 工作是否在推进 | 每 Thread 的 Eval 数、Ticket 各状态停留时长、Assignment 完成率、积压 oldest age | 账本与 Journal 的只读聚合 | 只有 `load.running/queued`〔原型：`docs/006-deployment.md:171`〕，没有停留时长与 oldest age |
 
-**必须新增的最小业务指标**：`eval_backlog_oldest_seconds`、`ticket_state_age{ticket_state}`、`assignment_no_report_seconds`、`delivery_retry_total{consumer}`。没有这四项，告警只能回答“组件报错”，不能回答“工作卡住”。
+**必须新增的最小业务指标**：`eval_backlog_oldest_seconds`、`ticket_state_age{ticket_state}`、`assignment_no_report_seconds`、`delivery_retry_total{consumer}`、`human_task_unclaimed_total`、`revocation_to_stop_seconds`。没有这些指标，告警只能回答“组件报错”，不能回答“工作卡住”。
 
 ### 15.2 Watchdog 的只读输入集与禁止动作
 
@@ -1103,7 +1183,10 @@ Eval 在策略变更下的状态与转移：
 | 授权 | `decisionId, principalId, assessorId, mandateHash, at` | 无法证明“谁批的、批了什么” |
 | 执行 | `tenantId, assignmentId, attempt, agentInstanceId, nodeId, leaseId, leaseGeneration, startedAt/endedAt, reportHash` | 无法判断报告来源、第几次执行与时效 |
 | 副作用 | `receiptId, channel, externalId, status, at` | 无法对账与去重 |
-| 撤销/停止 | `ticketId, principalId, reason, at` | 无法解释为何中止 |
+| 撤销 | `revocationId, tenantId, scope, subjectId, reason, revokedBy, revokedAt, mode` | 无法解释为何中止、由谁中止 |
+| 撤销执行 | `tenantId, subjectId, revokedCount, rejectedCount, codes[], at`（`revocation.enforced`） | 无法证明撤销真的停住了执行 |
+| 停止回应 | `tenantId, assignmentId, attempt, stoppedAt` / `reason, at`（`stopped` / `stopFailed`） | 无法区分“已停”与“假设已停” |
+| 人工队列 | `tenantId, taskId, kind, refType, refId, ownerRole, state, decision, decidedBy, decidedAt, slaDueAt` | 无法回答“谁批的、为何没批、是否超时” |
 
 **不可否认性的诚实边界**：单机 SQLite 的追加表只能证明“本库内顺序”，不能证明“未被库管理员改写”。真正的不可否认需要外部锚（追加到只写存储、定期签名摘要、或第三方日志）。本文只要求：**审计表 append-only + 每条记录带前一条哈希 + 每日摘要签名**；跨组织不可否认放到第 3 阶段。〔判断〕
 
@@ -1111,8 +1194,8 @@ Eval 在策略变更下的状态与转移：
 
 | 级别 | 定义 | 例子 | 通知 |
 | --- | --- | --- | --- |
-| P0 | 授权事实可能错误或已越权 | policyVersion 不匹配仍被写入、跨租户读取、伪造判定 | 立即，含 `traceId`，暂停相关消费者 |
-| P1 | 工作停止但账本未损坏 | 控制面不可写、队列积压超阈值、全部 worker 无心跳 | 立即，触发人工介入 |
+| P0 | 授权事实可能错误或已越权 | policyVersion 不匹配仍被写入、跨租户读取、伪造判定、已撤销租约仍被接受写入 | 立即，含 `traceId`，暂停相关消费者 |
+| P1 | 工作停止但账本未损坏 | 控制面不可写、队列积压超阈值、全部 worker 无心跳、stop 超 SLA 未回应（`unresponsive`）、HumanTask 超 `slaDueAt` 无认领或未决 | 立即，触发人工介入 |
 | P2 | 单点退化，有替代路径 | 单 worker 失联、Source 轮询失败、模型供应商限流 | 汇总通知，自动重试/改派 |
 | P3 | 观察项 | 重试次数偏高、能力降级、迟到判定 | 日报/面板 |
 
@@ -1195,6 +1278,8 @@ Eval 在策略变更下的状态与转移：
 | M1-4 | 外部 assessor（非 DSH 进程）通过 `AssessorService` 完成一次判定，控制面校验 `leaseId/leaseGeneration/policyVersion` 后落库 | §10.2 协议宿主中立成立 |
 | M1-5 | worker 伪造 router 提交判定被拒，审计记录 `assessorId` 不匹配 | S2 对策有效 |
 | M1-6 | 两个 tenant 各自事件与 Ticket 检索互不可见；删除其一后另一不受影响 | §11.2 分区成立 |
+| M1-7 | 撤销后 0/1/5 秒清单（§5.7）全部命中：租约 `revoked`、Eval 终态 `abandoned(revoked)`、迟到结果被拒并计数、`stopped` 或 SLA 后 `unresponsive` 告警 | P0-5“撤销即停”成立；任一格缺失则该机制未实现 |
+| M1-8 | 触发 `escalated` 后不处理：`slaDueAt` 到点自动 `expired` 并按 `timeoutAction` 落地；SLA 内无认领产生 `human_task_unclaimed_total` | P0-6 队列契约与默认不批准成立 |
 
 ### M2：T1.5（按需）
 
@@ -1358,7 +1443,7 @@ Eval 在策略变更下的状态与转移：
 | Mandate 只由账本签发 | 账本校验审批记录（主体、角色、时间、范围）后才生成 Mandate | 引擎被攻陷即可签发授权 |
 | 职责分离 | 审批人 ≠ 请求人 ≠ 执行 principal（可由策略配置放宽，但必须记录放宽依据） | 自己批自己，审计失效 |
 | 代理与转办 | 只能由具名主体显式转办，记录 `delegatedFrom`；系统不得自动代签 | 无法追责 |
-| 审批后撤销 | 撤销产生 `revocation`，账本撤销 Mandate；未开始的工单停止，执行中的写 `policy-changed` 并按 §13.2 处理 | 已撤销的授权继续生效 |
+| 审批后撤销 | 撤销产生 `revocation`，账本新增撤销记录（Mandate 行不可变，不改写，授权效力按撤销记录判定）；未开始的工单与在途 Eval 直接终态 `abandoned(revoked)`；执行中的 Assignment 按 mode 停止（`cancelled`+stop 或 `draining`），租约置 `revoked`；**不再写 `policy-changed`、不走 §13.2** | 已撤销的授权继续生效 |
 
 **引擎侧只存 businessKey 与候选组**，不存 Mandate；候选组映射到 principal（§11.1），组名不能直接当授权主体。
 
@@ -1388,8 +1473,8 @@ Eval 在策略变更下的状态与转移：
 | `completeTask(taskId, leaseId, outputs, key)` | 完成并写回变量 | `(tenantId, taskId, attempt, leaseGeneration, key)` | 必带 | 原生完成；**幂等去重需适配**（引擎未必按 key 去重） |
 | `failTask(taskId, leaseId, errorClass, key)` | 失败分类回写（`business/technical/unknown`） | 同上 | 必带 | 需适配（错误模型统一） |
 | `signal(instanceId, name, payload, key)` | 外部事件驱动流程（审批、回调、超时） | `(tenantId, instanceId, name, key)` | 必带 | 原生（message correlation）；**去重需适配** |
-| `listHumanTasks(principal, role)` | 列出待办人工任务 | 只读 | — | 原生（task query） |
-| `completeHumanTask(taskId, principalId, decision, evidence, key)` | 完成人工任务 | `(tenantId, taskId, principalId, key)` | 必带 | 原生完成；**主体/角色校验与职责分离需适配** |
+| `listHumanTasks(principal, role)` | 列出控制面 `HumanTask` 待办（§5.8） | 只读 | — | 控制面只读投影；流程引擎的任务查询只作补充，不是权威 |
+| `completeHumanTask(taskId, principalId, decision, evidence, key)` | 完成人工任务 | `(tenantId, taskId, decisionSeq)` | 必带 | **必须经控制面 `decide`**；主体/角色校验与职责分离由控制面执行，不得直写流程引擎或账本 |
 | `getInstance(instanceId)` | 读当前节点、变量、版本 | 只读 | — | 原生（runtime service） |
 | `subscribe(instanceId, cursor)` | 订阅状态变化（用于 Journal） | `(tenantId, instanceId, cursor)` | — | 需适配（事件标准化） |
 
