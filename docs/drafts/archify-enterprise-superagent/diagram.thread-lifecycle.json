@@ -1,0 +1,123 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "thread 的生命周期与任务域的接缝",
+    "locale": "zh-CN",
+    "output": "docs/drafts/archify-enterprise-superagent/thread-lifecycle-diagram.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/wubuku/dsh-superagent-prototype.git",
+      "provider": "github",
+      "revision": "3bca5165de68099cd9f100b6d275665f5a029871"
+    }
+  },
+  "mainPath": [
+    "created",
+    "active",
+    "ended"
+  ],
+  "states": [
+    {
+      "id": "created",
+      "type": "start",
+      "label": "新建",
+      "sublabel": "归属写定",
+      "sources": [
+        {
+          "path": "docs/drafts/enterprise-superagent-architecture.md",
+          "line": 244,
+          "end_line": 251
+        }
+      ]
+    },
+    {
+      "id": "active",
+      "type": "active",
+      "label": "进行中",
+      "sublabel": "任务域执行",
+      "sources": [
+        {
+          "path": "docs/drafts/enterprise-superagent-architecture.md",
+          "line": 252,
+          "end_line": 258
+        }
+      ]
+    },
+    {
+      "id": "reconciling",
+      "type": "waiting",
+      "label": "待对账",
+      "sublabel": "在途清零",
+      "sources": [
+        {
+          "path": "docs/drafts/enterprise-superagent-architecture.md",
+          "line": 259,
+          "end_line": 278
+        }
+      ]
+    },
+    {
+      "id": "ended",
+      "type": "neutral",
+      "label": "已结束",
+      "sublabel": "终止态",
+      "sources": [
+        {
+          "path": "docs/drafts/enterprise-superagent-architecture.md",
+          "line": 244,
+          "end_line": 251
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "created-active",
+      "from": "created",
+      "to": "active",
+      "label": "任务域建立",
+      "variant": "emphasis"
+    },
+    {
+      "id": "active-reconciling",
+      "from": "active",
+      "to": "reconciling",
+      "label": "在途清零",
+      "variant": "emphasis"
+    },
+    {
+      "id": "reconciling-active",
+      "from": "reconciling",
+      "to": "active",
+      "label": "派发新任务",
+      "variant": "dashed"
+    },
+    {
+      "id": "reconciling-ended",
+      "from": "reconciling",
+      "to": "ended",
+      "label": "对账完成",
+      "variant": "emphasis"
+    },
+    {
+      "id": "active-ended",
+      "from": "active",
+      "to": "ended",
+      "label": "轨道全关",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "任务域的接缝",
+      "items": [
+        "任务域是执行节点上为单个任务建的独立执行环境：独立目录、独立凭据、独立出口策略。",
+        "凭据随任务域创建与销毁，节点本身不持有任何租户凭据。",
+        "任务域销毁时只留一份到期即删的只读移交包，原始数据不在节点留存。",
+        "归属写定后不可更换：要换租户就新建 thread 并引用旧的。"
+      ]
+    }
+  ]
+}

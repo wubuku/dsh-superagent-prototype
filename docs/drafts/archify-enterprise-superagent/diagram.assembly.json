@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "三个承载系统与本项目的装配关系",
+    "locale": "zh-CN",
+    "output": "docs/drafts/archify-enterprise-superagent/assembly-diagram.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "source",
+      "type": "external",
+      "label": "来源系统",
+      "pos": [30, 150],
+      "size": [120, 56]
+    },
+    {
+      "id": "bos",
+      "type": "external",
+      "label": "BOS",
+      "pos": [195, 30],
+      "size": [130, 56]
+    },
+    {
+      "id": "rag",
+      "type": "database",
+      "label": "Spring-AI-RAG",
+      "pos": [355, 30],
+      "size": [155, 56]
+    },
+    {
+      "id": "cortex",
+      "type": "database",
+      "label": "BlueCortex",
+      "pos": [540, 30],
+      "size": [140, 56]
+    },
+    {
+      "id": "orchestrator",
+      "type": "backend",
+      "label": "本项目 编排层",
+      "pos": [225, 150],
+      "size": [190, 56]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "编排存储",
+      "pos": [225, 250],
+      "size": [190, 56]
+    },
+    {
+      "id": "node",
+      "type": "frontend",
+      "label": "执行节点",
+      "pos": [540, 150],
+      "size": [140, 56]
+    },
+    {
+      "id": "taskdom",
+      "type": "security",
+      "label": "任务域",
+      "pos": [540, 250],
+      "size": [140, 56]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "三个承载系统",
+      "wraps": ["bos", "rag", "cortex"]
+    },
+    {
+      "kind": "region",
+      "label": "本项目持有",
+      "wraps": ["orchestrator", "store"]
+    },
+    {
+      "kind": "region",
+      "label": "员工的机器",
+      "wraps": ["node", "taskdom"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "source-orchestrator",
+      "from": "source",
+      "to": "orchestrator",
+      "label": "事件"
+    },
+    {
+      "id": "orchestrator-bos",
+      "from": "orchestrator",
+      "to": "bos",
+      "label": "FlowCatalog",
+      "variant": "emphasis"
+    },
+    {
+      "id": "orchestrator-rag",
+      "from": "orchestrator",
+      "to": "rag",
+      "label": "KnowledgeQuery",
+      "variant": "emphasis"
+    },
+    {
+      "id": "orchestrator-cortex",
+      "from": "orchestrator",
+      "to": "cortex",
+      "label": "CollaborationMemory",
+      "variant": "emphasis"
+    },
+    {
+      "id": "orchestrator-store",
+      "from": "orchestrator",
+      "to": "store",
+      "label": "写编排事实"
+    },
+    {
+      "id": "orchestrator-node",
+      "from": "orchestrator",
+      "to": "node",
+      "label": "派发任务",
+      "variant": "emphasis"
+    },
+    {
+      "id": "node-orchestrator",
+      "from": "node",
+      "to": "orchestrator",
+      "label": "上报与容量"
+    },
+    {
+      "id": "node-taskdom",
+      "from": "node",
+      "to": "taskdom",
+      "label": "每任务一个"
+    }
+  ]
+}
