@@ -296,7 +296,8 @@
 | `policyVersion` | 领取时快照，必须与 Eval 上的一致 | 用旧策略得出的判定被当成当前有效授权（见 §5.5） |
 | `outcome` | `accept / ignore / unavailable / stop` | 无法区分“不接”与“判不了”，重试策略错误 |
 | `completedAt` | 判定完成时间 | 超过 deadline 的迟到结果无法识别 |
-| `evidence` | `direction`、`rule_assessments`、`title`、`scope`、`intent_evidence`、`reason` 等 | 换 Assessor 后证据质量下降；无法复核“为什么接”〔原型 schema：`src/app/assessment.ts:21-34`〕 |
+| `evidence` | **只能放授权链内类型**：`source_event`、`mandate`、`policy_rule`、`prior_decision`。每条含 `type` + 引用 id + 摘要 | 换 Assessor 后证据质量下降；无法复核“为什么接”；若允许知识引用混入，等于让文档内容参与授权〔原型 schema：`src/app/assessment.ts:21-34`〕 |
+| `rationale` | 执行说明：可含自由文本与 `knowledge_ref`（`knowledgeId/version`），**不参与授权** | 无法回答“在哪一版知识下做的决定”；缺失只影响可追溯性，不影响授权正确性 |
 | `cost` / `model` | 可选，但建议记 | 无法做成本与质量的后续分析（第 2 阶段） |
 
 **校验链（接收方必须按顺序执行）**：
@@ -306,9 +307,12 @@
 3. `leaseId` 仍是该 Eval 的有效租约（否则 `rejected: leaseLost`，即 fencing 校验）。
 4. `policyVersion` 等于 Eval 上记录的版本（否则 `rejected: policyChanged`，由 Engine 决定重排还是放弃）。
 5. `outcome` 与 `Mandate` 规则一致（推断候选仍需匹配已启用规则）〔原型：`src/core/evals.ts:152-154`〕。
-6. 通过后由 Engine 在单事务内写 Decision + Mandate + Ticket + 首 Assignment + effects〔原型：`src/core/tickets.ts:37-56`〕。
+6. **`evidence` 类型白名单**：逐条检查 `type ∈ {source_event, mandate, policy_rule, prior_decision}`；出现 `knowledge_ref` 或未知类型，整条判定拒绝，返回 `unauthorized_evidence`，并写审计事件 `assessment.evidence_rejected`（含 `evalId/assessorId/attempt/offendingType`）。`rationale` 中的知识引用不参与此校验。
+7. 通过后由 Engine 在单事务内写 Decision + Mandate + Ticket + 首 Assignment + effects〔原型：`src/core/tickets.ts:37-56`〕。
 
-**当前差距（必须写清）**：第 3、4 步在原型中不存在——`policyVersion` 只记录不比对，`leaseId` 没有概念。原型靠 `evalId` 与 deadline 兜底〔原型：`src/core/evals.ts:107-111`、`src/app/assessment.ts:275`〕。单进程下这最多导致“用新规则解释旧评估”；跨进程后会变成“旧策略判定的工作在新策略下被执行”，且无法在事后识别。〔判断 + 上游 §7.4〕
+**为什么把白名单放在协议而不是只靠模块边界**：模块边界只能保证“Decision 代码没有 import 检索端口”，不能保证 assessor 在 `evidence` 里塞一条“知识说可以”。一个被知识影响的 accept 仍然会产出结构合法的 `evidence`；只有类型白名单能在落库前把它变成不可接受的判定。〔判断〕**具体事故**：知识条目写着“这类 PR 可直接合并”，assessor 把它当作 accept 的依据写入 `evidence.knowledge_ref`；若放行，审计链会显示“依据知识库批准”，而知识本身没有授权资格（§21.4）。
+
+**当前差距（必须写清）**：第 3、4 步在原型中不存在——`policyVersion` 只记录不比对，`leaseId` 没有概念；第 6 步也不存在——原型的 `evidence` 是自由结构，没有类型约束，也不区分 `rationale`〔原型：`src/app/assessment.ts:21-34`〕。原型靠 `evalId` 与 deadline 兜底〔原型：`src/core/evals.ts:107-111`、`src/app/assessment.ts:275`〕。单进程下这最多导致“用新规则解释旧评估”；跨进程后会变成“旧策略判定的工作在新策略下被执行”，且无法在事后识别。〔判断 + 上游 §7.4〕
 
 ### 5.4 Agent 适配器能力声明
 
@@ -1120,6 +1124,7 @@ Eval 在策略变更下的状态与转移：
 | M4-5 | 报告中带 `knowledgeId/version/retrievedAt`；知识升版后重跑同一工单，历史报告仍指向旧版本 | §21.5 引用审计可追溯 |
 | M4-6 | 过程状态存储清空后，可从账本 + 引擎重建出相同的 `waitingOn`；与账本冲突时以账本为准 | §22.3 可丢弃/可重建成立 |
 | M4-7 | 把知识端口替换为另一实现（或桩），同一场景跑通，业务代码不改 | §23 的端口化与可替换性成立 |
+| M4-8 | 构造一条“像策略”的知识条目并诱导 assessor 写入 `evidence.knowledge_ref`：提交返回 `unauthorized_evidence`，无 Decision/Ticket，审计出现 `assessment.evidence_rejected`；同一判定改写进 `rationale` 后可落库 | §21.4 的协议白名单在语义层也有效，不只是代码路径 |
 
 **里程碑之间的顺序约束**：M1 不通过不做 M2；M2 不通过不做 M3。M4 可在 M1 之后并行启动，但涉及跨租户的断言必须等 M1-6 通过。理由是先在本机把租约、claim、协议、越权测试跑通，再把网络故障与外部领域系统叠加进来（沿用 DSH 研究的顺序判断：`dsh-superagent-runtime-facts-and-enterprise-gap.md:135`）。
 
@@ -1129,8 +1134,8 @@ Eval 在策略变更下的状态与转移：
 
 1. **“30 秒窗口 + 2 次上限 + 5% 饥饿线即可收敛”**（§13.2）。窗口长度、上限与饥饿阈值都是〔判断〕，没有实测基线；依据只有 2 秒 pass 周期与人工保存节奏。若策略由外部系统每分钟自动同步，窗口内合并失效，`eval_pending_policy_share` 会持续超线，最终只能降频或转人工。**证伪方式**：M0-2 中把策略变更频率提高到每分钟一次，跑 1 小时，检查 `eval_pending_policy_share` 是否回落到 5% 以下、`eval_reassess_exhausted_total` 是否为 0。
 2. **“T1 的 Router 合并进控制面仍能保住写路径”**（§6.2 + §10.3）。它假设 Router 的模型调用与工具调用不会拖慢控制面事务；但 Router 与 Engine 共享事件循环时，长工具调用可能造成写入 p95 抖动。阈值不是结论，而是待测基线：测量方案与预注册判定口径见 §10.3.1。**证伪方式**：按 §10.3.1 在 M1 栈施压，若 `p95_loaded / p95_idle` ≥ 2.0 或写入成功率相对基线下降 ≥ 0.5 个百分点，T1 的默认形状就要改为 T1.5。
-3. **“流程引擎的状态历史足以支撑审计与补偿”**（§20.2、§20.4）。它假设引擎保留完整历史、可跨实例查询、且与我们账本的租户/保留策略一致。若引擎按自身策略清理历史、或引擎只保留“当前状态”，补偿与审计会缺证据，只能靠账本里的引用与 receipt。**证伪方式**：M4-1 中把引擎历史保留期调到 7 天，90 天后回放该实例，检查是否仍能重建每一步的依据。
-4. **“知识只影响怎么做”可以靠模块边界保证**（§21.4）。它假设“判定链不 import 检索端口”就等于“知识不影响授权”。实际上知识一旦进入 Router 上下文，模型可能把它当规则使用，从而间接影响候选的取舍。模块边界只能保证代码路径，不能保证语义。**证伪方式**：M4-3 的恶意条目测试 + 在 Router 上下文注入“看起来像策略”的知识，观察是否出现未经授权的工作。
+3. **“流程引擎的状态历史足以支撑审计与补偿”**（§20.2、§20.4）。**待测，但影响面已收敛**：账本自留快照（`processInstanceId`、`definitionVersion`、人工决策 signal、`stateHash/stateSeq`）与 effect receipt 已能独立支撑审计与补偿；仍待测的是“快照字段是否足够覆盖所有流程形态”以及 `stateHash` 的对齐算法。**证伪方式**：M4-1 中把引擎历史保留期调到 7 天，90 天后仅用账本回放该实例，检查每一步依据与补偿证据是否完整。
+4. **“知识只影响怎么做”的语义层风险**（§21.4）。**已由 `evidence` 类型白名单降级为可控，但未消除**：模块边界保证代码路径，协议白名单保证 `evidence` 不含 `knowledge_ref`；知识仍可能进入 Router 上下文并影响候选取舍，但受影响的判定无法把知识写成授权依据。**证伪方式**：M4-3 的恶意知识条目 + M4-8 的 `unauthorized_evidence` 负向测试；若两者任一放行，白名单失效。
 
 ---
 
@@ -1212,9 +1217,33 @@ Eval 在策略变更下的状态与转移：
 
 | 事实 | 权威 | 账本里保存什么 | 禁止 |
 | --- | --- | --- | --- |
-| 流程实例当前节点、历史、变量 | 引擎 | 只存 `processInstanceId`、最近一次 `observedTaskId`、`observedAt`、`definitionVersion` | 账本镜像完整流程状态；用账本改引擎状态 |
+| 流程实例当前节点、历史、变量 | 引擎 | 账本自留快照：`processInstanceId`、`definitionVersion`、`observedTaskId`、`observedAt`、`stateHash`、`stateSeq`、最近关键人工决策引用 | 账本镜像完整流程状态；用账本改引擎状态 |
+
 | Ticket 生命周期、Assignment、授权 | 账本 | 完整 | 引擎改 Ticket 状态；引擎签发 Mandate |
 | 任务与 Ticket 的绑定 | 账本（映射表） | `taskId ↔ ticketId`、`boundAt` | 引擎侧保存“业务工单”作为权威字段（引擎只存 businessKey） |
+
+**20.2.1 账本自留快照：审计与补偿不依赖引擎历史**
+
+引擎可能按自身策略清理历史（短于我们的审计期），因此账本必须能**只读自身完成审计**。
+
+| 快照字段 | 何时写 | 用途 | 缺失后果 |
+| --- | --- | --- | --- |
+| `processInstanceId` + `definitionVersion` | 建 Ticket 时 | 定位实例与规则版本 | 无法回答“按哪版流程执行” |
+| `observedTaskId` + `observedAt` | 每次 claim/complete/signal | 回答“当时走到哪一步” | 引擎历史清理后无法回放 |
+| `humanDecisionSignal`：`taskId, principalId, role, decision, decidedAt, approvedScope, evidenceDigest` | 每个人工任务完成时 | 证明“谁批了什么、依据哪个任务” | 审计缺授权中间环节 |
+| `stateHash` + `stateSeq` | 与观察同一事务写入 | 证明快照未被改写、可对齐顺序 | 无法判断两份记录谁先谁后 |
+| `snapshotReason` | 每次写 | 区分里程碑/人工决策/补偿/异常 | 快照变成无意义镜像 |
+
+**保留期不一致时的对账规则**：
+
+| 情况 | 规则 | 禁止 |
+| --- | --- | --- |
+| 引擎有、账本有、二者冲突 | 以账本为授权与工单权威，以引擎为流程节点权威；生成 finding 人工确认 | 自动覆盖任何一方 |
+| 引擎历史已清理、账本有快照 | **以账本为准**，快照标注 `engine-history-unavailable`；继续审计与补偿 | 静默当成“从未发生”或删除快照 |
+| 引擎有、账本缺快照 | 视为账本缺陷，补采并告警；不改变已发生的授权事实 | 用引擎状态倒推授权 |
+| 两边都缺 | 记录 `audit_gap`，保留工单/回执层面的最小证据 | 编造流程历史 |
+
+**快照的边界**：快照只保存“与授权/审计相关的最小状态”，不复制引擎变量全集；变量全文仍在引擎，账本只存哈希与摘要。〔判断〕
 
 **冲突处置**：引擎说任务在 A，账本说工单在 B——两边都不是“错”，是不同事实；由对账任务产出 finding，人工确认后再修。**不允许自动用一方覆盖另一方**。〔判断〕
 
@@ -1237,6 +1266,7 @@ Eval 在策略变更下的状态与转移：
 - **补偿不是“撤销”，是新的前向动作**：每个有外部副作用的步骤在声明时必须给出 `compensator`（可执行动作 + 幂等键）；没有 compensator 的步骤标记 `irreversible`，执行前必须额外审批。
 - 引擎负责补偿任务的编排；账本为每次补偿生成**新的 Ticket**（`compensatesTicketId` 指向原工单），不修改原 Ticket 的结果。原 Ticket 保持“已执行”的审计事实。
 - 补偿失败：不允许无限重试；`unknown` 先对账（§5.1 的 receipt），再决定重试或转人工。
+- **补偿的最小证据单元是账本中的 effect receipt**，不是引擎历史：即使引擎历史已清理，账本也能凭 `receiptId + ticketId + 审批快照` 判断“原动作是否真的发生过、是否已补偿”。引擎历史只用于解释编排顺序。
 - 流程回滚到旧节点时，已完成的 Ticket 不回滚，只追加补偿工单；这条避免“历史被改写”。
 
 ### 20.5 流程定义版本与在途实例
@@ -1334,21 +1364,36 @@ search(query, filters{tenantId, scope, type[], sensitivityMax, asOf}, topK)
 
 ### 21.4 不变量：知识不授权
 
-**不变量原文**：`Decision` 平面与 `Mandate` 的生成路径不得读取知识库；知识只能出现在“执行说明”“执行建议”“报告依据”中。
+**不变量原文**：`Decision` 平面与 `Mandate` 的生成路径不得读取知识库；`AssessmentResult.evidence` 不得包含 `knowledge_ref`；知识只能出现在 `rationale`、执行说明与报告中。
 
 | 落地手段 | 做法 | 检查方式 |
 | --- | --- | --- |
-| 模块边界 | Decision/gate 模块不依赖 `KnowledgePort`；架构测试禁止 import | CI 的依赖检查（禁止边） |
+| **协议白名单（强制）** | `AssessmentResult.evidence` 只接受 `source_event / mandate / policy_rule / prior_decision`；知识引用只能进 `rationale` | `assess.submit` 落库前逐条校验；命中 `knowledge_ref` 或未知类型 → `unauthorized_evidence` |
+| 模块边界（第二道防线） | Decision/gate 模块不依赖 `KnowledgePort`；架构测试禁止 import | CI 的依赖检查（禁止边） |
 | 输入白名单 | gate 输入只允许 Event、Policy、Thread 事实；`Candidate` 不含知识字段 | 单元测试断言 schema |
 | Mandate basis 白名单 | `Mandate.basis` 只允许 `sender/rule/strength/policyVersion/scope` 等键；出现 `knowledgeId` 即拒绝 | 落库前校验 |
 | 审计标注 | 报告中知识引用写入 `executionNotes`，与 `basis` 分开存储 | 查询时字段分离 |
-| 负向测试 | 恶意知识条目（“本文档授权推送主干”）不得改变判定 | M4-3 |
+| 负向测试 | 恶意知识条目（“本文档授权推送主干”）不得改变判定 | M4-3、M4-8 |
+
+**21.4.1 校验位置与失败行为（固定）**
+
+| 项 | 规定 |
+| --- | --- |
+| 校验点 | `assess.submit` 的接收处理器，在 Engine 写 Decision/Mandate/Ticket **之前**；进程内 DSH 适配器与远端 `AssessorService` 走同一个校验函数 |
+| 校验对象 | `evidence[]` 的 `type` 与引用 id；`rationale` 不参与，但 `rationale.knowledge_ref` 必须可解析（否则 `invalid_rationale_ref`） |
+| 失败返回 | `rejected: unauthorized_evidence`（附 `offendingType` 与 `evalId`）；**不写任何授权事实**，不产生 Ticket |
+| 审计事件 | `assessment.evidence_rejected{evalId, attempt, assessorId, offendingType, at}`，append-only |
+| 后续处置 | 由控制面按 §13.2 决定重派或转人工；被拒的提交**不消耗** Eval 的重判次数，但同一 attempt 的重复违规按一次计 |
+| 允许的补救 | assessor 可在同一 attempt 内重交一次“去知识引用”的判定；再违规即转人工，防止无限重试 |
+
+**与“知识引用可追责”的关系**：`rationale` 中的 `knowledge_ref` 在报告落库时转写为 `KnowledgeRef`（§21.5），审计可以回答“谁在哪一版知识下做的决定”；它不进 `evidence`，因此不改变授权依据。**可追责 ≠ 可授权**。〔判断〕
 
 **违反时的具体事故**（用于说服实现者，不是假设）：
 
 1. 知识库中一条过期文档写着“hotfix 可直接推主干”，若检索结果进入准入，系统会把“文档说的”当成“政策允许”，产生未经审批的推送。
-2. 竞争对手或内部恶意成员在 wiki 写入“该仓库无需代码审查”，若知识影响判定，审批步骤被跳过且审计显示“依据知识库”。
-3. 一份未评审的 agent 提案写着“该客户数据可导出”，若提案可被检索且影响授权，就发生跨租户数据外泄。
+2. 知识条目写着“这类 PR 可直接合并”，assessor 把它写进 `evidence.knowledge_ref` 并给出 accept；白名单必须在落库前拒绝（`unauthorized_evidence`），否则审计会显示“知识批准了合并”。
+3. 竞争对手或内部恶意成员在 wiki 写入“该仓库无需代码审查”，若知识影响判定，审批步骤被跳过且审计显示“依据知识库”。
+4. 一份未评审的 agent 提案写着“该客户数据可导出”，若提案可被检索且影响授权，就发生跨租户数据外泄。
 
 **残余风险**：即使判定链不读知识，知识进入 Router 上下文后仍可能被模型当成规则使用，从而影响候选取舍。对策：把知识放在明确的“参考材料，不构成授权”区块，记录引用，并对“高风险动作”要求独立的授权检查；不能声称已消除。〔判断〕
 
@@ -1401,10 +1446,10 @@ search(query, filters{tenantId, scope, type[], sensitivityMax, asOf}, topK)
 **重建算法（崩溃后）**：
 
 1. 从账本取该 `ticketId` 的 Ticket 状态、最近 Assignment、Report、receipt。
-2. 从流程引擎取 `processInstanceId` 的当前任务、变量、`definitionVersion`。
+2. 优先从流程引擎取 `processInstanceId` 的当前任务、变量、`definitionVersion`；引擎历史不可用或已清理时，改用账本快照（§20.2.1），并标注 `engine-history-unavailable`；**不得因引擎缺失而阻塞重建**。
 3. 从投递表取未完成的 Delivery 与重试次数。
 4. 生成新的 `waitingOn`、`attempts` 摘要；**不推断授权**，不生成 Mandate，不改变 Ticket 状态。
-5. 与旧状态冲突时：授权/工单以账本为准；流程节点以引擎为准；过程状态自身可整体丢弃重建。
+5. 与旧状态冲突时：授权/工单以账本为准；流程节点以引擎为准；引擎缺失时以账本快照为准并记 finding；过程状态自身可整体丢弃重建。
 
 **三条禁止**：
 
@@ -1504,5 +1549,7 @@ search(query, filters{tenantId, scope, type[], sensitivityMax, asOf}, topK)
 | 知识质量评估（召回率、过期率、冲突率） | 依赖真实语料；本阶段只给引用审计字段 |
 | 过程状态的加密与访问控制细节 | 属于安全实现；第 2 阶段给了凭据与租户边界，未细化到字段级 |
 | 跨组织授权与联合流程 | 涉及外部身份联邦，超出单租户部署范围 |
+| `evidence` 白名单的 schema、错误码与审计事件的实现 | 本阶段只定协议；落地需与现有 `AssessmentSchema` 迁移一起做，并补回归用例 |
+| 账本流程快照的字段级 schema 与 `stateHash` 算法 | 需要真实引擎行为才能定稿；本阶段只给最小字段集与对账规则 |
 
 ---
