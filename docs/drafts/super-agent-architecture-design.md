@@ -93,7 +93,7 @@
 | P3 | **按“谁拥有事实”切角色。** Source 拥有外部世界事实，Engine 拥有授权与工作单元事实，Assessor 产生判断，Executor 执行并回报事实，Watchdog 只观察。 | 角色边界与组织边界不必对齐；一个团队可能要同时承担两个角色的部署与运维。 |
 | P4 | **协议先于进程。** 先定义幂等键、租约、deadline、能力声明与失败分类，再决定谁跑在哪个进程。 | 首版会同时改端口与装配，迁移一次到位的风险高于分批。 |
 | P5 | **能力声明优于统一接口。** 适配器声明自己支持 inject/steer/followup/interrupt/持久会话/进度事件/跨进程控制/持久 inbox，上游按能力选择。 | 调用方要为每种能力组合写分支；`unsupported` 需要显式降级策略，不能默认成 `followup`。 |
-| P6 | **可缺席优于常驻。** Router、Assessor、Worker 都允许缺席；缺席时事件与评估保留期限，不阻塞写入。 | 需要“无消费者态”的健康语义与积压告警；deadline 从“领取”计时而不是“投递”计时。 |
+| P6 | **可缺席优于常驻。** Router、Assessor、Worker 都允许缺席；缺席时事件与评估保留期限，不阻塞写入。 | 需要“无消费者态”的健康语义与积压告警；deadline 从领取（`claimedAt`）计时而不是从投递计时。 |
 | P7 | **宁可少拆。** 四条判据（故障域/凭据域/扩缩容曲线/运行时）全不满足就留在原地。 | 单进程的故障半径大；运维上接受这一点，换取一致性与可排查性。 |
 | P8 | **版本是契约的一部分。** `policyVersion`、协议 `schemaVersion`、适配器能力快照都要随请求与结果传输，并在落库前比对。 | 每次策略变更都可能让在途评估失效，需要重排与补偿逻辑。 |
 | P9 | **至少一次 + 按 key 保序 + 消费端幂等。** 不追恰好一次。 | 重复消费必须靠幂等键压住；外部副作用仍需 receipt + 对账。 |
@@ -319,12 +319,12 @@
 | 2 | attempt / fencing | `leaseGeneration` 为当前代次 | `attempt` 为该 Ticket 当前最大 | `rejected: staleAttempt` |
 | 3 | lease 有效 | `leaseId` 为 `active`、未过期、`holderId=assessorId`、token 匹配 | `leaseId` 为 `active`、未过期、`holderId=nodeId` | `rejected: leaseLost` |
 | 4 | deadline | 控制面 `receivedAt` ≤ `Eval.deadline` | 控制面 `receivedAt` ≤ `Assignment.deadline` | `rejected: late` |
-| 5 | evidence 类型白名单 | `type ∈ {source_event, mandate, policy_rule, prior_decision}`；`rationale` 不参与 | 不适用（报告无 evidence） | `rejected: unauthorized_evidence` + `assessment.evidence_rejected` |
+| 5 | evidence 类型白名单 | `type ∈ {source_event, mandate, policy_rule, prior_decision}`；`rationale` 不参与授权，但 `rationale.knowledge_ref` 必须可解析 | 不适用（报告无 evidence） | `rejected: unauthorized_evidence` / `rejected: invalid_rationale_ref` + `assessment.evidence_rejected`（后者 `offendingType=rationale_ref`） |
 | 6 | `policyVersion` 一致 | 等于 Eval 上记录的版本；不等则 `policyChanged`（进 §13.2） | Mandate 的 `policyVersion` 仍被当前策略承认；否则 `policyChanged`（写 `policy-changed`） | `policyChanged` |
 | 7 | outcome / Mandate 一致 | `outcome` 与已启用规则匹配（推断候选仍需匹配）〔原型：`src/core/evals.ts:152-154`〕 | 报告动作 ⊆ `Mandate.scope` | `rejected: out_of_scope` |
 | 8 | 单事务写入 + 审计 | 同事务写 Decision + Mandate + Ticket + 首 Assignment + effects + audit | 同事务写 Report + 状态推进 + receipt + audit | — |
 
-**为什么第 4 步用 `receivedAt`**：`completedAt` 是 assessor 自报，可伪造或受时钟漂移影响；迟到判定只认控制面接收时间。
+**为什么第 4 步用 `receivedAt`**：`completedAt` 是 assessor 自报，可伪造或受时钟漂移影响；迟到判定只认控制面接收时间。`Eval.deadline` 本身以 `claimedAt + evalTimeoutMs` 计算（§13.2.1），即从领取起算，不是从创建或投递起算。
 
 **为什么第 5 步必须在第 6 步之前**：`pending-policy` 只暂存“已通过前 5 步”的提交；若先判版本，未过白名单的草稿会进入等待队列，窗口关闭后又被重新提升，等于绕过知识隔离（§21.4）。
 
@@ -920,30 +920,35 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 
 **13.2.1 状态机（这是固定协议，不允许“拒绝后逐个重排”作为唯一手段）**
 
+**Eval 的 deadline 权威**：`Eval` 增加 `claimedAt` 与 `deadlineOrigin ∈ {claim, created}`。每次从 `queued` / `reassess-queued` 进入 `assessing` 时，控制面按 `claimedAt + evalTimeoutMs` 重算并落库 `Eval.deadline`（`deadlineOrigin=claim`）；`Eval.deadline` 是 §5.3 第 4 步唯一比较对象。`pending-policy` 的停留时间**计入** deadline，窗口不会额外续命。
+
 Eval 在策略变更下的状态与转移：
 
 | 状态 | 含义 | 可停留时长 | 谁写入 |
 | --- | --- | --- | --- |
 | `queued` | 可被 assessor 领取 | ≤ deadline | 控制面 |
 | `assessing` | 已被租约持有，判定进行中 | ≤ `lease.expiresAt` | assessor 持有，控制面监督 |
-| `pending-policy` | 判定已到达、通过 §5.3 前 5 步，但 `policyVersion` 不匹配；**等待合并窗口关闭** | ≤ 窗口上限（默认 30s） | 控制面 |
+| `pending-policy` | 判定已到达、通过 §5.3 前 5 步，但 `policyVersion` 不匹配；**等待合并窗口关闭** | ≤ min(窗口上限 30s, 剩余 deadline) | 控制面 |
 | `reassess-queued` | 窗口已关闭，按最新版本重新排队一次 | ≤ deadline | 控制面 |
 | `accepted` / `ignored` | 终态 | — | 控制面 |
-| `escalated` | 重判上限用尽，转人工 | 直到人工处理或 SLA 超时 | 控制面 |
+| `escalated` | 重判上限用尽，或 evidence/rationale 二次违规，转人工 | 直到人工处理或 SLA 超时 | 控制面 |
 | `abandoned` | 超时/撤销，明确放弃 | 终态 | 控制面 |
 
 | # | 转移 | 触发 | 守卫 | 动作 |
 | --- | --- | --- | --- | --- |
-| T1 | `queued → assessing` | assessor 领取 | 租约可用且 `policyVersion` 为当前版本 | 记录 `leaseId/leaseGeneration` |
-| T2 | `assessing → pending-policy` | 判定提交通过 §5.3 第 1–5 步，但 `policyVersion` 不匹配（第 6 步） | 前 5 步全部通过（含 evidence 白名单与 `receivedAt ≤ deadline`） | 暂存“候选判定”（不是 Decision，不可直接提升）；等待窗口 |
+| T1 | `queued → assessing` | assessor 领取 | 租约可用且 `policyVersion` 为当前版本 | 记录 `claimedAt`，按 `claimedAt + evalTimeoutMs` 重算 `deadline`（`deadlineOrigin=claim`）；记录 `leaseId/leaseGeneration` |
+| T2 | `assessing → pending-policy` | 判定提交通过 §5.3 第 1–5 步，但 `policyVersion` 不匹配（第 6 步） | 前 5 步全部通过（含 evidence 白名单与 `receivedAt ≤ deadline`） | 控制面**释放**该 Eval 的租约（`state=released`；holder 不能续租到窗口期），或按 `expiresAt` 自然过期；暂存“候选判定”（不是 Decision） |
 | T3 | `pending-policy → pending-policy` | 窗口内又有新策略版本 | 同一 Eval 只保留最新版本 | 覆盖“目标版本”，不新增重判次数 |
-| T4 | `pending-policy → reassess-queued` | 窗口关闭 | 未达重判上限（默认 2 次） | 以最新 `policyVersion` 重派；写幂等键 |
-| T5 | `pending-policy → escalated` | 窗口关闭 | 已达重判上限 | 转人工；通知请求者；生成 finding |
-| T6 | `reassess-queued → assessing` | assessor 再次领取 | 版本仍为最新（否则回 T2） | 新 `leaseId` + `generation+1` |
+| T4 | `pending-policy → reassess-queued` | 窗口关闭 | 未达重判上限（默认 2 次）；**该 Eval 无 `active` 租约**；`now + window ≤ deadline` | 以最新 `policyVersion` 重派；写幂等键 |
+| T5 | `pending-policy → escalated` | 窗口关闭 | 已达重判上限，或 `now + window > deadline` 且无剩余时间 | 转人工；通知请求者；生成 finding |
+| T6 | `reassess-queued → assessing` | assessor 再次领取 | 版本仍为最新（否则回 T2）；**该 Eval 无 `active` 租约** | 新 `leaseId` + `generation+1`；用新 `claimedAt` 重算 deadline；若已无剩余时间则直接 `abandoned(policy_churn)` |
 | T7 | `reassess-queued → abandoned` | 超过 deadline 或工单被撤销 | — | 通知请求者，原因码 `policy_churn` 或 `cancelled` |
 | T8 | 任意非终态 → `abandoned` | 撤销/停止 | 有撤销主体 | 释放租约，通知 |
+| T9 | `assessing → escalated` | 同一 `leaseGeneration` 第二次 evidence/rationale 违规 | 第一次更正已用尽（§21.4.1） | 释放租约；转人工；原因码 `unauthorized_evidence` 或 `invalid_rationale_ref`（与 §5.3 失败列一致） |
 
-**`pending-policy` 草稿的边界**：草稿只保存通过 §5.3 第 1–5 步的提交，供观测与审计；窗口关闭后必须按 §5.3 全链重新提交/重判，**不得把草稿直接提升为 Decision**。这样即使候选判定在等待期间被篡改或补充，也会在重跑时被第 5 步拒绝。
+**租约唯一性检查**：T4/T6 入口必须先断言该 `(tenantId, scope='eval', subjectId=evalId)` 无 `active` 租约；有则拒绝转移并写 finding。这样 §5.6 的“同时最多一条 active”在状态机里可检查，而不是只靠实现者自觉。
+
+**`pending-policy` 草稿的边界**：草稿只保存通过 §5.3 第 1–5 步的提交，供观测与审计；窗口关闭后必须按 §5.3 全链重新提交/重判，**不得把草稿直接提升为 Decision**。这样即使候选判定在等待期间被篡改或补充，也会在重跑时被第 5 步拒绝。evidence/rationale 被拒的提交**不落草稿**、**不消耗重判次数**（§21.4.1）。
 
 **13.2.2 合并窗口与重判上限**
 
@@ -1147,7 +1152,7 @@ Eval 在策略变更下的状态与转移：
 | # | 验收信号 | 证伪的假设 |
 | --- | --- | --- |
 | M0-1 | 投递后、判定提交前强杀进程，重启后 1 小时内：要么完成判定，要么在 deadline 后明确 `unavailable`，二者都不产生第二张 Ticket | §9.2-1 的〔推断〕；若产生重复，需要主动补偿而非 deadline 兜底 |
-| M0-2 | 跨重启、无 `policyChanged` 回调时，陈旧 `policyVersion` 的判定必须被拒并重判；同一 trigger 第 3 次策略变更必须转 `escalated`（重判上限 2 次） | §13.2 的有界重判协议；若旧版本判定被接受，或第 3 次仍未升级，协议失效 |
+| M0-2 | 三次**跨窗口**（间隔 >30s）的独立策略变更，且每次都提交旧版本判定：必须观察到 `pending-policy → escalated`，或 `eval_reassess_exhausted_total` 递增；第 2 次变更仍应被接受重判 | §13.2 的窗口与上限；若第 1 次就 escalated 或第 2 次被拒，协议失效 |
 | M0-3 | 未授权账号 + 注入文本构造的 Issue，不产生 Assignment；拒绝原因落在审计 | S1 对策的“准入隔离足够” |
 | M0-4 | 同一 Ticket 重试 3 次，外部评论/PR 数量不增加（按 receipt 幂等） | §5.1 副作用幂等成立 |
 | M0-5 | `maxWorkers=3` 时并发 10 个 Ticket：排队顺序按 `seq`，人的 follow-up 能插队，且不超过 3 个执行体 | §3.3 调度规则可实现 |
@@ -1158,7 +1163,7 @@ Eval 在策略变更下的状态与转移：
 | --- | --- | --- |
 | M1-1 | 控制面与 worker 分进程运行 24h，claim/ack 无重复领取；杀掉 worker 后 60 秒内租约回收 | 队列 claim 语义足够（D1/D2） |
 | M1-2 | 杀掉控制面后重启：在途 Assignment 全部可恢复或标记为中断待恢复，无“永久 running” | 账本恢复不依赖进程内状态 |
-| M1-3 | Router 未启动时，事件仍入库、Eval 积压可见；Router 启动后按序处理，deadline 从领取计时 | D5“可缺席”成立 |
+| M1-3 | Router 未启动时，事件仍入库、Eval 积压可见；Router 启动后按序处理，deadline 从 `claimedAt` 计时 | D5“可缺席”成立 |
 | M1-4 | 外部 assessor（非 DSH 进程）通过 `AssessorService` 完成一次判定，控制面校验 `leaseId/leaseGeneration/policyVersion` 后落库 | §10.2 协议宿主中立成立 |
 | M1-5 | worker 伪造 router 提交判定被拒，审计记录 `assessorId` 不匹配 | S2 对策有效 |
 | M1-6 | 两个 tenant 各自事件与 Ticket 检索互不可见；删除其一后另一不受影响 | §11.2 分区成立 |
@@ -1448,11 +1453,11 @@ search(query, filters{tenantId, scope, type[], sensitivityMax, asOf}, topK)
 | 项 | 规定 |
 | --- | --- |
 | 校验点 | `assess.submit` 的接收处理器，在 Engine 写 Decision/Mandate/Ticket **之前**；进程内 DSH 适配器与远端 `AssessorService` 走同一个校验函数 |
-| 校验对象 | `evidence[]` 的 `type` 与引用 id；`rationale` 不参与，但 `rationale.knowledge_ref` 必须可解析（否则 `invalid_rationale_ref`） |
-| 失败返回 | `rejected: unauthorized_evidence`（附 `offendingType` 与 `evalId`）；**不写任何授权事实**，不产生 Ticket |
-| 审计事件 | `assessment.evidence_rejected{tenantId, evalId, leaseGeneration, assessorId, offendingType, at}`，append-only |
-| 后续处置 | 由控制面按 §13.2 决定重派或转人工；被拒的提交**不消耗** Eval 的重判次数，但同一 `leaseGeneration` 的重复违规按一次计 |
-| 允许的补救 | assessor 可在同一 `leaseGeneration` 内重交一次“去知识引用”的判定；再违规即转人工，防止无限重试 |
+| 校验对象 | `evidence[]` 的 `type` 与引用 id；`rationale` 不参与授权，但 `rationale.knowledge_ref` 必须可解析 |
+| 失败返回 | `evidence` 违规 → `rejected: unauthorized_evidence`（附 `offendingType`、`evalId`）；`rationale` 不可解析 → `rejected: invalid_rationale_ref`。**不写任何授权事实**，不产生 Ticket |
+| 审计事件 | `assessment.evidence_rejected{tenantId, evalId, leaseGeneration, assessorId, offendingType, at}`，append-only；`rationale` 违规时 `offendingType=rationale_ref` |
+| 后续处置 | §5.3 第 1–5 步任一失败：**直接拒绝，不占用重判次数，不落草稿**。同一 `leaseGeneration` 内仅允许一次更正提交；第二次直接 `escalated`（T9），防止无限重试 |
+| 允许的补救 | 更正提交属**新消息**，其产物仍须按 §5.3 全链校验；不得复用被拒提交的任何字段 |
 
 **与“知识引用可追责”的关系**：`rationale` 中的 `knowledge_ref` 在报告落库时转写为 `KnowledgeRef`（§21.5），审计可以回答“谁在哪一版知识下做的决定”；它不进 `evidence`，因此不改变授权依据。**可追责 ≠ 可授权**。〔判断〕
 
