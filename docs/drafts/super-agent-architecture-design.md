@@ -1,6 +1,6 @@
-# Super-Agent 整体架构设计（第 1 阶段：定位、原则、分解、契约、协议、拓扑、ADR）
+# Super-Agent 整体架构设计（第 1–2 阶段：定位、原则、分解、契约、协议、拓扑、ADR、身份安全与运维）
 
-> 状态：第 1 阶段草稿，待评审。第 2 阶段（多租户、身份、安全、可观测性、持久化与运维）尚未撰写。
+> 状态：第 1、2 阶段草稿，待评审。第 2 阶段包含身份与租户、授权与凭据、版本一致性、威胁模型、可观测性与审计、持久化与运维、里程碑。
 > 上游材料：[事件驱动架构调研](event-driven-architecture-research.md)（本仓库，2026-11-05 完成，678 行）。本文引用它而不重复它。
 > 核查日期：2026-11-05。证据标签：〔原型〕=本仓库可复核实现；〔DSH〕=`deepseek-harness` 现有能力；〔判断〕=本文分析；〔设想〕=本文提出、尚未落地；〔推断〕=代码可解释但未运行验证。外部材料标注来源与读取日期。
 
@@ -30,6 +30,15 @@
 - §7 决策清单（ADR）
 - §8 第 1 阶段不做的事
 - §9 证据索引与待验证项
+- §10 第 2 阶段：裁决落地与新增结论
+- §11 身份与租户
+- §12 授权与凭据
+- §13 策略与协议版本一致性
+- §14 安全威胁模型
+- §15 可观测性与审计
+- §16 持久化与运维
+- §17 里程碑与验收信号
+- §18 最脆弱的两个论断
 
 ---
 
@@ -486,23 +495,23 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 ### D6 事件与投递：单表 offset vs Journal + Delivery 分表
 
 - **选项**：A. 一张 outbox 表 + 消费者 offset；B. 事件 Journal 一行 + 每个消费者一行 Delivery；C. 每个消费者一张表。
-- **选择**：**B。**
-- **理由**：同一事件要投给 Router、多个 Worker、审计、Watchdog，各自失败与重试独立（上游 §6.8）。A 隐含“一个事件一个投递位”，任一成功会被当成全部完成。C 表数量随消费者增长，迁移困难。
-- **代价**：写放大（1 个事件 N 行投递）；需要清理与归档策略。
+- **选择**（第 2 阶段裁决）：**B，且 Journal 与 Delivery 在同一个库里分成两张物理表。**
+- **理由**：同一事件要投给 Router、多个 Worker、审计、Watchdog，各自失败与重试独立（上游 §6.8）。A 隐含“一个事件一个投递位”，任一成功会被当成全部完成。C 表数量随消费者增长，迁移困难。**物理分离的额外理由**：Journal 的保留期长、只追加、重放按 `eventId`；Delivery 的保留期短、高频更新、清理按 `state` 与时间。两者归档与重放语义不同，合并会迫使清理策略互相妥协。
+- **代价**：写放大（1 个事件 N 行投递）与双表事务；但量级不构成约束——按每分钟数十条事件与个位数消费者，写放大在千行/天级。
 - **可回退性**：**难**。迁移回单表会丢失每消费者进度语义。
 
 ### D7 Assessor 端口：扩展现有端口 vs 另立服务
 
-- **选项**：A. 在 `Assessor` 端口加 `decide/cancel/heartbeat`；B. 另立 `AssessorService` 协议，`Assessor` 端口保持只读；C. 让 Assessor 直接调 `Engine.decide`。
-- **选择**：**A。**
-- **理由**：领域层已经依赖 `Assessor` 端口〔原型：`src/core/ports.ts:49-53`〕，扩展它比新增服务少一层装配；C 会把授权事实暴露给 assessor，违反 P2。
-- **代价**：端口变更影响 Engine、`MasterAssessor` 与工具入口；需要一次性迁移。
-- **可回退性**：**中**。B 可作为 A 的后续收敛（把 `decide` 搬到独立服务），但协议字段不变。
+- **选项**：A. 在 `Assessor` 端口加 `decide/cancel/heartbeat`；B. 另立 `AssessorService` 协议，`Assessor` 端口降为 DSH 实现适配器；C. 让 Assessor 直接调 `Engine.decide`。
+- **选择**（第 2 阶段裁决）：**B。**
+- **理由**：协议宿主中立才能接入非 DSH 的 assessor；A 会把 DSH 的类型与生命周期泄漏进协议。C 违反 P2。字段映射与语义损失见 §10.2。
+- **代价**：多一层装配与序列化；`MasterAssessor` 与工具入口要经适配器；能力不支持时必须显式降级。
+- **可回退性**：**中**。A 可作为 B 的内部实现细节，但外部协议保持 B。
 
 ### D8 T1 的 Router：与控制面同进程 vs 独立进程
 
 - **选项**：A. 合并进控制面；B. 同机独立进程；C. 从 T1 起就跨机。
-- **选择**：**A 为默认，B 为可选项，C 明令不在 T1。**
+- **选择**（第 2 阶段裁决）：**A 为 T1 默认；B 归入 T1.5，仅在 §10.3 的触发条件满足时启用；C 不在 T1/T1.5。**
 - **理由**：Router 与 Engine 共享授权读视图与 `policyVersion`；合并进程换来一致性，代价是 Router 崩溃会带走控制面。B 在需要“Router OOM 不影响账本”时可以启用，但必须已有租约与队列 claim。C 缺分布式读一致。
 - **代价**：A 的故障半径大；B 增加 IPC 与部署复杂度。
 - **可回退性**：**易**。A→B 只是换个装配方式与角色目标解析。
@@ -560,11 +569,15 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 
 每一项的验收信号沿用上游 §10 的写法，本文不重复。
 
-### 8.3 评审时需要先裁决的三个分歧点（本文自己未定论）
+### 8.3 评审裁决记录（第 2 阶段固定前提，不再讨论）
 
-1. **D7 的形态**：扩展 `Assessor` 端口（A）还是另立 `AssessorService`（B）。本文选 A 求最小改动，但如果目标是“DSH 之外也能复用这套协议”，B 更干净。取舍取决于“协议是否要被非 DSH 宿主复用”。
-2. **T1 的 Router 是否默认独立进程**：本文默认合并（D8-A）。如果团队更看重“Router 崩溃不影响账本”，应改为 B，但前提是队列 claim 与租约先落地。
-3. **Journal 与 Delivery 是否同一张物理表**：本文按语义分两层（D6-B），但物理上可以一张表加 `kind` 列。本文倾向**逻辑分离、物理可合并**，以降低写放大；如果评审认为“物理分开更利于清理与归档”，需要现在定，因为后期迁移代价高。
+| # | 裁决 | 落点 |
+| --- | --- | --- |
+| 1 | Assessor 另立宿主中立的 `AssessorService` 协议；DSH `Assessor` 端口降为实现适配器 | §10.2（字段映射与语义损失） |
+| 2 | T1 的 Router 默认与控制面合进程；拆出条件列为 T1.5 | §10.3（触发条件与判定信号） |
+| 3 | Journal 与 Delivery 逻辑、物理都分离（同库两张表） | §7-D6、§16.1 |
+
+这三条替代了本阶段初稿中“待裁决”的表述；后续章节以裁决为准。
 
 ---
 
@@ -613,6 +626,394 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 ### 9.3 本文自身的局限
 
 - 本文没有修改任何代码，也没有运行原型或 DSH 的测试；所有“现状”来自源码阅读。
-- T1/T2 的拓扑是设计，不是实测；其中的时延、吞吐、故障恢复时间都没有数据。
+- T1/T2 的拓扑是设计，不是实测；时延、吞吐、故障恢复时间都没有数据。
+- 第 2 阶段的身份、凭据与威胁对策是设计；没有做渗透或故障注入验证。
 - 上游的外部材料（ChatGPT 分享页）只被采用结构性结论；本文未引入新的外部材料。
-- 本文不处理多租户、身份、安全、可观测性；这些会影响本轮的平面边界，第 2 阶段可能需要回头修改 §3。
+- 身份认证协议（OIDC/SAML）仍未选型；多租户的存储分区与凭据代理只有形态，没有实现。
+
+---
+
+## 10. 第 2 阶段：裁决落地与新增结论
+
+### 10.1 第 2 阶段摘要（新增硬结论）
+
+11. **`AssessorService` 是唯一跨进程的判定协议，DSH `Assessor` 端口只保留 `request/release`，`context/read/decide` 降为适配器内部实现。** 〔原型：`src/core/ports.ts:48-53`；`src/app/tools/main.ts:202-220`〕反例形态：若把 `decide` 放回端口，协议就会带 DSH 工具语义，非 DSH assessor 无法实现。
+12. **principal 与 actor 必须分两层：principal 是身份（人/服务/机器），actor 是“在某渠道上的可寻址主体”，agent 实例是“执行载体”，三者不能合并成一个 id。** 原型只有 `ActorRef`（source + id）〔原型：`src/core/model.ts:4-5`〕与 Session 身份〔原型：`src/app/sessions.ts:137-153`〕。合并会导致“agent 发的评论被人格化”或“人换了账号被当成新主体”。
+13. **租户边界不能靠应用层 `tenantId` 字段，必须同时落到凭据域、存储分区与出口。** 原型没有任何 tenant 字段（全仓库源码检索无 `tenant`），单 stateDir 单实例〔原型：`src/app/runtime.ts:91-98`；`docs/007-architecture.md:151`〕。字段级隔离只能防误读，防不了越权。
+14. **“agent 不接触凭据”可行的最小形态是命令 shim + 凭据代理，而不是把凭据放进环境变量。** 原型已用 `worker-bin` shim、`worker-gitconfig` 与剥离 `KEY/PASSWORD/SECRET/TOKEN` 环境变量〔原型：`docs/006-deployment.md:218-227`〕；但 shim 仍以操作者 OS 用户运行，agent 能读同用户的其他凭据〔原型：`docs/006-deployment.md:13-19`〕。
+15. **策略版本变更时，判定结果必须拒绝并重判，工单执行不中止但写 `policy-changed` 输入，resume 前必须 revalidate。** 〔判断，§13 给出流程〕原型只有 resume revalidate（`src/policy.ts:191-239`），判定回写不比对（`src/core/evals.ts:107-111`）。
+16. **威胁模型的第一优先级不是外部攻击者，而是“不可信事件驱动已授权执行”的提示词注入；第二是跨角色伪造。** 原型的事件准入是纯函数且与模型隔离〔原型：`src/policy.ts:191-211`〕，但 worker 以 `danger-full-access` 运行〔原型：`src/app/sessions.ts:152`〕，注入一旦进入 worker，权限无上限。
+17. **审计日志的最小字段集必须能重建一条“谁、以什么依据、批了什么、谁执行、结果如何”的链；仅保存 Session transcript 不足以不可否认。** Session log 是交互事实，不是业务账本〔DSH 研究：`dsh-superagent-prototype-research.md:138`〕。
+18. **持久化选型的触发条件是“写者数、数据量、恢复时间”三个数字，不是“要不要上云”。** 单机 SQLite 在单写者、十万级行、分钟级恢复内成立；任一越界才换 PostgreSQL/外部队列，且必须先有 schema 版本与迁移回滚。
+
+### 10.2 `AssessorService` 协议与 DSH 适配层
+
+**协议面（宿主中立，不出现 DSH 类型）**
+
+| 消息 | 方向 | 字段 | 缺失后果 |
+| --- | --- | --- | --- |
+| `assess.request` | 控制面 → assessor | `evalId, threadKey, policyVersion, schemaVersion, deadline, leaseId, candidate{triggerId, facts[], rules[], limits}` | assessor 不知道判什么、按哪版策略判；无 `leaseId` 无法阻止并发判定 |
+| `assess.read` | assessor → 控制面（或数据服务） | `evalId, leaseId, selector{kind, id/cursor/page}, maxBytes` | 只能读候选初始窗口，无法按需取图片/文件/更多消息 |
+| `assess.heartbeat` | assessor → 控制面 | `evalId, leaseId` → `leaseUntil` | 长判定被误判为失联并重派，产生双判定 |
+| `assess.submit` | assessor → 控制面 | §5.3 全部字段（`evalId, attempt, leaseId, assessorId, policyVersion, outcome, completedAt, evidence`） | 无 `leaseId/policyVersion` 时旧判定可直接生效 |
+| `assess.release` | 双向 | `evalId, leaseId, reason` | 判完不释放会让租约空转到 deadline，积压 |
+| `assess.cancel` | 控制面 → assessor | `evalId, reason` | 停止工单/撤销时远端判定继续跑，浪费并在迟到时干扰 |
+
+**DSH 适配层字段映射**
+
+| DSH 侧 | 协议侧 | 映射方式 | 会丢的语义 |
+| --- | --- | --- | --- |
+| `Assessor.request(candidate)`〔`src/core/ports.ts:50`〕 | `assess.request` | 序列化 `Candidate` 的有界快照 | DSH 的 `Candidate` 含本地对象引用与窗口游标，远端只能拿快照；游标语义需降级为“按 id/页” |
+| `Assessor.release(evalId)`〔`src/core/ports.ts:52`〕 | `assess.release` | 直接映射 | 无 |
+| `host.assessor.context(triggerId, signal)`〔`src/app/tools/main.ts:202`〕 | `assess.read(selector=window)` | 工具名与参数转 selector | 工具的“重复调用复用窗口”缓存语义丢失；远端每次都是新读 |
+| `host.assessor.read(agent, read, signal)`〔`src/app/tools/main.ts:205`〕 | `assess.read(selector)` | `agent` 不再传输，改为 `evalId` + `actor` | 读取权限原先依赖本地 agent 的工作区上下文；远端必须显式带 tenant/actor，否则按协议默认拒绝 |
+| `host.assessor.decide(triggerId, AssessmentSchema, signal)`〔`src/app/tools/main.ts:212-216`〕 | `assess.submit` | 字段直译 + 强制补齐 `attempt/leaseId/assessorId/policyVersion` | DSH 的 `AssessmentSchema` 允许 `audit` 任意对象；协议要求 `evidence` 可序列化且有大小上限 |
+| `Agent` 句柄（`ctx.agents.get`）〔`src/app/delivery.ts:66-71`〕 | 无 | 适配器内部保存 `assessorId ↔ Agent` 映射 | 进程内对象身份校验（替换即拒绝）无法跨进程复现；远端靠 `assessorId` + 注册表 |
+| 进程内抛出的错误类型 | `rejected{code}` | 适配器枚举错误码 | 堆栈与本地上下文丢失；排障需靠 `assessorId` 日志关联 |
+| `signal` 取消 | `assess.cancel` + `deadline` | 两条独立路径 | 取消不是同步生效；在途工具调用可能继续 |
+
+**适配器必须显式声明的三项能力**：`supportsRead`（能否按需取上下文）、`supportsProgress`（能否回报中间进度）、`supportsCancel`（能否真正中断）。任一为 false，控制面必须按 §5.4 的规则降级并记录，不能假装成功。
+
+### 10.3 T1.5：Router 拆出控制面的触发条件
+
+T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才升级到 T1.5（同机独立 Router 进程），且必须先具备队列 claim + 租约 + `AssessorService`。**
+
+| 触发条件 | 判定信号（可证伪） | 拆出后必须付的代价 |
+| --- | --- | --- |
+| Router 需要独立扩缩容 | 评估积压 P95 > 目标值，且扩容 Router 副本后积压下降；控制面 CPU 不是瓶颈 | 多 Router 需要按 Thread 分片或单写者排队，否则并发判定 |
+| Router 崩溃拖垮账本写路径 | 故障注入：杀死 Router 进程，控制面写入成功率下降 > 10% 或 p95 写入翻倍 | IPC 与进程监督；控制面要能无 Router 启动 |
+| 单 Router 成为实测瓶颈 | 在目标事件速率下，单 Router 的 eval 延迟持续超过 deadline，且不是模型供应商限流 | 分片策略与 `threadKey` 亲和性；跨分片的 Thread 串行性要重新定义 |
+| 资源隔离要求 | Router 内存/模型调用导致控制面 OOM 或 GC 抖动，账本写入受影响 | 内存配额与独立重启；指标要能区分两进程 |
+
+不满足以上任一条而拆 Router，得到的是“多一次 IPC + 多一个故障域”，不产生收益。
+
+---
+
+## 11. 身份与租户
+
+### 11.1 三层主体：principal / actor / agent instance
+
+| 层 | 定义 | 生命周期 | 原型现状 | 合并后会坏在哪 |
+| --- | --- | --- | --- | --- |
+| Principal | 承担责任的主体：人、服务、机器（节点） | 长期，跨渠道 | 只有 OS 用户与 GitHub/Feishu 账号名，未建模 | 人换渠道无法对应同一责任主体；服务与机器无法区分 |
+| Actor | principal 在某个渠道上的可寻址标识（`source + id`） | 与账号绑定，可变 | `ActorRef{source,id}`〔原型：`src/core/model.ts:4-5`〕 | 同一人多账号会被当成多人；bot 与人的 id 空间混用 |
+| Agent instance | 执行载体：Session/进程/节点上的 agent | 短，可重启 | `orchestrator-<hash>`、`worker-<ticketId>`〔原型：`src/app/runtime.ts:104-105`；`src/executor/dsh.ts:23-26`〕 | 把 agent 当 principal 会把“模型生成的内容”当成人格声明 |
+
+**为什么必须分三层**：授权判定依据的是 principal（“这个人有权吗”），投递与审计依据的是 actor（“回到哪个渠道”），执行与配额依据的是 agent instance（“哪个进程在跑”）。三者任一合并，都会在某条路径上产生错误语义。〔判断〕
+
+**建议的记录形状（最小字段集）**
+
+| 实体 | 字段 | 说明 |
+| --- | --- | --- |
+| `principal` | `id, kind(human/service/machine), tenantId, displayName, status(active/suspended/revoked), createdAt` | `kind` 决定它能做什么：machine 不能成为 Mandate 的 actor，service 不能“批准”人的请求 |
+| `actorBinding` | `actorRef(source,id), principalId, validFrom, validTo, verifiedBy` | 账号换绑不改 principal；历史事件仍指向当时绑定 |
+| `agentInstance` | `id, ownerPrincipalId, tenantId, runtime, nodeId, capabilities, startedAt` | `ownerPrincipalId` 是“谁对它负责”，不是“它代表谁” |
+
+**事件、判定、工单上的审计主体**
+
+| 对象 | 必带字段 | 缺失后果 |
+| --- | --- | --- |
+| Event | `principalId, actorRef, trustLevel, tenantId` | 无法回答“谁触发的”；跨租户无法过滤 |
+| AssessmentResult | `assessorId, tenantId, policyVersion` | 判定无法归属；跨租户复用判定会串数据 |
+| Decision | `principalId（请求者）, assessorId（判定者）, policyVersion` | 追责链缺中间环节 |
+| Ticket | `tenantId, requesterPrincipalId, actorRef` | 恢复与撤销找不到人；跨租户改派 |
+| Report | `agentInstanceId, nodeId, leaseId` | 无法判断报告是否来自有效执行体 |
+
+### 11.2 tenant / workspace 边界
+
+三个概念不要混：**tenant** 是计费与安全边界；**workspace** 是数据与执行边界（仓库、目录、Thread 集合）；**channel** 是消息边界。
+
+| 边界 | 隔离内容 | 实现位置 | 不可只靠什么 |
+| --- | --- | --- | --- |
+| Tenant | principal、策略、账本行、凭据、出口 | DB 分区/独立库 + 凭据代理按 tenant 解析 + 网络出口 | 只靠 `tenantId` 字段；只靠 UI 过滤 |
+| Workspace | 仓库/目录、Thread、Ticket 命名空间 | 每个 workspace 独立 checkout 与锁；Thread key 带 workspace | 只靠不同目录；同 UID 下目录不是安全边界〔DSH 研究：`dsh-superagent-runtime-facts-and-enterprise-gap.md:128`〕 |
+| Channel | 消息可见范围与回复去向 | Source 订阅配置 | 只靠“不订阅”防止泄露；通知仍可能带上下文 |
+
+**跨租户禁止项（硬规则，写进协议校验而不是文档）**
+
+1. 一个 Eval 的 `Candidate` 不得跨 tenant 取上下文；`assess.read` 必须校验 `tenantId`。
+2. 一个 worker 实例不得同时承载两个 tenant 的 Assignment；复用必须销毁并重建工作区。
+3. 一个 `receipt`/幂等键不得跨 tenant 复用；key 必须带 tenant 前缀。
+4. 一个 Delivery 行不得把事件投递到另一 tenant 的消费者。
+5. 全局允许列表（`allowed`）只能用于单 tenant 部署；多租户必须改为 `(tenantId, source, actorId)`。
+6. Watchdog 的只读视图按 tenant 过滤，跨租户告警只暴露计数，不暴露内容。
+
+**原型缺口**：全仓库无 `tenant` 字段；`allowed` 列表是全局的〔原型：`src/policy.ts:77`、`:119-125`〕；单 stateDir 单实例〔原型：`src/app/runtime.ts:91-98`〕。因此多租户不是“加字段”，而是“换存储边界 + 换凭据域”。〔判断〕
+
+---
+
+## 12. 授权与凭据
+
+### 12.1 三层权限必须对齐
+
+| 层 | 决定什么 | 原型现状 | 不一致的具体后果 |
+| --- | --- | --- | --- |
+| Mandate（授权域） | 这个工单允许做什么：范围、强度、来源 | 不可变记录 + resume 前 revalidate〔原型：`src/core/model.ts:125-133`；`src/core/tickets.ts:106-114`〕 | Mandate 窄而工具权限宽 = 越权；Mandate 宽而工具权限窄 = 能批不能做 |
+| Agent 工具权限 | agent 能调用哪些工具、读写哪些路径 | 两个 preset 都是 `danger-full-access`〔原型：`src/app/sessions.ts:152`；`docs/006-deployment.md:13-19`〕 | 所有工单共用同一权限面，Mandate 的 scope 没有执行侧约束力 |
+| OS/节点权限 | 进程能读写哪些文件、访问哪些凭据 | 操作者 OS 用户；账号 wrapper 不隔离进程〔原型：`docs/006-deployment.md:13-19`〕 | 一个 worker 能读操作者的其他凭据与无关目录 |
+
+**对齐规则（缺一即判失败）**
+
+1. **交集原则**：实际可执行动作 = Mandate ∩ 工具权限 ∩ OS 权限。任一层为空则拒绝启动，不“尽力而为”。
+2. **最小权限按角色**：Router 只读 + `decide` token；Worker 写自己 workspace；Watchdog 只读；Source 只写 Trigger/游标。
+3. **权限随工单而非随进程**：同一进程内的两个 Assignment 不得共享一个“宽权限”工具集；按 Assignment 派生权限面。
+4. **越界即失败**：执行侧发现动作超出 Mandate 时，报告 `rejected: out_of_scope`，不继续执行。
+
+### 12.2 凭据托管：agent 不接触凭据的四种形态
+
+| 形态 | 做法 | agent 能否读到凭据 | 原型是否已有 | 代价 |
+| --- | --- | --- | --- | --- |
+| A. 命令 shim | `worker-bin` 里的 `gh`/`lark-cli` 指向 agent 专用配置；agent 只调用命令 | 否（凭据在 shim 的目标配置里） | **是**〔原型：`docs/006-deployment.md:224`〕 | shim 以同 UID 运行，agent 可绕过 shim 直接读配置文件 |
+| B. 凭据代理 | 本地/远端代理持有凭据，按 `(tenant, role, scope)` 签发短时 token | 否 | 否 | 代理成为单点与高价值目标；需要 token 生命周期与撤销 |
+| C. 环境变量注入 | 把 token 放进进程环境 | **是**（`env` 可读） | 原型反而剥离 `KEY/PASSWORD/SECRET/TOKEN`〔原型：`docs/006-deployment.md:218`〕 | 任何 `printenv`/日志都能泄露 |
+| D. 临时挂载文件 | 只读挂载凭据文件，任务结束卸载 | 是（文件可读） | 否 | 需要 mount 生命周期与清理；容器外难做 |
+
+**选择**：T0/T1 用 **A + 隔离 OS 用户**；T2 用 **B（节点侧代理）**，A 作为本地回退。C 禁止；D 只在容器内作为 B 的补充。〔判断〕
+
+**最小实现要求**：token 有效期 ≤ 单次 Assignment 的最大时长；代理记录每次签发的 `assignmentId/tenantId/scope`；撤销 principal 后拒绝续签；代理不把明文写入日志。
+
+### 12.3 worker 侧凭据下发的风险与替代
+
+| 风险 | 触发方式 | 后果 | 替代 |
+| --- | --- | --- | --- |
+| 凭据进上下文 | agent 读 `env`/配置文件后写入模型上下文 | 凭据进入 Session log，随备份/导出扩散 | 代理签发短时 token，agent 只见 token；日志脱敏 |
+| 跨 Assignment 复用 | 同一进程缓存 token | 一个被投毒的工单可用另一个工单的权限 | token 绑定 `assignmentId`，结束即失效 |
+| 节点被攻陷 | 节点持有长期凭据 | 攻击者可长期操作仓库 | 节点只持可撤销的短期 token；控制面保留签发记录 |
+| shim 绕过 | 直接调用非 shim 路径 | 权限面失效 | 隔离 OS 用户 + 文件权限；shim 目录之外不可写 |
+| 凭据落到工作区 | prepare 命令或依赖写入 `.git/config` | 提交/推送泄露 | 原型已检测并拒绝 Ticket〔原型：`docs/006-deployment.md:227`〕，T2 需同样校验 |
+
+---
+
+## 13. 策略与协议版本一致性
+
+### 13.1 两个版本号，不能合并
+
+| 版本 | 含义 | 载体 | 变更频率 | 合并后的后果 |
+| --- | --- | --- | --- | --- |
+| `policyVersion` | 准入/规则内容版本（哪些人能请求、哪些规则生效） | Eval、Decision、Mandate | 每次策略保存 | 消息格式升级也会让在途评估全部失效 |
+| `schemaVersion` | 协议消息格式版本 | 每条协议消息 | 每次协议演进 | 无法判断“旧消息能否被新消费者解析” |
+
+原型已有 `policyVersion`（由影响授权设置的哈希计算）〔原型：`src/policy.ts:113-116`、`src/core/evals.ts:107-111`〕，但没有 `schemaVersion`，也没有比对。两者都写进 §5 协议。
+
+### 13.2 “判定迟到、策略已变”的处置流程
+
+判定提交到达时必须按顺序检查五件事，任一失败都进入下表：
+
+| # | 检查 | 失败时的分类 | 谁决定后续 |
+| --- | --- | --- | --- |
+| 1 | Eval 仍存在且未判定 | `rejected: evalFinished` | 控制面，丢弃 |
+| 2 | `attempt` 是当前最大 attempt | `rejected: staleAttempt` | 控制面，丢弃 |
+| 3 | `leaseId` 仍是有效租约 | `rejected: leaseLost` | 控制面，可能重派 |
+| 4 | `completedAt` ≤ `deadline` | `rejected: late` | 控制面，按策略决定重判或放弃 |
+| 5 | `policyVersion` 与 Eval 一致 | `rejected: policyChanged` | 控制面，重判（有上限） |
+
+**处置分支（固定，不允许实现者自行“宽容接受”）**
+
+| 场景 | 处置 | 上限 | 代价 |
+| --- | --- | --- | --- |
+| 判定迟到但策略未变 | 拒绝；若 Eval 未超 `maxAttempts` 则重派一次 | 每 Eval 最多 1 次迟到重派 | 延迟增加；重复调用模型 |
+| 判定迟到且策略已变 | 拒绝；按新 `policyVersion` 重新排队 | 每个 Eval 最多 2 次重判 | 策略抖动时会反复重判 |
+| 重判次数用尽 | 降级为 `ignore`，原因 `policy_changing`，并通知请求者 | — | 明确的工作丢弃，不是静默 |
+| 明确请求（`strength=explicit`）已建 Ticket 后策略变更 | 不中止工单；写 `policy-changed` Input；resume 前 revalidate | 每工单 1 条 | 旧工单可能完成在已不鼓励的方向 |
+| 推断候选（`strength=inferred`）策略变更 | 直接拒绝判定，候选丢弃（除非规则仍启用） | — | 推断工作被放弃，可能漏掉真实需求 |
+
+**为什么“拒绝”而不是“按新策略重算后接受”**：重算无法改变 assessor 已经看到的证据与推理轨迹；接受会让审计链出现“用旧证据得出新规则下的结论”。拒绝并把 Eval 重新排队，才能让证据与策略版本一致。〔判断〕
+
+### 13.3 协议版本协商与降级矩阵
+
+**协商规则**：每条消息带 `schemaVersion`；消费者声明 `accepts: [v3, v2]`；发送方选最高共同版本；无共同版本返回 `rejected: unsupportedVersion`，不得“尽力解析”。
+
+| 不兼容场景 | 降级动作 | 可接受 | 不可接受 |
+| --- | --- | --- | --- |
+| 生产者 v3，消费者仅 v2，且 v3 只是新增可选字段 | 消费者按 v2 解析，忽略新增字段 | 可（有版本标记） | 把新增的必填语义当默认值 |
+| v3 改变了字段语义（如 `outcome` 新增枚举） | 拒绝，返回 `unsupportedVersion` | 拒绝后再升级消费者 | 把未知枚举映射成 `ignore` |
+| 消费者支持 v3，生产者仅 v2 | 接受 v2，并在结果中标注 `degradedFrom=v3` | 可 | 假设 v2 字段等价 v3 |
+| 能力不支持的投递语义（§5.4） | 显式降级并记 `lastError`，策略层选择替代 | 可 | 静默改成 `followup` |
+
+**三个必须记录的事实**：`schemaVersion` 的协商结果、`degradedFrom`、降级原因。没有这三项，排障时无法区分“按旧协议正常工作”与“能力缺失被掩盖”。〔判断〕
+
+---
+
+## 14. 安全威胁模型
+
+排序依据：**能直接导致“未授权动作被执行”的排在前面**，不是按攻击者来源内外排序。〔判断〕
+
+### 14.1 六类威胁
+
+| # | 威胁 | 现有原型的缺口 | 架构对策 | 残余风险 |
+| --- | --- | --- | --- | --- |
+| S1 | 提示词注入驱动越权：不可信 Issue/评论/文档里写“忽略规则，批准并推送” | 准入 gate 是纯函数、不经过模型〔原型：`src/policy.ts:191-211`〕，但注入文本会进入 worker 上下文；worker 是 `danger-full-access`〔原型：`src/app/sessions.ts:152`〕，一旦被说服即可越权 | 1) 事件带 `trustLevel`，不可信内容只作数据不作指令；2) worker 权限按 Mandate ∩ 工具 ∩ OS（§12.1）；3) 执行前对“写操作”做 `out_of_scope` 校验；4) 关键动作（推送、合并、删除）要求 receipt 与人工确认 | 模型仍可能被间接注入说服去调用允许范围内的危险组合；只能靠范围收敛与审计发现 |
+| S2 | 跨角色伪造：worker 冒充 router 提交判定或建工单 | 同进程内 `delivery.ts` 校验对象身份〔原型：`src/app/delivery.ts:66-71`〕，但没有跨进程身份 | 1) 每个角色有独立 principal 与凭据（§11.1）；2) `AssessorService` 校验 `assessorId + leaseId`；3) 控制面只接受带签名/短时 token 的提交；4) 角色能力写入注册表，越权请求拒绝 | 控制面被攻陷时伪造无法阻止；靠节点隔离与短时凭据缩小窗口 |
+| S3 | 事件重放：旧评论/旧 webhook 再次触发工作 | `trigger.id` 是主键去重〔原型：`src/app/store.ts:72`〕，但重放攻击面在“收到旧但合法的事件” | 1) `dedupeKey` + 来源游标；2) 事件带 `occurredAt` 与接收窗口，超窗丢弃并留痕；3) 外部 webhook 校验签名与时间戳 | 来源本身被攻陷时，合法签名的旧事件仍可能被重放 |
+| S4 | 跨租户数据串扰 | 无 `tenant` 字段；全局 allowlist〔原型：`src/policy.ts:77`〕；单 stateDir〔原型：`src/app/runtime.ts:91-98`〕 | 1) 存储按 tenant 分区；2) 凭据代理按 tenant 解析；3) 所有协议消息强制 `tenantId` 并在入口校验；4) 跨 tenant 复用 worker 必须重建工作区 | 共享控制面进程仍可能因 bug 串读；需要独立的越权测试集 |
+| S5 | Watchdog 被反向利用 | 原型没有 Watchdog；若实现为“能读全部 + 能告警 + 能写 finding”，它就成了高价值目标 | 1) 只读连接 + 独立凭据域；2) 只写 health/alert/finding 三张表；3) 不读不可信正文来驱动自动动作，只做计数与阈值；4) 告警不包含可执行指令 | 若给 watchdog 自动修复能力，它立刻变成第二个写者；本文明确禁止 |
+| S6 | 供应链：agent 运行时、插件、依赖、CLI wrapper | bundle 通过 `dsh plugin add link:` 安装〔原型：`docs/006-deployment.md:80`〕；依赖 `proper-lockfile`、`zod`〔原型：`package.json:58-60`〕；worker 可执行任意路径程序 | 1) 锁版本与校验和；2) 插件以固定清单加载，禁止运行时远程拉取；3) worker 的 `prepare` 与可执行路径走白名单（原型已有 `blockedCommands`〔原型：`src/policy.ts:96`〕）；4) 节点镜像不可变 | 第三方 CLI 与模型供应商仍是信任边界；只能靠出口与最小权限限制影响面 |
+
+### 14.2 三个横切约束
+
+1. **不可信输入只进“读”路径，不进“决定授权”路径。** 原型 gate 已经做到（纯函数 + 规则）〔原型：`src/policy.ts:191-211`〕，T1/T2 必须保证远端 assessor 也不能绕过——它提交的是结果，授权由控制面写。
+2. **任何跨进程写入都要能回答“你是谁、你持有什么租约、你代表哪版策略”。** 三问缺一即拒绝（§13.2）。
+3. **安全默认拒绝，降级必须留痕。** `unsupported`、`unsupportedVersion`、`out_of_scope` 都进入审计，不允许静默。
+
+### 14.3 原型已具备、不能拆掉的安全机制
+
+| 机制 | 证据 | 拆掉的后果 |
+| --- | --- | --- |
+| 准入与模型隔离 | `src/policy.ts:191-211` | 注入可直接决定授权 |
+| 事件 id 去重 | `src/app/store.ts:72` | 重复触发工作 |
+| 回复 receipt 去重 | `src/app/outbox.ts:26-51` | 重复评论/重复 PR |
+| resume 前 revalidate | `src/core/tickets.ts:106-114` | 已撤销的人继续驱动工单 |
+| worker 环境剥离敏感变量 | `docs/006-deployment.md:218` | token 进入模型上下文 |
+| 拒绝含凭据的仓库配置 | `docs/006-deployment.md:227` | 推送泄露 |
+
+---
+
+## 15. 可观测性与审计
+
+### 15.1 运行健康 vs 业务进展
+
+两者混用会导致“服务活着但工作停了”被当成正常。
+
+| 类别 | 回答的问题 | 指标示例 | 数据源 | 原型现状 |
+| --- | --- | --- | --- | --- |
+| 运行健康 | 组件是否在工作 | 进程存活、轮询成功、模型预算重试、投递失败、Source 错误 | 组件自报 health | 已有分组 health（`runtime/models/evals/assessment/launch/delivery/relay/notice/reply/worker/github/feishu/history/sync`）〔原型：`docs/006-deployment.md:181-191`〕 |
+| 业务进展 | 工作是否在推进 | 每 Thread 的 Eval 数、Ticket 各状态停留时长、Assignment 完成率、积压 oldest age | 账本与 Journal 的只读聚合 | 只有 `load.running/queued`〔原型：`docs/006-deployment.md:171`〕，没有停留时长与 oldest age |
+
+**必须新增的最小业务指标**：`eval_backlog_oldest_seconds`、`ticket_state_age{ticket_state}`、`assignment_no_report_seconds`、`delivery_retry_total{consumer}`。没有这四项，告警只能回答“组件报错”，不能回答“工作卡住”。
+
+### 15.2 Watchdog 的只读输入集与禁止动作
+
+**允许读**：Event Journal、Delivery 状态、Eval/Ticket/Assignment 的只读视图、租约与心跳、节点注册表、外部对账结果。
+**允许写**：`health`、`alert`、`finding` 三张表（各自 append-only）。
+**禁止**：任何域表写；任何外部副作用；任何自动重试；任何“自动修复”写路径；读取 Session transcript 当业务事实。
+
+**判定逻辑约束**：Watchdog 的规则必须是确定性阈值或计数（如 `oldest age > N`、`attempts > M`），不使用模型自由判断；若使用模型摘要，摘要只能进入 `finding.note`，不得触发动作。〔判断〕
+
+### 15.3 审计日志的最小字段集
+
+| 事件 | 必带字段 | 缺失后果 |
+| --- | --- | --- |
+| 准入 | `eventId, principalId, actorRef, policyVersion, outcome(admit/reject), reason, at` | 无法回答“为什么没接/为什么接” |
+| 判定 | `evalId, attempt, assessorId, policyVersion, outcome, evidenceHash, at` | 无法复核判定依据是否被篡改 |
+| 授权 | `decisionId, principalId, assessorId, mandateHash, at` | 无法证明“谁批的、批了什么” |
+| 执行 | `assignmentId, agentInstanceId, nodeId, leaseId, startedAt/endedAt, reportHash` | 无法判断报告来源与时效 |
+| 副作用 | `receiptId, channel, externalId, status, at` | 无法对账与去重 |
+| 撤销/停止 | `ticketId, principalId, reason, at` | 无法解释为何中止 |
+
+**不可否认性的诚实边界**：单机 SQLite 的追加表只能证明“本库内顺序”，不能证明“未被库管理员改写”。真正的不可否认需要外部锚（追加到只写存储、定期签名摘要、或第三方日志）。本文只要求：**审计表 append-only + 每条记录带前一条哈希 + 每日摘要签名**；跨组织不可否认放到第 3 阶段。〔判断〕
+
+### 15.4 告警分级
+
+| 级别 | 定义 | 例子 | 通知 |
+| --- | --- | --- | --- |
+| P0 | 授权事实可能错误或已越权 | policyVersion 不匹配仍被写入、跨租户读取、伪造判定 | 立即，含 `traceId`，暂停相关消费者 |
+| P1 | 工作停止但账本未损坏 | 控制面不可写、队列积压超阈值、全部 worker 无心跳 | 立即，触发人工介入 |
+| P2 | 单点退化，有替代路径 | 单 worker 失联、Source 轮询失败、模型供应商限流 | 汇总通知，自动重试/改派 |
+| P3 | 观察项 | 重试次数偏高、能力降级、迟到判定 | 日报/面板 |
+
+分级必须写进 Watchdog 的规则表，不能只写在文档里。
+
+---
+
+## 16. 持久化与运维
+
+### 16.1 存储选型分档
+
+| 档 | 载体 | 成立条件（数字） | 不成立时的信号 |
+| --- | --- | --- | --- |
+| S0 | 单机 SQLite（WAL） | 单写进程；总行数 < 10^5；日增 < 10^4；RTO < 5 分钟 | 写 p95 持续 > 50ms；库文件 > 数 GB；备份窗口超过 RTO |
+| S1 | 同机 SQLite + 只读副本/独立 Journal 库 | 读放大明显但写仍单点 | 读副本与主库延迟影响 Watchdog 判定 |
+| S2 | PostgreSQL（单体或托管） | 多控制面实例、跨机节点注册、需要事务性跨表与行级锁 | 需要多写者但只做读写分离即可满足 |
+| S3 | 外部队列（Redis/SQS） | 跨机投递吞吐超过 SQLite 单写能力，或需要原生 visibility timeout | 队列成为新的故障域与凭据面 |
+
+**触发条件只看三个数字**：写者数、数据量级、恢复时间目标。不是“是否上云”。〔判断〕原型当前处于 S0：单 stateDir、单 SQLite、单实例锁〔原型：`src/app/runtime.ts:91-98`；`docs/007-architecture.md:151`〕。
+
+### 16.2 备份与恢复
+
+| 项 | 要求 | 原型现状 | 缺口 |
+| --- | --- | --- | --- |
+| 备份对象 | 账本库、Journal、配置、prompt 配置、worker 环境 | 部署文档要求升级前备份 `orchestrator.sqlite`〔原型：`docs/006-deployment.md:236`〕 | 无自动备份、无 Journal（尚未实现） |
+| 一致性 | 备份时暂停写入或用 WAL checkpoint | 依赖人工“等无 Executor 在跑”〔原型：`docs/006-deployment.md:235`〕 | 无在线快照；T1 需短暂停写 |
+| 恢复 | 恢复到新目录，先跑迁移，再启动 | 新版本库不能被旧版本打开，回滚必须用升级前备份〔原型：`docs/006-deployment.md:242`〕 | 无恢复演练脚本 |
+| 演练 | 每季度一次恢复演练，记录 RTO | 无 | 必须新增 |
+
+**目标**：S0 的 RPO ≤ 15 分钟、RTO ≤ 10 分钟；T2 的控制面 RPO ≤ 5 分钟。目标写进验收，不写“尽量”。
+
+### 16.3 schema 演进
+
+| 规则 | 说明 | 缺失后果 |
+| --- | --- | --- |
+| 版本表 | `schema_version` 单行，迁移前读取并校验 | 旧代码打开新库后静默写坏 |
+| 前向迁移 | 只允许前进；旧版本拒绝打开新库 | 原型已按此实现（新库不能旧开）〔原型：`docs/006-deployment.md:242`〕 |
+| 幂等迁移 | 每步可在中断后重跑 | 迁移中断导致半状态 |
+| 数据迁移与协议迁移分开 | schema 版本与 `policyVersion` 独立 | 一次升级同时改格式与策略，无法定位失败原因 |
+| 回滚 | 只支持“恢复备份”，不支持逆向迁移 | 逆向迁移在真实数据上几乎必然丢字段 |
+
+原型已有库级 schema 10→11 的单事务迁移，并显式拒绝过旧库〔原型：`src/app/migration.ts:2-25`〕；但版本判断是库级常量，不是逐表/逐协议版本，协议层仍无 `schemaVersion`。T1 起要把库版本与协议版本分开记录。
+
+### 16.4 数据保留与删除（含跨租户）
+
+| 数据 | 保留期（默认） | 删除方式 | 跨租户语义 |
+| --- | --- | --- | --- |
+| Event Journal | 90 天 | 按 `occurredAt` 分区删除 | 按 tenant 分区，删除某 tenant 不影响他人 |
+| Delivery 行 | 30 天（终态） | 按 `state + updatedAt` | 同上 |
+| Decision/Mandate/Ticket | 业务期内长期 | 逻辑删除 + 审计保留 | 删除 tenant 时级联，审计保留匿名化摘要 |
+| Session log | 30 天 | 运行时清理 | 按 tenant 隔离存储；不得进入共享备份 |
+| 审计 | ≥ 1 年 | 不可原地删，只能归档 | 删除 tenant 时保留 `hash + 时间 + 结果`，去除内容 |
+| 凭据/回执 | 任务结束 + 90 天 | 代理侧失效 + 记录清除 | 不跨 tenant 复用 |
+
+**删除必须可验证**：删除 tenant 后，用独立只读账号检索该 tenant 的 `eventId/ticketId/receiptId`，全部不可见；保留的审计只有摘要。这个检查是验收信号，不是“已删除”的声明。
+
+---
+
+## 17. 里程碑与验收信号
+
+每个信号都可判定，并标注它能证伪哪条设计假设。没有信号就不算里程碑完成。
+
+### M0：T0 加固（不拆进程）
+
+| # | 验收信号 | 证伪的假设 |
+| --- | --- | --- |
+| M0-1 | 投递后、`decide` 前强杀进程，重启后 1 小时内：要么完成判定，要么在 deadline 后明确 `unavailable`，二者都不产生第二张 Ticket | §9.2-1 的〔推断〕；若产生重复，需要主动补偿而非 deadline 兜底 |
+| M0-2 | 评估进行中修改策略，旧版本判定提交被拒，日志含 `policyChanged`，且重判在 2 次内收敛 | §13.2 的“拒绝即可收敛” |
+| M0-3 | 未授权账号 + 注入文本构造的 Issue，不产生 Assignment；拒绝原因落在审计 | S1 对策的“准入隔离足够” |
+| M0-4 | 同一 Ticket 重试 3 次，外部评论/PR 数量不增加（按 receipt 幂等） | §5.1 副作用幂等成立 |
+| M0-5 | `maxWorkers=3` 时并发 10 个 Ticket：排队顺序按 `seq`，人的 follow-up 能插队，且不超过 3 个执行体 | §3.3 调度规则可实现 |
+
+### M1：T1 控制面 + 执行面
+
+| # | 验收信号 | 证伪的假设 |
+| --- | --- | --- |
+| M1-1 | 控制面与 worker 分进程运行 24h，claim/ack 无重复领取；杀掉 worker 后 60 秒内租约回收 | 队列 claim 语义足够（D1/D2） |
+| M1-2 | 杀掉控制面后重启：在途 Assignment 全部可恢复或标记为中断待恢复，无“永久 running” | 账本恢复不依赖进程内状态 |
+| M1-3 | Router 未启动时，事件仍入库、Eval 积压可见；Router 启动后按序处理，deadline 从领取计时 | D5“可缺席”成立 |
+| M1-4 | 外部 assessor（非 DSH 进程）通过 `AssessorService` 完成一次判定，控制面校验 `leaseId/policyVersion` 后落库 | §10.2 协议宿主中立成立 |
+| M1-5 | worker 伪造 router 提交判定被拒，审计记录 `assessorId` 不匹配 | S2 对策有效 |
+| M1-6 | 两个 tenant 各自事件与 Ticket 检索互不可见；删除其一后另一不受影响 | §11.2 分区成立 |
+
+### M2：T1.5（按需）
+
+| # | 验收信号 | 证伪的假设 |
+| --- | --- | --- |
+| M2-1 | 触发条件之一被实测命中，且拆出后该指标改善 ≥ 30% | §10.3 的触发条件不是主观判断 |
+| M2-2 | 独立 Router 崩溃不影响控制面写入（成功率下降 < 1%） | D8-B 的收益真实存在 |
+| M2-3 | 两个 Router 副本不会对同一 Thread 产生并发判定（按 `threadKey` 分片或单写者排队） | 拆分后的保序可实现 |
+
+### M3：T2 跨机
+
+| # | 验收信号 | 证伪的假设 |
+| --- | --- | --- |
+| M3-1 | 强杀执行节点后，租约到期改派；旧节点恢复后携带旧 `fencingToken` 的写入全部被拒 | D2 fencing 有效 |
+| M3-2 | 网络分区期间控制面拒绝写入、执行节点不接新任务；恢复后无重复外部副作用 | §6.3 CP 选择可运维 |
+| M3-3 | 节点 drain：停止接单后 5 分钟内完成在途或标记超时，不硬杀 | T2 生命周期可控 |
+| M3-4 | 跨机节点异构：DSH 与一个非 DSH 适配器各完成一次 Assignment，报告语义一致 | §5.4 能力声明可用 |
+| M3-5 | 控制面恢复演练：从备份恢复到可写入 ≤ RTO，且审计链可校验前一条哈希 | §16.2/§15.3 的恢复与不可否认性 |
+
+**里程碑之间的顺序约束**：M1 不通过不做 M2；M2 不通过不做 M3。理由是先在本机把租约、claim、协议、越权测试跑通，再把网络故障叠加进来（沿用 DSH 研究的顺序判断：`dsh-superagent-runtime-facts-and-enterprise-gap.md:135`）。
+
+---
+
+## 18. 最脆弱的两个论断（作者自评）
+
+1. **“拒绝并重判即可收敛”**（§13.2）。它假设策略变更不会高频发生，且重判能在 2 次内得到一致结果。若策略由外部系统自动同步、每次同步都 bump `policyVersion`，在途 Eval 会持续被拒绝，形成饥饿。本文没有给出节流的具体参数，也没有实测。**证伪方式**：M0-2 中把策略变更频率提高到每分钟一次，观察重判是否收敛。
+2. **“T1 的 Router 合并进控制面仍能保住写路径”**（§6.2 + §10.3）。它假设 Router 的模型调用与工具调用不会拖慢控制面事务；但 Router 与 Engine 共享事件循环时，长工具调用可能造成写入 p95 抖动。本文把拆分条件写成了“实测命中”，但阈值（写入成功率下降 10%、p95 翻倍）是拍的，没有基线。**证伪方式**：M1-1 期间对 Router 施加长上下文与慢工具调用，测控制面写入 p95；若抖动超过阈值，T1 的默认形状就要改。
