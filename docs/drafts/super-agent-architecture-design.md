@@ -301,7 +301,7 @@
 | `leaseGeneration` | 签发该判定的租约代次（fencing 值，§5.6） | 重试与接管无法区分；旧代次的迟到判定会覆盖新判定 |
 | `leaseId` | 判定者领取任务时拿到的租约 | 无法拒绝未持有租约的判定；两个 assessor 可同时提交 |
 | `assessorId` | 判定者实例身份（不是 Session id） | 审计无法回答“谁判的”；A/B 与回溯不可能 |
-| `policyVersion` | 领取时快照，必须与 Eval 上的一致 | 用旧策略得出的判定被当成当前有效授权（见 §5.5） |
+| `policyVersion` | 必须等于领取时下发的 `Eval.targetPolicyVersion`（§13.2） | 用旧策略得出的判定被当成当前有效授权（见 §5.3 第 6 步） |
 | `outcome` | `accept / ignore / unavailable / stop` | 无法区分“不接”与“判不了”，重试策略错误 |
 | `completedAt` | 判定完成时间（assessor 自报，仅用于延迟观测） | 无法区分“判定跑了多久” |
 | `receivedAt` | 控制面接收时间（控制面盖戳，唯一迟到判据） | 用 assessor 自报时间判迟到，可被伪造或受时钟漂移影响 |
@@ -320,7 +320,7 @@
 | 3 | lease 有效 | `leaseId` 为 `active`、未过期、`holderId=assessorId`、token 匹配 | `leaseId` 为 `active`、未过期、`holderId=nodeId` | `rejected: leaseLost` |
 | 4 | deadline | 控制面 `receivedAt` ≤ `Eval.deadline` | 控制面 `receivedAt` ≤ `Assignment.deadline` | `rejected: late` |
 | 5 | evidence 类型白名单 | `type ∈ {source_event, mandate, policy_rule, prior_decision}`；`rationale` 不参与授权，但 `rationale.knowledge_ref` 必须可解析 | 不适用（报告无 evidence） | `rejected: unauthorized_evidence` / `rejected: invalid_rationale_ref` + `assessment.evidence_rejected`（后者 `offendingType=rationale_ref`） |
-| 6 | `policyVersion` 一致性 | ① **快照校验**：提交的 `policyVersion` 必须等于 Eval 上记录的 `policyVersion`，否则 `rejected: policySnapshotMismatch`（判定被篡改或错误重放）；② **当前性校验**：**当前** `Policy.version` 必须等于 Eval 记录的 `policyVersion`，否则 `policyChanged`（进 §13.2） | Mandate 的 `policyVersion` 仍被当前策略承认；否则 `policyChanged`（写 `policy-changed`） | `rejected: policySnapshotMismatch` / `policyChanged` |
+| 6 | `policyVersion` 一致性 | ① **快照校验**：提交的 `policyVersion` 必须等于 `Eval.targetPolicyVersion`（该代次实际下发给 assessor 的版本），否则 `rejected: policySnapshotMismatch`（判定被篡改或错误重放）；`Eval.policyVersion` 是创建时的不可变快照，只用于审计，不参与本步；② **当前性校验**：**当前** `Policy.version` 必须等于 `Eval.targetPolicyVersion`，否则 `policyChanged`（进 §13.2） | Mandate 的 `policyVersion` 仍被当前策略承认；否则 `policyChanged`（写 `policy-changed`） | `rejected: policySnapshotMismatch` / `policyChanged` |
 | 7 | outcome / Mandate 一致 | `outcome` 与已启用规则匹配（推断候选仍需匹配）〔原型：`src/core/evals.ts:152-154`〕 | 报告动作 ⊆ `Mandate.scope` | `rejected: out_of_scope` |
 | 8 | 单事务写入 + 审计 | 同事务写 Decision + Mandate + Ticket + 首 Assignment + effects + audit | 同事务写 Report + 状态推进 + receipt + audit | — |
 
@@ -401,6 +401,8 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 | 续租 | holder | 出示 `(leaseId, token)`；只延长 `expiresAt`，不得超过 deadline | 不变 |
 | 释放 | holder 或控制面 | `state=released`；行保留用于审计 | 不变；同代次后续写入一律拒 |
 | 过期 | 控制面扫描 | `expiresAt` 已过 → `state=expired`；重派时签发新租约 | 新租约 +1 |
+
+**eval scope 的 deadline 约束（固定）**：所有 eval 租约（**含首次签发**）必须满足 `expiresAt ≤ Eval.deadline`。签发时取 `expiresAt = min(now + ttl, Eval.deadline)`；若 `now > Eval.deadline`，控制面**拒绝签发**：`pending-policy` 走 T5（`budget_exhausted`），`reassess-queued` 走 T7（首次签发不涉及，`deadline` 在首次签发的同一事务内计算）。此约束保证 §13.2.1 的窗口上限、租约到期与 deadline 只有 §13.2.1 规定的唯一失效顺序。
 
 **fencing 规则**：任何结果写入必须带 `(tenantId, scope, subjectId, leaseId, token, generation)`。控制面以该 `(tenantId, scope, subjectId)` 当前 `active` 租约的 `generation` 为准：**只有当前 generation 可写**；token 只证明持有者身份，generation 才是 fence，二者缺一即拒（`leaseLost`）。过期或已释放租约的写入不得“顺手接受”，即使业务内容正确。TTL 默认 60 秒，可按 scope 配置〔待测基线；M1-1 的回收目标〕。
 
@@ -916,11 +918,13 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 
 ### 13.2 “判定迟到、策略已变”的处置流程
 
-判定提交到达时**不在此处重复校验链**。唯一版本见 §5.3：`evalId`（幂等/去重）→ attempt/fencing → lease 有效 → deadline（控制面 `receivedAt`）→ evidence 白名单 → `policyVersion`（6① 快照校验 + 6② 当前性校验）→ outcome/Mandate → 单事务写入并审计。只有**第 6 步②**返回 `policyChanged` 的提交才进入下面 13.2.1 的状态机；第 1–5、6①、7、8 步任一失败都按 §5.3 的失败码直接拒绝，不落草稿。
+判定提交到达时**不在此处重复校验链**。唯一版本见 §5.3：`evalId`（幂等/去重）→ attempt/fencing → lease 有效 → deadline（控制面 `receivedAt`）→ evidence 白名单 → `policyVersion`（6① 提交版本 vs `targetPolicyVersion` + 6② 当前 `Policy.version` vs `targetPolicyVersion`）→ outcome/Mandate → 单事务写入并审计。只有**第 6 步②**返回 `policyChanged` 的提交才进入下面 13.2.1 的状态机；第 1–5、6①、7、8 步任一失败都按 §5.3 的失败码直接拒绝，不落草稿。
+
+**两个版本字段（固定，二者不合并）**：`Eval.policyVersion` 是 Eval 创建时写入的**不可变快照**，只用于审计与漂移分析，不参与 §5.3 第 6 步；`Eval.targetPolicyVersion` 是“下一次提交必须携带的版本”，创建时等于 `policyVersion`，之后**只由控制面**在 T3/T4/T6b 推进，assessor 不可写。§5.3 第 6 步的两个比较对象都是 `targetPolicyVersion`。
 
 **13.2.1 状态机（这是固定协议，不允许“拒绝后逐个重排”作为唯一手段）**
 
-**Eval 的 deadline 权威（固定预算）**：`Eval.claimedAt` 只在**首次** `queued → assessing` 时写入；`Eval.deadline = claimedAt + evalTimeoutMs` 只计算一次并落库。**重判不重置 deadline，也不更新 `claimedAt`**（T6 只更新 `leaseId/leaseGeneration`）。`Eval.deadline` 是 §5.3 第 4 步唯一比较对象。重判不延长预算；预算不足以容纳下一个窗口时提前升级（T5，`budget_exhausted`）。
+**Eval 的 deadline 权威（固定预算）**：`Eval.claimedAt` 只在**首次** `queued → assessing` 时写入；`Eval.deadline = claimedAt + evalTimeoutMs` 只计算一次并落库。**重判不重置 deadline，也不更新 `claimedAt`**（T6 更新 `leaseId/leaseGeneration`，不触碰这两个字段）。`Eval.deadline` 是 §5.3 第 4 步唯一比较对象，也是**所有 eval 租约 `expiresAt` 的硬上限**（签发规则见 §5.6）。重判不延长预算；预算不足以容纳下一个窗口时提前升级（T5，`budget_exhausted`）。
 
 Eval 在策略变更下的状态与转移：
 
@@ -928,7 +932,7 @@ Eval 在策略变更下的状态与转移：
 | --- | --- | --- | --- |
 | `queued` | 可被 assessor 领取 | ≤ deadline | 控制面 |
 | `assessing` | 已被租约持有，判定进行中 | ≤ `lease.expiresAt` | assessor 持有，控制面监督 |
-| `pending-policy` | 判定已到达、通过 §5.3 前 5 步与 6①，但 6② 判定 `policyChanged`；**等待合并窗口关闭** | ≤ min(窗口上限 30s, 剩余 deadline) | 控制面 |
+| `pending-policy` | 判定已到达、通过 §5.3 前 5 步与 6①，但 6② 判定 `policyChanged`；**等待合并窗口关闭** | ≤ min(窗口上限 30s, 剩余 deadline)；剩余预算不足 30s 时窗口在 deadline 处关闭并转 T5 | 控制面 |
 | `reassess-queued` | 窗口已关闭，按最新版本重新排队一次 | ≤ deadline | 控制面 |
 | `accepted` / `ignored` | 终态 | — | 控制面 |
 | `escalated` | 重判上限用尽、剩余预算容不下下一窗口，或 evidence/rationale 二次违规，转人工 | 直到人工处理或 SLA 超时 | 控制面 |
@@ -936,17 +940,23 @@ Eval 在策略变更下的状态与转移：
 
 | # | 转移 | 触发 | 守卫 | 动作 |
 | --- | --- | --- | --- | --- |
-| T1 | `queued → assessing` | assessor 领取 | 租约可用且 `policyVersion` 为当前版本 | **仅首次**记录 `claimedAt`，据此计算一次 `Eval.deadline`；后续重判不覆盖；记录 `leaseId/leaseGeneration` |
+| T1 | `queued → assessing` | assessor 领取 | 租约可用且 `Eval.targetPolicyVersion` 为当前版本 | **仅首次**记录 `claimedAt`，据此计算一次 `Eval.deadline`；后续重判不覆盖；记录 `leaseId/leaseGeneration`；签发租约 `expiresAt ≤ Eval.deadline` |
 | T2 | `assessing → pending-policy` | 判定提交通过 §5.3 第 1–5 步与第 6 步①，但第 6 步②返回 `policyChanged` | 前 5 步与 6① 全部通过（含 evidence 白名单与 `receivedAt ≤ deadline`） | 控制面**同事务强制** `release`（`state=released`）；`expiresAt` 自然过期只作恢复扫描兜底；暂存“候选判定”（不是 Decision） |
-| T3 | `pending-policy → pending-policy` | 窗口内又有新策略版本 | 同一 Eval 只保留最新版本 | 覆盖“目标版本”，不新增重判次数 |
-| T4 | `pending-policy → reassess-queued` | 窗口关闭 | 未达重判上限（默认 2 次）；**该 Eval 无 `active` 租约**（见下方规则）；`now + window ≤ deadline` | 以最新 `policyVersion` 重派；写幂等键 |
+| T3 | `pending-policy → pending-policy` | 窗口内又有新策略版本 | 同一 Eval 只保留最新版本 | 同一事务把 `Eval.targetPolicyVersion` 写为最新版本（草稿元数据随之为新目标）；不新增重判次数 |
+| T4 | `pending-policy → reassess-queued` | 窗口关闭 | 未达重判上限（默认 2 次）；**该 Eval 无 `active` 租约**（见下方规则）；`now + window ≤ deadline` | **同一事务原子完成三件事**：写回 `Eval.targetPolicyVersion = 窗口关闭时的最新版本`、转 `reassess-queued`、写重判幂等键与 effects；不得只转状态而不写回版本 |
 | T5 | `pending-policy → escalated` | 窗口关闭 | 已达重判上限，或 `now + window > deadline` | 转人工；原因码按顺序取第一个命中：① `budget_exhausted`（`now + window > deadline`，即使允许重判也来不及）；② `reassess_cap`（预算够但已达上限）；通知请求者；生成 finding |
-| T6 | `reassess-queued → assessing` | assessor 再次领取 | 版本仍为最新（否则回 T2）；**该 Eval 无 `active` 租约** | 新 `leaseId` + `leaseGeneration+1`；**不重算 deadline、不更新 `claimedAt`**；若 deadline 已过则转 T7 |
+| T6 | `reassess-queued → assessing` | assessor 再次领取 | **优先级从高到低**：① `now ≤ Eval.deadline`（否则转 T7，不回 `pending-policy`）；② 该 Eval 无 `active` 租约；③ `Eval.targetPolicyVersion` = 当前 `Policy.version`（不一致走 T6b） | 新 `leaseId` + `leaseGeneration+1`；**不重算 deadline、不更新 `claimedAt`**；签发租约 `expiresAt ≤ Eval.deadline` |
+| T6b | `reassess-queued → reassess-queued` | 领取时版本已变 | `now ≤ Eval.deadline`（deadline 优先：已过则走 T7）；无 `active` 租约；`Eval.targetPolicyVersion` ≠ 当前 `Policy.version` | 不签发租约；同事务把 `Eval.targetPolicyVersion` 写为当前版本，留在队列等下一次领取；**不计重判次数**（未发生评估） |
 | T7 | `reassess-queued → abandoned` | 超过 deadline 或工单被撤销 | — | 通知请求者，原因码 `policy_churn` 或 `cancelled` |
 | T8 | 任意非终态 → `abandoned` | 撤销/停止 | 有撤销主体 | 释放租约，通知 |
 | T9 | `assessing → escalated` | 同一 `leaseGeneration` 第二次 evidence/rationale 违规 | 第一次更正已用尽（§21.4.1） | 释放租约；转人工；原因码 `unauthorized_evidence` 或 `invalid_rationale_ref`（与 §5.3 失败列一致） |
 
-**租约唯一性检查（固定规则）**：T4/T6 入口必须先断言该 `(tenantId, scope='eval', subjectId=evalId)` 无 `active` 租约；有则拒绝转移并写 finding。窗口关闭时若仍有 `active` 租约（T2 的同步释放因控制面崩溃未执行），处理方式是：**等待至其 `expiresAt`，由控制面恢复扫描把状态置 `expired` 并重触发 T4 一次**；若重触发时仍为 `active`，转 `escalated`（原因码 `leaseLost`）。不立即改派，避免双判定。
+**租约唯一性检查与等待路径（固定规则）**：T4/T6 入口必须先断言该 `(tenantId, scope='eval', subjectId=evalId)` 无 `active` 租约；有则拒绝转移并写 finding。窗口关闭时若仍有 `active` 租约（T2 的同步释放因控制面崩溃未执行），按 `expiresAt` 与 `Eval.deadline` 的比较分两种路径：
+
+- `lease.expiresAt ≥ Eval.deadline` → **直接 T5 `escalated(budget_exhausted)`**。等待本身就会耗尽预算，没有余额重跑窗口；**不得**落到 `leaseLost`，也不得等到 deadline 再报超时。
+- `lease.expiresAt < Eval.deadline` → **等待至 `expiresAt`**，由控制面恢复扫描把状态置 `expired` 并**重触发 T4 一次**；重触发时仍为 `active` 且 deadline 未过 → `escalated(leaseLost)`；若等待期间已跨 deadline，按上一条改走 `budget_exhausted`。
+
+不立即改派，避免双判定。**统一失效顺序**：`Eval.deadline` 是硬上限 > `lease.expiresAt` > 合并窗口；三者同时到期时以 deadline 为准（`budget_exhausted`），不存在“租约先失效算 `leaseLost`、预算先耗尽算超时”的第二套解释。
 
 **`pending-policy` 草稿的边界**：草稿只保存通过 §5.3 第 1–5 步与第 6 步①（快照未被篡改）的提交，供观测与审计；窗口关闭后必须按 §5.3 全链重新提交/重判，**不得把草稿直接提升为 Decision**。这样即使候选判定在等待期间被篡改或补充，也会在重跑时被第 5 步拒绝。evidence/rationale 被拒的提交**不落草稿**、**不消耗重判次数**（§21.4.1）。
 
@@ -968,25 +978,29 @@ Eval 在策略变更下的状态与转移：
 
 | 对象 | 键 | 规则 | 缺失后果 |
 | --- | --- | --- | --- |
-| 重判请求 | `reassess:{tenantId}:{evalId}:{policyVersion}`（唯一约束） | 同一 Eval 对同一目标版本最多重判一次 | 同一版本反复入队，饥饿无法收敛 |
+| 重判请求 | `reassess:{tenantId}:{evalId}:{policyVersion}`（唯一约束；版本段取 `Eval.targetPolicyVersion`） | 同一 Eval 对同一目标版本最多重判一次 | 同一版本反复入队，饥饿无法收敛 |
 | 判定提交 | `(tenantId, evalId, leaseGeneration)` | 重试不产生新判定 | 迟到代次覆盖新代次 |
 | 策略变更合并 | `(tenantId, policyChangeSeq)`（单调递增）+ 窗口截止时间 | 窗口内多次变更只取最大 `seq` | 每次保存都触发一轮重判 |
 | 工单标记 | `policy-changed:{tenantId}:{ticketId}:{policyVersion}` | 每工单每版本最多一条 Input | 同一变更反复写 Input，worker 重复处理 |
 
 **时间预算推演（测试对照：`evalTimeoutMs=120s`、合并窗口 `30s`、策略变更 `t=0/35/70`）**
 
-| 时刻 | 事件 | 守卫计算 | 结果 |
-| --- | --- | --- | --- |
-| t=0 | 首次领取：`claimedAt=0`、`deadline=120`；策略变更 #1 | — | `assessing` |
-| t≈0 | 交回变更前版本：第 1–5 步与 6① 通过、6② `policyChanged` | — | T2 → `pending-policy`，同事务释放租约 |
-| t=30 | 窗口关闭 | `30 + 30 = 60 ≤ 120` | T4 → `reassess-queued`（第 1 次重判） |
-| t=35 | 策略变更 #2；当前判定按 #1 后版本交回 | 6② `policyChanged` | T2 → `pending-policy`（`claimedAt`/`deadline` 不变） |
-| t=65 | 窗口关闭 | `65 + 30 = 95 ≤ 120` | T4 → `reassess-queued`（第 2 次重判） |
-| t=70 | 策略变更 #3；当前判定按 #2 后版本交回 | 6② `policyChanged` | T2 → `pending-policy`（`claimedAt`/`deadline` 仍为 0/120） |
-| t=100 | 窗口关闭 | `100 + 30 = 130 > 120` | T5 → `escalated`，原因码 `budget_exhausted`；**不产生第 3 次重判** |
-| t=120 | `deadline` 到期 | — | 已为终态，不再变化 |
+假设：`ttl=60s`（§5.6 默认）、变更 #1/#2/#3 在 t=0/35/70 各产生新版本 v1/v2/v3。
 
-要点：两次重判都只更新 `leaseId/leaseGeneration`（T6），`deadline` 始终是 120；第 3 个窗口关闭时剩余预算只有 20s，容不下 30s 窗口，因此提前升级而不是拖到 t=120 的 `late`/`abandoned`。测试可断言三个时间点：t=30、t=65 产生 `reassess-queued`，t=100 产生 `escalated(budget_exhausted)` 且重判计数停在 2。
+| 时刻 | 事件 | 版本 / 租约 | 守卫 | 结果 |
+| --- | --- | --- | --- | --- |
+| t=0 | 首次领取：`claimedAt=0`、`deadline=120`；领取后发生变更 #1 | `target=v0`；租约 `expiresAt=min(0+60,120)=60` | T1 领取时 target=当前 v0 | `assessing` |
+| t≈0 | 交回 v0：1–5 与 6① 通过，6② 当前 v1 ≠ target v0 | 同事务 `release` | — | T2 → `pending-policy` |
+| t=30 | 窗口关闭 | T4 **写回 `target=v1`**；T6 签发租约 `expiresAt=min(30+60,120)=90` | `30+30=60 ≤ 120` | T4 → `reassess-queued` → T6 领取（第 1 次重判） |
+| t=35 | 变更 #2；交回 v1（t≈30 下发） | 6① 提交 v1 = target v1 通过；6② 当前 v2 ≠ target v1 | 35 < 90，租约未过期 | T2 → `pending-policy`，同步释放租约 |
+| t=65 | 窗口关闭 | T4 **写回 `target=v2`**；T6 签发租约 `expiresAt=min(65+60,120)=120`（被 deadline 截断） | `65+30=95 ≤ 120` | T4 → `reassess-queued` → T6 领取（第 2 次重判） |
+| t=70 | 变更 #3；交回 v2 | 6① 通过；6② 当前 v3 ≠ target v2 | 租约未过期 | T2 → `pending-policy`，同步释放租约 |
+| t=100 | 窗口关闭 | `target=v2`（T3 未触发，T4 未执行）；无 `active` 租约 | `100+30=130 > 120` | T5 → `escalated(budget_exhausted)`；**不产生第 3 次重判** |
+| t=120 | `deadline` 到期 | — | — | 已为终态，不再变化 |
+
+**t=65 租约的处理**：`expiresAt` 被截断到 120，与 deadline 相同；t=70 的 T2 同步释放使其提前结束，因此 t=100 没有 `active` 租约，直接走 T4 守卫失败分支。**崩溃变体**：若 t=70 的同步释放未执行，t=100 时租约仍 `active` 且 `expiresAt=120 ≥ deadline=120`，按 §13.2.1 等待路径**直接 T5 `escalated(budget_exhausted)`**，不等到 t=120，也不报 `leaseLost`。**T6b 变体**：若变更 #2 发生在 t=31（T4 之后、领取之前），T6b 把 `target` 写回 v2 并留在队列，不计重判次数，t=35 不会出现版本不匹配。
+
+要点：T4 只写 `targetPolicyVersion`，T6 只换 `leaseId/leaseGeneration`；`deadline` 始终是 120、`claimedAt` 始终是 0；第 3 个窗口关闭时剩余预算只有 20s，容不下 30s 窗口，因此提前升级而不是拖到 t=120 的 `late`/`abandoned`。测试可断言：t=30、t=65 产生 `reassess-queued`（target 分别为 v1、v2），t=100 产生 `escalated(budget_exhausted)` 且重判计数停在 2。
 
 **与工单的关系（固定）**：
 1. 已 `accept` 的工单**不因策略变更中止**；只写 `policy-changed` 标记（每工单每版本一条）。
