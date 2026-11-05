@@ -407,10 +407,10 @@
 
 | 角色 | 应能读 | 应能写 | 不应能 | 原型现状 |
 | --- | --- | --- | --- | --- |
-| Source / Watcher | 外部来源、Thread | Trigger、游标、健康 | 判定、建工单、写仓库 | Source 只能 `receive` / `state`（`src/sources/host.ts:31-45`） |
-| Router / Assessor | Thread 上下文、仓库只读、规则 | Decision、通知 | 执行命令、推代码 | 主 Session 有 `danger-full-access`（`src/app/sessions.ts:152`），但工具集较小（`src/app/tools/main.ts:155-220`） |
-| Worker / Executor | 工作区、凭据范围 | 工作区文件、授权范围内外部写 | 接受新工作、停止别人的工单、判定 | worker 同样 `danger-full-access`（`src/app/sessions.ts:152`），靠工具白名单约束（`src/app/sessions.ts:61-62`） |
-| Watchdog | 事件流、健康、审计 | 告警、健康状态 | 任何域写、任何外部副作用 | 不存在此角色 |
+| Source / Watcher | 外部来源、Thread | Trigger（经 Intake）、游标、健康 | 判定、建工单、写工作区、调用模型 | Source 只能 `receive` / `state`（`src/sources/host.ts:31-45`） |
+| Router / Assessor | Thread 上下文、仓库只读、规则 | 评估草稿、通知；**Decision 由控制面单事务写入** | 执行命令、推代码、写域表、创建工单、决定授权 | 主 Session 有 `danger-full-access`（`src/app/sessions.ts:152`），但工具集较小（`src/app/tools/main.ts:155-220`）；判定经 `decideEval` 由引擎落库，工具不是端口 |
+| Worker / Executor | 工作区、凭据范围 | Assignment 状态（经控制面回调）、工作区文件、授权范围内外部写 | 接受新工作、停止别人的工单、判定、扩大 Mandate 范围 | worker 同样 `danger-full-access`（`src/app/sessions.ts:152`），靠工具白名单约束（`src/app/sessions.ts:61-62`） |
+| Watchdog | 事件流、健康、审计 | Health、Alert、Finding | 任何域写、任何外部副作用 | 不存在此角色 |
 
 〔判断〕“工具白名单”不是权限隔离。两个 Session 都以 operator 的 OS 用户运行，且都拿 `danger-full-access`；真正的角色隔离需要进程级凭据与文件系统边界。当前形态在单机、可信 operator 下可接受，在多角色/多厂商下不可接受。
 
