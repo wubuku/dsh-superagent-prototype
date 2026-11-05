@@ -372,6 +372,8 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 
 **为什么 Router 不跟着跨机。** Router 的产出是 `AssessmentResult`，它可以跨机传输（§5.3）；但 Router 依赖 Engine 的读视图（Thread、Ticket、candidate），且 Engine 的授权事务要求单写者。把 Router 放到另一台机器，等于把“读一致快照”变成“跨机读”，在没有分布式事务前只能靠版本比对兜底——代价高于收益。〔判断〕
 
+Router 与控制面同进程对写路径的影响**没有基线**〔判断，无基线〕；测量方案、预注册判定口径与退路见 §10.3.1。不得用未测数字作为拆或不拆的依据。
+
 **T0 → T1 的最小改动面（本文的核心结论之一）**：
 
 | 改动 | 具体内容 | 不做的后果 |
@@ -641,7 +643,7 @@ DSH 能力核查见 `/Users/yangjiefeng/Documents/deepseek-ai/deepseek-harness/p
 12. **principal 与 actor 必须分两层：principal 是身份（人/服务/机器），actor 是“在某渠道上的可寻址主体”，agent 实例是“执行载体”，三者不能合并成一个 id。** 原型只有 `ActorRef`（source + id）〔原型：`src/core/model.ts:4-5`〕与 Session 身份〔原型：`src/app/sessions.ts:137-153`〕。合并会导致“agent 发的评论被人格化”或“人换了账号被当成新主体”。
 13. **租户边界不能靠应用层 `tenantId` 字段，必须同时落到凭据域、存储分区与出口。** 原型没有任何 tenant 字段（全仓库源码检索无 `tenant`），单 stateDir 单实例〔原型：`src/app/runtime.ts:91-98`；`docs/007-architecture.md:151`〕。字段级隔离只能防误读，防不了越权。
 14. **“agent 不接触凭据”可行的最小形态是命令 shim + 凭据代理，而不是把凭据放进环境变量。** 原型已用 `worker-bin` shim、`worker-gitconfig` 与剥离 `KEY/PASSWORD/SECRET/TOKEN` 环境变量〔原型：`docs/006-deployment.md:218-227`〕；但 shim 仍以操作者 OS 用户运行，agent 能读同用户的其他凭据〔原型：`docs/006-deployment.md:13-19`〕。
-15. **策略版本变更时，判定结果必须拒绝并重判，工单执行不中止但写 `policy-changed` 输入，resume 前必须 revalidate。** 〔判断，§13 给出流程〕原型只有 resume revalidate（`src/policy.ts:191-239`），判定回写不比对（`src/core/evals.ts:107-111`）。
+15. **策略版本变更时，判定进入 `pending-policy` 合并窗口（默认 30s），窗口关闭后按最新版本有界重判（最多 2 次）；到上限转人工 `escalated`，不静默丢弃。工单执行不中止但写 `policy-changed`，resume 前用当前版本 revalidate。** 〔判断，§13.2 状态机〕原型只有 resume revalidate（`src/policy.ts:191-239`），判定回写不比对（`src/core/evals.ts:107-111`）。
 16. **威胁模型的第一优先级不是外部攻击者，而是“不可信事件驱动已授权执行”的提示词注入；第二是跨角色伪造。** 原型的事件准入是纯函数且与模型隔离〔原型：`src/policy.ts:191-211`〕，但 worker 以 `danger-full-access` 运行〔原型：`src/app/sessions.ts:152`〕，注入一旦进入 worker，权限无上限。
 17. **审计日志的最小字段集必须能重建一条“谁、以什么依据、批了什么、谁执行、结果如何”的链；仅保存 Session transcript 不足以不可否认。** Session log 是交互事实，不是业务账本〔DSH 研究：`dsh-superagent-prototype-research.md:138`〕。
 18. **持久化选型的触发条件是“写者数、数据量、恢复时间”三个数字，不是“要不要上云”。** 单机 SQLite 在单写者、十万级行、分钟级恢复内成立；任一越界才换 PostgreSQL/外部队列，且必须先有 schema 版本与迁移回滚。
@@ -681,11 +683,25 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 | 触发条件 | 判定信号（可证伪） | 拆出后必须付的代价 |
 | --- | --- | --- |
 | Router 需要独立扩缩容 | 评估积压 P95 > 目标值，且扩容 Router 副本后积压下降；控制面 CPU 不是瓶颈 | 多 Router 需要按 Thread 分片或单写者排队，否则并发判定 |
-| Router 崩溃拖垮账本写路径 | 故障注入：杀死 Router 进程，控制面写入成功率下降 > 10% 或 p95 写入翻倍 | IPC 与进程监督；控制面要能无 Router 启动 |
+| Router 崩溃拖垮账本写路径 | 〔判断，无基线〕先测同进程写入成功率与 p95 作为基线，再按 §10.3.1 施压；判定规则在测前登记，不得用未测数字当结论 | IPC 与进程监督；控制面要能无 Router 启动 |
 | 单 Router 成为实测瓶颈 | 在目标事件速率下，单 Router 的 eval 延迟持续超过 deadline，且不是模型供应商限流 | 分片策略与 `threadKey` 亲和性；跨分片的 Thread 串行性要重新定义 |
 | 资源隔离要求 | Router 内存/模型调用导致控制面 OOM 或 GC 抖动，账本写入受影响 | 内存配额与独立重启；指标要能区分两进程 |
 
 不满足以上任一条而拆 Router，得到的是“多一次 IPC + 多一个故障域”，不产生收益。
+
+**10.3.1 阈值 = 待测基线（测量方案，不是结论）**
+
+本节此前给出的“成功率下降 10%、p95 翻倍”是拍的，**没有基线**，不作为架构结论〔判断，无基线〕。判定阈值必须在同一环境实测后填写。
+
+| 项 | 方案 |
+| --- | --- |
+| 场景 | M1 栈（控制面 + 2 个 worker）；Router 固定在控制面进程。实验组让 Router 跑长上下文（约 50k tokens）与慢工具调用（30–60 秒）；对照组 Router 空闲但控制面执行同样的账本写入 |
+| 负载档 | 目标事件速率与 2 倍目标速率两档；每档跑 3 轮，每轮 30 分钟，前 5 分钟预热丢弃；实验/对照交替执行，避免时间漂移 |
+| 指标 | 控制面写入成功率、事务 p50/p95/p99、事务排队时长、Router 单轮时长、Eval 积压 oldest age、进程 CPU/内存 |
+| 判定口径（预注册） | 以对照组的空闲基线为分母：`p95_loaded / p95_idle` ≥ 2.0，或写入成功率相对基线下降 ≥ 0.5 个百分点，判为不达标。阈值在测前登记，测后不得调整以迁就结果 |
+| 置信要求 | 同档 3 轮结果的 p95 波动 > 30% 视为环境噪声过大，需延长到 3 小时或换独立机器复测；仍不可判别时按保守处理（视为不达标） |
+| 退路 | 不达标 → **T1.5 提前触发**：Router 拆为同机独立进程（§10.3），并记录实测值；达标 → 保持合进程，但每季度复测；若后续引入更长工具调用，重新测量 |
+| 数据落点 | 实测值写入 §10.3 的“判定信号”列与本表，替换“待测”；不得把预注册阈值改写成已测结论 |
 
 ---
 
@@ -805,19 +821,78 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 | 2 | `attempt` 是当前最大 attempt | `rejected: staleAttempt` | 控制面，丢弃 |
 | 3 | `leaseId` 仍是有效租约 | `rejected: leaseLost` | 控制面，可能重派 |
 | 4 | `completedAt` ≤ `deadline` | `rejected: late` | 控制面，按策略决定重判或放弃 |
-| 5 | `policyVersion` 与 Eval 一致 | `rejected: policyChanged` | 控制面，重判（有上限） |
+| 5 | `policyVersion` 与 Eval 一致 | `policyChanged`：进入 `pending-policy`，不直接丢弃（§13.2） | 控制面，按状态机 |
 
-**处置分支（固定，不允许实现者自行“宽容接受”）**
+**13.2.1 状态机（这是固定协议，不允许“拒绝后逐个重排”作为唯一手段）**
 
-| 场景 | 处置 | 上限 | 代价 |
+Eval 在策略变更下的状态与转移：
+
+| 状态 | 含义 | 可停留时长 | 谁写入 |
 | --- | --- | --- | --- |
-| 判定迟到但策略未变 | 拒绝；若 Eval 未超 `maxAttempts` 则重派一次 | 每 Eval 最多 1 次迟到重派 | 延迟增加；重复调用模型 |
-| 判定迟到且策略已变 | 拒绝；按新 `policyVersion` 重新排队 | 每个 Eval 最多 2 次重判 | 策略抖动时会反复重判 |
-| 重判次数用尽 | 降级为 `ignore`，原因 `policy_changing`，并通知请求者 | — | 明确的工作丢弃，不是静默 |
-| 明确请求（`strength=explicit`）已建 Ticket 后策略变更 | 不中止工单；写 `policy-changed` Input；resume 前 revalidate | 每工单 1 条 | 旧工单可能完成在已不鼓励的方向 |
-| 推断候选（`strength=inferred`）策略变更 | 直接拒绝判定，候选丢弃（除非规则仍启用） | — | 推断工作被放弃，可能漏掉真实需求 |
+| `queued` | 可被 assessor 领取 | ≤ deadline | 控制面 |
+| `assessing` | 已被租约持有，判定进行中 | ≤ leaseUntil | assessor 持有，控制面监督 |
+| `pending-policy` | 判定已到达但 `policyVersion` 不匹配；**等待合并窗口关闭** | ≤ 窗口上限（默认 30s） | 控制面 |
+| `reassess-queued` | 窗口已关闭，按最新版本重新排队一次 | ≤ deadline | 控制面 |
+| `accepted` / `ignored` | 终态 | — | 控制面 |
+| `escalated` | 重判上限用尽，转人工 | 直到人工处理或 SLA 超时 | 控制面 |
+| `abandoned` | 超时/撤销，明确放弃 | 终态 | 控制面 |
 
-**为什么“拒绝”而不是“按新策略重算后接受”**：重算无法改变 assessor 已经看到的证据与推理轨迹；接受会让审计链出现“用旧证据得出新规则下的结论”。拒绝并把 Eval 重新排队，才能让证据与策略版本一致。〔判断〕
+| # | 转移 | 触发 | 守卫 | 动作 |
+| --- | --- | --- | --- | --- |
+| T1 | `queued → assessing` | assessor 领取 | 租约可用且 `policyVersion` 为当前版本 | 记录 `leaseId/attempt` |
+| T2 | `assessing → pending-policy` | 判定提交，版本不匹配 | `evalId` 未判定、`attempt` 最新、租约仍有效 | 落库判定草稿；**不写 Decision**；等待窗口 |
+| T3 | `pending-policy → pending-policy` | 窗口内又有新策略版本 | 同一 Eval 只保留最新版本 | 覆盖“目标版本”，不新增重判次数 |
+| T4 | `pending-policy → reassess-queued` | 窗口关闭 | 未达重判上限（默认 2 次） | 以最新 `policyVersion` 重派；写幂等键 |
+| T5 | `pending-policy → escalated` | 窗口关闭 | 已达重判上限 | 转人工；通知请求者；生成 finding |
+| T6 | `reassess-queued → assessing` | assessor 再次领取 | 版本仍为最新（否则回 T2） | 新 `attempt` + 新 `leaseId` |
+| T7 | `reassess-queued → abandoned` | 超过 deadline 或工单被撤销 | — | 通知请求者，原因码 `policy_churn` 或 `cancelled` |
+| T8 | 任意非终态 → `abandoned` | 撤销/停止 | 有撤销主体 | 释放租约，通知 |
+
+**13.2.2 合并窗口与重判上限**
+
+**合并窗口（coalescing window）**：策略版本变更后，所有版本不匹配的判定进入 `pending-policy`，窗口内到达的多次变更合并为“最新版本一次”。
+
+- **建议窗口：30 秒**〔判断，无实测基线〕。依据：原型 effect pass 周期为 2 秒〔原型：`src/app/effects.ts:83-88`〕，30 秒 ≥ 15 个 pass 周期，足以覆盖一次人工连续保存；同时必须远小于 Eval deadline（由 `settings.eval.timeoutSeconds` 决定〔原型：`src/policy.ts:190`〕），否则判定会被窗口拖到超时。
+- **代价**：每次策略变更最多增加 30 秒判定延迟；若策略由机器高频同步，窗口无法合并，只会把饥饿从“评审前”推迟到“评审后”，因此必须配合 §13.2.4 的观测与降频。
+
+**重判上限**：每个 Eval 最多 **2 次**重判〔判断〕。依据：第 1 次吸收单次策略变更，第 2 次吸收“重判期间又发生一次变更”；第 3 次起的原因已不是单个 Eval，而是策略抖动，继续重判只会放大成本。
+
+- **到上限后的责任与用户可见结果**：控制面负责把 Eval 置为 `escalated`、写 finding、通知请求者“工作未自动处理：策略频繁变更，需人工确认”；请求者在面板看到 `escalated` 与原因码，可手动接受、忽略或关闭。**不允许静默 `ignore`**。
+- **成本**：最坏情况每个 Eval 多 2 次模型调用；转人工意味着工作延迟从秒级变为人工响应级。
+
+**13.2.3 幂等、去重与工单关系**
+
+**幂等与去重**：
+
+| 对象 | 键 | 规则 | 缺失后果 |
+| --- | --- | --- | --- |
+| 重判请求 | `reassess:{evalId}:{policyVersion}`（唯一约束） | 同一 Eval 对同一目标版本最多重判一次 | 同一版本反复入队，饥饿无法收敛 |
+| 判定提交 | `(evalId, attempt)` | 重试不产生新判定 | 迟到尝试覆盖新尝试 |
+| 策略变更合并 | `policyChangeSeq`（单调递增）+ 窗口截止时间 | 窗口内多次变更只取最大 `seq` | 每次保存都触发一轮重判 |
+| 工单标记 | `policy-changed:{ticketId}:{policyVersion}` | 每工单每版本最多一条 Input | 同一变更反复写 Input，worker 重复处理 |
+
+**与工单的关系（固定）**：
+
+1. 已 `accept` 的工单**不因策略变更中止**；只写 `policy-changed` 标记（每工单每版本一条）。
+2. **resume 前 revalidate 使用“resume 当时的当前策略版本”**，不是工单创建时的版本；工单上的原 `policyVersion` 只用于审计。
+3. revalidate 失败：工单置为 `suspended`（不 resume），通知请求者与 Watchdog；不自动降级、不自动改范围。
+4. revalidate 通过：记录 `revalidatedAt` 与 `revalidatedPolicyVersion`，再 resume。
+5. 推断候选（`strength=inferred`）在策略变更后不重判，直接丢弃；明确请求（`explicit`）走上面的工单路径。
+
+**13.2.4 饥饿的量化判据与系统动作**
+
+| 指标 | 定义 | 触发线 | 触发后动作 |
+| --- | --- | --- | --- |
+| `eval_pending_policy_age` | `pending-policy` 状态停留时长 | — | 面板与 Watchdog 的 P3 指标 |
+| `eval_pending_policy_share` | 停留超过 15 个 pass 周期（约 30 秒）的 Eval 占在途 Eval 比例 | 连续 3 个 1 分钟窗口 > 5% | 窗口从 30s 扩到 60s（仅一次） |
+| `eval_reassess_exhausted_total` | 达到重判上限的 Eval 数 | 任一 Eval 命中即计数 | 立即 P1 告警 + 生成 finding |
+| `policy_save_rate` | 策略保存次数/分钟 | > 1 次/分钟持续 5 分钟 | 暂停自动策略同步，要求人工确认；记录 `policy_churn` |
+
+触发后的顺序：**先扩窗口（只允许一次到 60s）→ 再降频（暂停自动同步）→ 最后转人工**。不得用“继续重判”作为缓解手段。
+
+**明确禁止**：“拒绝并重判”不能作为唯一手段。必须同时具备**窗口、上限、观测**三件事；缺任一项，实现视为不符合本协议。
+
+**为什么拒绝而不是“按新策略重算后接受”**：重算无法改变 assessor 已看到的证据与推理轨迹；接受会让审计链出现“用旧证据得出新规则下的结论”。窗口 + 有界重判的作用是让“证据与版本一致”的成本可控，而不是允许无限重来。〔判断〕
 
 ### 13.3 协议版本协商与降级矩阵
 
@@ -1015,5 +1090,5 @@ T1 默认合进程（§7-D8）。**只有以下任一条件被实测命中，才
 
 ## 18. 最脆弱的两个论断（作者自评）
 
-1. **“拒绝并重判即可收敛”**（§13.2）。它假设策略变更不会高频发生，且重判能在 2 次内得到一致结果。若策略由外部系统自动同步、每次同步都 bump `policyVersion`，在途 Eval 会持续被拒绝，形成饥饿。本文没有给出节流的具体参数，也没有实测。**证伪方式**：M0-2 中把策略变更频率提高到每分钟一次，观察重判是否收敛。
-2. **“T1 的 Router 合并进控制面仍能保住写路径”**（§6.2 + §10.3）。它假设 Router 的模型调用与工具调用不会拖慢控制面事务；但 Router 与 Engine 共享事件循环时，长工具调用可能造成写入 p95 抖动。本文把拆分条件写成了“实测命中”，但阈值（写入成功率下降 10%、p95 翻倍）是拍的，没有基线。**证伪方式**：M1-1 期间对 Router 施加长上下文与慢工具调用，测控制面写入 p95；若抖动超过阈值，T1 的默认形状就要改。
+1. **“30 秒窗口 + 2 次上限 + 5% 饥饿线即可收敛”**（§13.2）。窗口长度、上限与饥饿阈值都是〔判断〕，没有实测基线；依据只有 2 秒 pass 周期与人工保存节奏。若策略由外部系统每分钟自动同步，窗口内合并失效，`eval_pending_policy_share` 会持续超线，最终只能降频或转人工。**证伪方式**：M0-2 中把策略变更频率提高到每分钟一次，跑 1 小时，检查 `eval_pending_policy_share` 是否回落到 5% 以下、`eval_reassess_exhausted_total` 是否为 0。
+2. **“T1 的 Router 合并进控制面仍能保住写路径”**（§6.2 + §10.3）。它假设 Router 的模型调用与工具调用不会拖慢控制面事务；但 Router 与 Engine 共享事件循环时，长工具调用可能造成写入 p95 抖动。阈值不是结论，而是待测基线：测量方案与预注册判定口径见 §10.3.1。**证伪方式**：按 §10.3.1 在 M1 栈施压，若 `p95_loaded / p95_idle` ≥ 2.0 或写入成功率相对基线下降 ≥ 0.5 个百分点，T1 的默认形状就要改为 T1.5。
