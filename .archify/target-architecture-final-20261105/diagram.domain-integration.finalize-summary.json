@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.domain-integration.json",
+    "sha256": "31461f2cee35a5304d7e3089dbb3965abf9f399ac9cdbead6dbb5284479509b5",
+    "bytes": 5568
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.domain-integration.html",
+    "sha256": "c47125af10dbc667e4eb40a897db106f52905a67274471373ebb9130ce005e68",
+    "bytes": 848852
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.domain-integration.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.domain-integration.finalize-summary.json",
+    "browserCheckReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.domain-integration.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1656,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 2
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "process-to-work",
+            "from": "process_port",
+            "to": "work",
+            "label": "实例引用",
+            "collectionIndex": 1,
+            "artifactIndex": 2
+          },
+          "right": {
+            "id": "knowledgeport-to-agent",
+            "from": "knowledge_port",
+            "to": "agentrt",
+            "label": "只读检索（带版本）",
+            "collectionIndex": 4,
+            "artifactIndex": 5
+          },
+          "point": [
+            534.7777777777778,
+            319
+          ]
+        },
+        {
+          "left": {
+            "id": "process-to-work",
+            "from": "process_port",
+            "to": "work",
+            "label": "实例引用",
+            "collectionIndex": 1,
+            "artifactIndex": 2
+          },
+          "right": {
+            "id": "knowledgeport-to-decision",
+            "from": "knowledge_port",
+            "to": "decision",
+            "label": "禁止进入授权",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "point": [
+            536,
+            305
+          ]
+        }
+      ],
+      "detours": [],
+      "truncated": false
+    },
+    "hints": [
+      "process_port → work crosses knowledge_port → agentrt: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "process_port → work crosses knowledge_port → decision: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.role-topology.json",
+    "sha256": "4c3fcb07726d45c081a386bf3c67c3386b0d9a1d62011c64f21f74e60b42a096",
+    "bytes": 6989
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.role-topology.html",
+    "sha256": "f3bb491b7518b967b274518a828c2d653ca5e7ab38d230fb4ef6ffdc5e22b2c5",
+    "bytes": 859365
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.role-topology.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.role-topology.finalize-summary.json",
+    "browserCheckReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.role-topology.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1707,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 2,
+      "routesOverSuggestedBends": 2,
+      "routesOverSuggestedStretch": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "router-to-assessor",
+            "from": "router",
+            "to": "assessor",
+            "label": "请求 / 结果",
+            "collectionIndex": 2,
+            "artifactIndex": 3
+          },
+          "right": {
+            "id": "engine-to-worker",
+            "from": "engine",
+            "to": "worker",
+            "label": "claim + 租约",
+            "collectionIndex": 3,
+            "artifactIndex": 4
+          },
+          "point": [
+            580,
+            210
+          ]
+        },
+        {
+          "left": {
+            "id": "engine-to-worker",
+            "from": "engine",
+            "to": "worker",
+            "label": "claim + 租约",
+            "collectionIndex": 3,
+            "artifactIndex": 4
+          },
+          "right": {
+            "id": "engine-to-lease",
+            "from": "engine",
+            "to": "lease",
+            "label": "唯一写者",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "point": [
+            434,
+            210
+          ],
+          "sharedNode": "engine"
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "engine-to-lease",
+            "from": "engine",
+            "to": "lease",
+            "label": "唯一写者",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "bends": 3,
+          "stretch": 1.07
+        },
+        {
+          "relationship": {
+            "id": "worker-to-engine",
+            "from": "worker",
+            "to": "engine",
+            "label": "报告，不直写",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "bends": 4,
+          "stretch": 2.517,
+          "directCorridorBlockers": [
+            {
+              "id": "router",
+              "label": "Router",
+              "box": [
+                500,
+                110,
+                160,
+                76
+              ]
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "engine has 5 relationships facing its right side, which fits 4 ports: make that side at least 88px, or move some of those neighbours so they face another side of engine.",
+      "router → assessor crosses engine → worker: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "engine → worker and engine → lease cross next to engine: move node worker or lease so the two reach engine from different sides (for example one level with it, one directly above or below it).",
+      "engine → lease needs 3 bends: move node engine or lease so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

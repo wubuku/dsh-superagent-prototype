@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "lifecycle",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.ticket-lifecycle.json",
+    "sha256": "c5301662d038b2a7d432969bef0245925fce6cd0456b54bb0004d49fa4cbcdc9",
+    "bytes": 6692
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.ticket-lifecycle.html",
+    "sha256": "92da51e63196f4e6298a266bfc6c86ed41d157c649480a2b943c511f316ced44",
+    "bytes": 858259
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.ticket-lifecycle.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.ticket-lifecycle.finalize-summary.json",
+    "browserCheckReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-final-20261105/diagram.ticket-lifecycle.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1697,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 11,
+      "routesOverSuggestedStretch": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "t9",
+            "from": "assessing",
+            "to": "escalated",
+            "label": "① T9 违规",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "right": {
+            "id": "t6",
+            "from": "reassess_queued",
+            "to": "assessing",
+            "label": "② T6 领取",
+            "collectionIndex": 9,
+            "artifactIndex": 10
+          },
+          "point": [
+            605,
+            126
+          ],
+          "sharedNode": "assessing"
+        },
+        {
+          "left": {
+            "id": "t5",
+            "from": "pending_policy",
+            "to": "escalated",
+            "label": "② T5 / T4b",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "t7",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "① T7 超期",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "point": [
+            719.5,
+            300
+          ]
+        },
+        {
+          "left": {
+            "id": "t5",
+            "from": "pending_policy",
+            "to": "escalated",
+            "label": "② T5 / T4b",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "t5c-timeout",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "② 超时→escalation_timeout",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "point": [
+            962.5,
+            300
+          ],
+          "sharedNode": "escalated"
+        },
+        {
+          "left": {
+            "id": "t5",
+            "from": "pending_policy",
+            "to": "escalated",
+            "label": "② T5 / T4b",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "t5c-reject",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "③ reject→human_rejected",
+            "collectionIndex": 13,
+            "artifactIndex": 14
+          },
+          "point": [
+            988.5,
+            300
+          ],
+          "sharedNode": "escalated"
+        },
+        {
+          "left": {
+            "id": "t5",
+            "from": "pending_policy",
+            "to": "escalated",
+            "label": "② T5 / T4b",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "t5e",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "④ T5e",
+            "collectionIndex": 15,
+            "artifactIndex": 16
+          },
+          "point": [
+            1014.5,
+            300
+          ],
+          "sharedNode": "escalated"
+        },
+        {
+          "left": {
+            "id": "t7",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "① T7 超期",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "right": {
+            "id": "t5c-timeout",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "② 超时→escalation_timeout",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "point": [
+            719.5,
+            354
+          ],
+          "sharedNode": "abandoned"
+        },
+        {
+          "left": {
+            "id": "t7",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "① T7 超期",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "right": {
+            "id": "t5c-reject",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "③ reject→human_rejected",
+            "collectionIndex": 13,
+            "artifactIndex": 14
+          },
+          "point": [
+            719.5,
+            336
+          ],
+          "sharedNode": "abandoned"
+        },
+        {
+          "left": {
+            "id": "t7",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "① T7 超期",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "right": {
+            "id": "t5e",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "④ T5e",
+            "collectionIndex": 15,
+            "artifactIndex": 16
+          },
+          "point": [
+            719.5,
+            318
+          ],
+          "sharedNode": "abandoned"
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "t7",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "① T7 超期",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "bends": 2,
+          "stretch": 1.351,
+          "directCorridorBlockers": [
+            {
+              "id": "ignored",
+              "label": "ignored",
+              "box": [
+                255.5,
+                202,
+                140,
+                64
+              ]
+            },
+            {
+              "id": "pending_policy",
+              "label": "pending-policy",
+              "box": [
+                439.5,
+                202,
+                160,
+                64
+              ]
+            }
+          ]
+        }
+      ],
+      "truncated": true
+    },
+    "repair": "Advisory only: this mode places or routes these relationships itself. Report them; do not remove relationships or meaning to reduce crossings."
+  }
+}
