@@ -3,3 +3,5 @@ lib/
 .artifacts/
 .env
 coverage/
+.trae-html-share-packages/
+.archify/explainer-dsh-superagent-20261105-021749.zip
