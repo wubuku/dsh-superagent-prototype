@@ -18,6 +18,8 @@
 
 一句话结论：**先协议化，再进程化；保留“事务 + 持久队列 + 纯函数准入”的内核，把 Session、投递语义和权限绑定留在 DSH 适配器里。**
 
+**范围与文档关系：** 本文记录 `dsh-superagent` 原型的现状核对与迁移分析，是上游材料；后续整体设计见 [super-agent-architecture-design.md](./super-agent-architecture-design.md)（该文档 §1.2 也以本文为输入）。两份文档冲突时以架构设计文档为准，并应回改本文。§6.9 / §7.4 关于 `policyVersion` 的结论只描述原型现状，处置协议以架构文档 §13 为准。
+
 ## 目录
 
 - §1 证据等级与核查方法
@@ -474,6 +476,8 @@
 - 跨进程协议必须把 `DeliveryResult` 定义为 `accepted | rejected | unsupported`，而不是布尔成功；`claimed` / `processed` 通过后续事件回报。若外部 agent 无法提供 `claimed`，就用 deadline 加心跳把“慢”与“丢”区分开。 〔设想〕
 - 这直接补强 §6.5 的失败分类：`timeout` 应细分为“未 accepted 的超时”和“已 accepted 未 claimed 的超时”；后者更像投递丢失，前者更像连接失败。 〔判断〕
 
+〔原型 + 判断〕以上是原型现状：投递状态机没有 `policyVersion` 分支，版本不一致的迟到判定没有专门状态。后续设计见架构文档 §13 的有界重判协议：版本不匹配的判定先进入 `pending-policy`，等 30 秒合并窗口关闭后按最新版本重派；每个 Eval 最多重判 2 次，幂等键为 `reassess:{evalId}:{policyVersion}`，到上限转人工 `escalated`。
+
 ### 6.10 Watchdog 的判定输入（页面未覆盖，本文设想）
 
 分享页没有讨论 watchdog（全文检索无该词），因此本节没有外部来源，全部是本文基于 §6.8 / §6.9 推导的设计，不能当作外部证据。
@@ -551,6 +555,8 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 
 〔判断〕校验链应为 `evalId → policyVersion → Mandate rules → Engine.decide`。原型的现状是：`evalId` 已严格校验（`src/core/evals.ts:135`），`Mandate` 规则在 `assessmentOutcome` 与 `Engine.decide` 内校验（`src/app/assessment.ts:275-277`；`src/core/evals.ts:152-154`），但 **`policyVersion` 只被记录、未被比对**：Eval 记录开始时的版本（`src/core/evals.ts:111`），Decision 也沿用它（`src/core/evals.ts:330`），而结果映射用的是当前设置（`src/app/assessment.ts:275`）。如果评估进行中策略被修改，迟到的结果会按新规则计算，却仍挂着旧版本号。外部材料说“迟到的结果不应无条件成为有效授权”，这一点在原型里只靠 `evalId` 与 deadline 兜底，没有版本兜底。 〔原型 + 判断〕
 
+上述是原型现状，不是最终处置。架构文档 §13 已把它升级为有界重判协议：版本不匹配的判定进入 `pending-policy`，30 秒合并窗口关闭后按最新版本重派，每个 Eval 最多重判 2 次，幂等键为 `reassess:{evalId}:{policyVersion}`，到上限转人工 `escalated`；本文不再重复其状态机。
+
 ### 7.5 权属澄清：Decision 不在 Session 里
 
 〔判断〕外部材料的两条原则——“Event Engine 不依赖任何一种 Agent Runtime”“Agent Session 是可替换的认知执行后端”——与原型结构一致，也需要说清边界：
@@ -590,7 +596,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 9. **全局顺序不存在。** 本文只主张按 key 保序；跨 key 的全局顺序没有保证，也不建议追求。 〔设想〕
 10. **外部材料的部分厂商细节无法核实。** 页面关于 Codex（`turn/steer`、`thread/inject_items`）与 Claude（`asyncRewake`、Streaming Input）的 API 描述，在本仓库与 DSH 仓库都没有对应代码或文档；本文只采用其结构性结论，未把这些名称当作协议依据。 〔判断〕
 11. **`ensure` 的并发幂等未验证。** 现有实现是 resolve-then-create（`src/app/sessions.ts:138-147`），两个并发调用是否只创建一个 Session 取决于 `sessionController.create`，未做并发测试。 〔推断〕
-12. **`policyVersion` 的现状只做了静态核对。** §7.4 指出判定链路没有比对版本，但“评估进行中修改策略”是否可实际复现未做运行验证。 〔推断〕
+12. **`policyVersion` 的现状只做了静态核对。** §7.4 指出判定链路没有比对版本，但“评估进行中修改策略”是否可实际复现未做运行验证；该缺口已由架构文档 §13.2 的有界重判协议接管。 〔推断〕
 
 ## 10. 建议的分阶段落地
 
@@ -613,7 +619,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 ### P0：协议闭合（仍单进程，保留 eager Router）
 
 1. `Assessor` 端口补结果回写与取消：`request(candidate) → AssessmentResult`；结果带 `evalId`、`policyVersion`、`assessorId`、`attempt`、`leaseId`、`actor`、`outcome`、`completedAt`、`evidence`；未持有租约的判定被拒绝。
-2. `DecisionCommand` 的认证与校验链：`evalId → policyVersion → Mandate rules → Engine.decide`；工具调用只是签发这个 command 的一种方式。
+2. `DecisionCommand` 的认证与校验链：`evalId → policyVersion → Mandate rules → Engine.decide`；工具调用只是签发这个 command 的一种方式；版本不一致时的处置见架构文档 §13（`pending-policy` / 有界重判）。
 3. 持久化 `AssessmentTarget`（runtimeType、sessionId、assessorProfile、policyVersion、deliveryState）；`Engine` 不再在构造期写死 session id，但默认仍解析到共享 Router。
 4. `RoleTarget` 替代 `masterId` 直投；relay / notice / assessment 统一走角色解析；解析不到时记录并排队。
 5. 拆出 Event Journal 与 Delivery 表：事件事实与每个消费者各自的投递行同事务写入。
