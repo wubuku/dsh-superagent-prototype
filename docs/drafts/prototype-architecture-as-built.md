@@ -545,7 +545,7 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 
 ## 与既有材料的差异
 
-这里比较的对象是 `docs/drafts/` 下的旧文档和 `.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html`。差异指“若把该材料当作现状会与代码冲突”，或“材料时点早于当前 HEAD”。
+这里比较的对象是 `docs/drafts/` 下的旧文档、`docs/007-architecture.md` 的现状描述，以及 `.archify/explainer-dsh-superagent-20261105-021749/dsh-superagent.html`。差异指“若把该材料当作现状会与代码冲突”，或“材料时点早于当前 HEAD”。
 
 | # | 材料 | 材料说法 | 代码事实 | 判定 |
 | --- | --- | --- | --- | --- |
@@ -558,11 +558,12 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 | D7 | `docs/drafts/event-driven-architecture-research.md:413` | 角色表列出 Watchdog 的能力与禁止项 | 该文档同时在第 53 行承认“watchdog 在原型中不存在”；代码核实结果同样是不存在 | 前后一致，属设想 |
 | D8 | `.archify/.../dsh-superagent.html` | 页面标注“代码基线 6337fc8”，所有 `file:line` 都带该提交 | 当前 HEAD 是 `903fc6a`；抽样核对的机制结论一致，但行号属于旧提交 | 时点差异，不是结论错误 |
 | D9 | `.archify/.../dsh-superagent.html` | “没有独立 daemon 进程”“没有 watchdog 进程”“Router 与 Worker 同进程同 OS 用户”“没有跨进程 Worker，工作目录也没有跨进程锁” | 与代码一致：`package.json` 无 `bin`、`src/` 无 watchdog、`src/app/sessions.ts:142-152`、`src/app/runtime.ts:93` | 一致，不作差异 |
+| D10 | `docs/007-architecture.md:175` | `launch` 的 effect 退避写作“5 s→300 s，three times” | `Effects.attempt` 只递增 `attempts`、按 `retry[1]` 封顶，没有尝试次数上限；连续 3 次失败只把健康条目标 error，不停止重试（`src/app/effects.ts:141-143`、`:155`） | 措辞不符：`three times` 是健康阈值，不是重试次数上限 |
 
 补充说明两点容易误读的边界：
 
 - `.archify` 页面虽然写了“工作目录也没有跨进程锁”，但仓库确实有 `stateDir` 的全局目录锁；两者不矛盾——锁的是状态目录，不是每个工单工作目录。
-- 旧材料中的 `Watchdog`、`Lease`、`T2` 多数已显式标为〔设想〕或“目标形态”。只有 D1 是明确的错误前提；D2–D5 的风险在于脱离上下文引用时会被误当成现状描述。
+- 旧材料中的 `Watchdog`、`Lease`、`T2` 多数已显式标为〔设想〕或“目标形态”。只有 D1 是明确的错误前提，D10 是 007 的措辞不精确；D2–D5 的风险在于脱离上下文引用时会被误当成现状描述。
 
 ## 自查记录
 
