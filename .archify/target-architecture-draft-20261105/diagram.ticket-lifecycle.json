@@ -1,0 +1,63 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "目标架构粗稿：判定与工单时序（合并窗口 · 有界重判 · Lease）",
+    "subtitle": "〔目标〕窗口 30s 与重判上限 2 次均为〔判断〕，无实测基线",
+    "locale": "zh-CN",
+    "output": ".archify/target-architecture-draft-20261105/diagram.ticket-lifecycle.html",
+    "quality_profile": "showcase"
+  },
+  "mainPath": ["queued", "assessing", "accepted"],
+  "states": [
+    { "id": "queued", "type": "start", "label": "queued", "sublabel": "可被 assessor 领取", "tag": "≤ deadline", "step": "01" },
+    { "id": "assessing", "type": "active", "label": "assessing", "sublabel": "租约持有，判定进行中", "tag": "lease.eval · gen=n", "step": "02" },
+    { "id": "accepted", "type": "success", "label": "accepted", "sublabel": "§5.3 全链通过后落库", "tag": "终态", "step": "03" },
+    { "id": "ignored", "type": "neutral", "label": "ignored", "sublabel": "判定无需工作", "tag": "终态" },
+    { "id": "pending_policy", "type": "waiting", "label": "pending-policy", "sublabel": "前 5 步通过、版本不匹配；只暂存草稿", "tag": "窗口 ≤ 30s" },
+    { "id": "reassess_queued", "type": "active", "label": "reassess-queued", "sublabel": "按最新 policyVersion 重派", "tag": "重判 ≤ 2 次" },
+    { "id": "escalated", "type": "external", "label": "escalated", "sublabel": "转人工确认，不静默丢弃", "tag": "上限用尽" },
+    { "id": "abandoned", "type": "failure", "label": "abandoned", "sublabel": "超时或撤销，明确放弃", "tag": "终态" }
+  ],
+  "transitions": [
+    { "id": "queued-assessing", "from": "queued", "to": "assessing", "label": "领取 + 租约", "note": "记录 leaseId / leaseGeneration" },
+    { "id": "assessing-accepted", "from": "assessing", "to": "accepted", "label": "全链通过", "variant": "emphasis", "note": "§5.3 第 1–8 步顺序校验后单事务写入" },
+    { "id": "assessing-ignored", "from": "assessing", "to": "ignored", "label": "outcome=ignore" },
+    { "id": "assessing-pending", "from": "assessing", "to": "pending_policy", "label": "policyChanged", "variant": "security", "note": "第 6 步版本不一致；前 5 步（含 evidence 白名单）必须已通过" },
+    { "id": "pending-reassess", "from": "pending_policy", "to": "reassess_queued", "label": "窗口关闭，未达上限" },
+    { "id": "reassess-assessing", "from": "reassess_queued", "to": "assessing", "label": "重派", "note": "新 leaseId，generation + 1；旧代次写入 = leaseLost" },
+    { "id": "reassess-escalated", "from": "reassess_queued", "to": "escalated", "label": "已达 2 次上限", "variant": "security" },
+    { "id": "reassess-abandoned", "from": "reassess_queued", "to": "abandoned", "label": "deadline / 撤销" },
+    { "id": "assessing-abandoned", "from": "assessing", "to": "abandoned", "label": "撤销 / 停止", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "合并窗口与重判",
+      "items": [
+        "策略变更后，版本不匹配的判定进入 pending-policy，窗口内多次变更合并为最新版本一次（§13.2.2）",
+        "默认窗口 30 秒〔判断，无实测基线〕；须远小于 Eval deadline（§13.2.2）",
+        "每个 Eval 最多 2 次重判；到上限转 escalated 并通知请求者，不允许静默 ignore（§13.2.2）"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Lease 与 fencing〔目标〕",
+      "items": [
+        "Lease 是唯一实体：leaseId / token / generation / expiresAt / state；控制面是唯一写者（§5.6）",
+        "generation 是 fence，token 只证明持有者；旧代次即使内容正确也拒（leaseLost，§5.6）",
+        "Eval 没有 attempt：第几次判定由 Lease.generation 表达（§5.6）",
+        "Assignment.attempt 由控制面在创建时递增，worker 只读（§5.6）"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "工单侧〔目标〕",
+      "items": [
+        "已 accept 的工单不因策略变更中止，只写 policy-changed（每工单每版本一条，§13.2.3）",
+        "resume 前用“resume 当时的策略版本”revalidate，失败置 suspended 并通知（§13.2.3）",
+        "〔待验证〕窗口合并、第 3 次变更转 escalated、旧代次写入被拒（M0-2、§9.2-3）"
+      ]
+    }
+  ]
+}

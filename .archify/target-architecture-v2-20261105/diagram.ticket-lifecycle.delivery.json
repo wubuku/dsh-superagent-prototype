@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "0ee731be-32dd-4f44-9ff8-37da59357a8c",
+  "status": "current",
+  "command": "deliver",
+  "type": "lifecycle",
+  "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.ticket-lifecycle.json",
+  "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.ticket-lifecycle.html",
+  "specification": {
+    "sha256": "27a5d9abee5f9fd5167fc5a61de7136e21959996ec77693784468261bc90bc64",
+    "bytes": 6506
+  },
+  "artifact": {
+    "sha256": "ca19d861819d280359db35259c9b07ff9ed08c5620aab92984d362e56d4294b8",
+    "bytes": 860848
+  }
+}

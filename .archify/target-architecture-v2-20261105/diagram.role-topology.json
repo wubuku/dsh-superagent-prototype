@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "目标架构 v2：角色、进程边界、Lease 与 HumanTask",
+    "subtitle": "图例：〔目标〕= 冻结版既定结构；〔待验证〕= 文档标为设想/待测",
+    "locale": "zh-CN",
+    "output": ".archify/target-architecture-v2-20261105/diagram.role-topology.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "source", "type": "external", "label": "Source Adapter", "sublabel": "只写 Trigger 与游标", "tag": "轮询 / webhook", "pos": [40, 110], "size": [150, 76] },
+    { "id": "engine", "type": "security", "label": "Engine", "sublabel": "授权事实单写者 + 租约服务", "tag": "单事务账本", "pos": [250, 110], "size": [160, 76] },
+    { "id": "router", "type": "backend", "label": "Router", "sublabel": "评估入口，不直接写域表", "tag": "T1 默认合进程", "pos": [500, 110], "size": [160, 76] },
+    { "id": "assessor", "type": "external", "label": "Assessor", "sublabel": "可缺席 / 可独立进程", "tag": "只产判断", "pos": [520, 330], "size": [180, 80] },
+    { "id": "worker", "type": "backend", "label": "Worker / Executor", "sublabel": "执行并回报，不能接受新工作", "tag": "可多节点", "pos": [780, 110], "size": [160, 76] },
+    { "id": "watchdog", "type": "security", "label": "Watchdog", "sublabel": "只读观察，只写 health/alert/finding", "tag": "禁止任何域写", "pos": [1020, 110], "size": [170, 76] },
+    { "id": "lease", "type": "database", "label": "Lease（唯一实体）", "sublabel": "active / released / expired / revoked", "tag": "generation 是 fence", "pos": [780, 300], "size": [170, 90] },
+    { "id": "human_task", "type": "database", "label": "HumanTask", "sublabel": "open / claimed / decided / expired / cancelled", "tag": "控制面唯一写", "pos": [250, 400], "size": [180, 80] },
+    { "id": "t0", "type": "cloud", "label": "T0 单进程", "sublabel": "全部角色合并 · 单 SQLite", "tag": "起点", "pos": [40, 520], "size": [170, 80] },
+    { "id": "t1", "type": "cloud", "label": "T1 同机多进程", "sublabel": "控制面 / 执行面 / Watchdog", "tag": "默认目标", "pos": [300, 520], "size": [170, 80] },
+    { "id": "t15", "type": "cloud", "label": "T1.5 按需", "sublabel": "Router 同机独立进程", "tag": "实测触发", "pos": [560, 520], "size": [170, 80] },
+    { "id": "t2", "type": "cloud", "label": "T2 跨机", "sublabel": "控制面 + 多执行节点 + 租约", "tag": "异构", "pos": [820, 520], "size": [180, 80] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "控制面进程（T0 单进程；T1 默认合进程）", "wraps": ["source", "engine", "router"], "pad": 18 },
+    { "kind": "region", "label": "执行面进程组（T1 起必须独立）", "wraps": ["worker"], "pad": 18 },
+    { "kind": "region", "label": "只读观察者进程（必须独立）", "wraps": ["watchdog"], "pad": 18 },
+    { "kind": "security-group", "label": "租约服务：控制面唯一写", "wraps": ["lease"], "pad": 14 },
+    { "kind": "security-group", "label": "人工队列：控制面唯一写", "wraps": ["human_task"], "pad": 14 }
+  ],
+  "connections": [
+    { "id": "source-to-engine", "from": "source", "to": "engine", "label": "事件" },
+    { "id": "engine-to-router", "from": "engine", "to": "router", "label": "只读视图" },
+    { "id": "router-to-assessor", "from": "router", "to": "assessor", "label": "请求 / 结果", "variant": "dashed", "fromSide": "bottom", "toSide": "top" },
+    { "id": "engine-to-worker", "from": "engine", "to": "worker", "label": "claim + 租约", "variant": "emphasis" },
+    { "id": "engine-to-watchdog", "from": "engine", "to": "watchdog", "label": "只读", "variant": "dashed", "fromSide": "top", "toSide": "top", "via": [[330, 50], [1105, 50]] },
+    { "id": "engine-to-lease", "from": "engine", "to": "lease", "label": "唯一写者", "variant": "emphasis" },
+    { "id": "engine-to-human", "from": "engine", "to": "human_task", "label": "创建 / 终结" },
+    { "id": "worker-to-engine", "from": "worker", "to": "engine", "label": "报告，不直写", "variant": "dashed", "fromSide": "left", "toSide": "left", "via": [[740, 148], [740, 510], [210, 510], [210, 148]] },
+    { "id": "t0-to-t1", "from": "t0", "to": "t1", "label": "四条判据" },
+    { "id": "t1-to-t15", "from": "t1", "to": "t15", "label": "实测命中" },
+    { "id": "t15-to-t2", "from": "t15", "to": "t2", "label": "跨机 + fencing" }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "必须进程隔离〔目标〕",
+      "items": [
+        "Executor：故障域与凭据域不同（§6.2）",
+        "Watchdog：只读且不与写者共享故障域（§4.3、§6.2）",
+        "控制面账本写者：不能被执行节点共享（§6.3）"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Lease 与 HumanTask 各自是实体",
+      "items": [
+        "Lease{leaseId, tenantId, scope, subjectId, holderId, token, generation, expiresAt, state}；同 (tenant, scope, subject) 同时最多一条 active（§5.6）",
+        "generation 是 fence，token 只证明身份；旧代次即使内容正确也拒（leaseLost，§5.6）",
+        "HumanTask 有独立 generation 与 state；decide 必须出示当前 generation（§5.8）",
+        "两者都由控制面唯一写入，holder/认领者只能提交命令（§5.6、§5.8）"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "终态不变量",
+      "items": [
+        "写入 accepted / ignored / abandoned 的同一事务必须先断言无 active 租约（§13.2.1）",
+        "T8 撤销例外：租约置 revoked，不等 expiresAt，永不复用（§5.6、§5.7）",
+        "T12 取消例外：租约置 expired（不是 revoked），与撤销互不替代（§13.2.1）",
+        "恢复扫描对“终态 + active”只置 expired 并记 lease.orphan_reclaimed，不复活判定（§13.2.1）"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "已知缺口（P1 未落地，不是设计）",
+      "items": [
+        "缺口：DB outbox + relay 未落地，队列与 DB 事务仍未结合",
+        "缺口：T1→T2 的迁移 / 双跑 / 回滚路径缺失",
+        "缺口：成本与容量断路器缺失",
+        "缺口：SLO 无数值，只有指标没有目标",
+        "缺口：索引与分区未定",
+        "缺口：降级矩阵漏控制面依赖"
+      ]
+    }
+  ]
+}

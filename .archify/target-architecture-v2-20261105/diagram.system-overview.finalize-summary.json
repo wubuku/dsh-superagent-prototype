@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.system-overview.json",
+    "sha256": "655927237001343c874d1b292925db0d27df7bd778bfdaebab2436759fad3e3f",
+    "bytes": 6611
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.system-overview.html",
+    "sha256": "0d19e253d4015a1a782eeb2ab65f16c9a121145d6904213afd1025ec92918315",
+    "bytes": 857679
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.system-overview.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.system-overview.finalize-summary.json",
+    "browserCheckReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.system-overview.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1896,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "decision-to-cascade",
+            "from": "decision",
+            "to": "rev_cascade",
+            "label": "编排撤销",
+            "collectionIndex": 11,
+            "artifactIndex": 12
+          },
+          "bends": 3,
+          "stretch": 1
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "decision → rev_cascade needs 3 bends: move node decision or rev_cascade so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

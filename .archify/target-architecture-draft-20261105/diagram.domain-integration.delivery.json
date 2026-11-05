@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "fdf40d00-501e-427a-ba07-09ce79983fb0",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.domain-integration.json",
+  "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.domain-integration.html",
+  "specification": {
+    "sha256": "8308a977287e67359749d996ce54e76368622edc7700417ab80ea8971f9d09e6",
+    "bytes": 4894
+  },
+  "artifact": {
+    "sha256": "ab48f7e68549d5f04afb5f32f5ec8f2febaf460e6e3cbe067c769068231815f3",
+    "bytes": 848073
+  }
+}

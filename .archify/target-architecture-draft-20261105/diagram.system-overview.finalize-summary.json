@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.system-overview.json",
+    "sha256": "d0e4076a6da8209dd6d0528fed054a3855ef1c1625c166e4709ee832045aa243",
+    "bytes": 3926
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.system-overview.html",
+    "sha256": "e73631a88b02bff3c80beb36acb11be073962c57711ba7e740d8bcfa6c8822e0",
+    "bytes": 841512
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.system-overview.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.system-overview.finalize-summary.json",
+    "browserCheckReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.system-overview.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1881,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

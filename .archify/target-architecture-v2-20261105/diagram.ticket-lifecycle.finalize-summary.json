@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "lifecycle",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.ticket-lifecycle.json",
+    "sha256": "27a5d9abee5f9fd5167fc5a61de7136e21959996ec77693784468261bc90bc64",
+    "bytes": 6506
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.ticket-lifecycle.html",
+    "sha256": "ca19d861819d280359db35259c9b07ff9ed08c5620aab92984d362e56d4294b8",
+    "bytes": 860848
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.ticket-lifecycle.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.ticket-lifecycle.finalize-summary.json",
+    "browserCheckReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-v2-20261105/diagram.ticket-lifecycle.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1623,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 21,
+      "routesOverSuggestedStretch": 2
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "t9",
+            "from": "assessing",
+            "to": "escalated",
+            "label": "② T9 违规",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "right": {
+            "id": "t6",
+            "from": "reassess_queued",
+            "to": "assessing",
+            "label": "④ T6 领取",
+            "collectionIndex": 9,
+            "artifactIndex": 10
+          },
+          "point": [
+            527,
+            126
+          ],
+          "sharedNode": "assessing"
+        },
+        {
+          "left": {
+            "id": "t5",
+            "from": "pending_policy",
+            "to": "escalated",
+            "label": "④ T5 / T4b",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "t7",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "② T7 超期",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "point": [
+            686,
+            300
+          ]
+        },
+        {
+          "left": {
+            "id": "t5",
+            "from": "pending_policy",
+            "to": "escalated",
+            "label": "④ T5 / T4b",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "t5c",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "②③ T5c",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "point": [
+            902,
+            300
+          ],
+          "sharedNode": "escalated"
+        },
+        {
+          "left": {
+            "id": "t5",
+            "from": "pending_policy",
+            "to": "escalated",
+            "label": "④ T5 / T4b",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "t5e",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "④ T5e",
+            "collectionIndex": 14,
+            "artifactIndex": 15
+          },
+          "point": [
+            928,
+            300
+          ],
+          "sharedNode": "escalated"
+        },
+        {
+          "left": {
+            "id": "t5",
+            "from": "pending_policy",
+            "to": "escalated",
+            "label": "④ T5 / T4b",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "global-reassess",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "⓪T8/①T12",
+            "collectionIndex": 18,
+            "artifactIndex": 19
+          },
+          "point": [
+            712,
+            300
+          ]
+        },
+        {
+          "left": {
+            "id": "t5",
+            "from": "pending_policy",
+            "to": "escalated",
+            "label": "④ T5 / T4b",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "global-escalated",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "⓪T8/①T12",
+            "collectionIndex": 19,
+            "artifactIndex": 20
+          },
+          "point": [
+            954,
+            300
+          ],
+          "sharedNode": "escalated"
+        },
+        {
+          "left": {
+            "id": "t7",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "② T7 超期",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "right": {
+            "id": "t5c",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "②③ T5c",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "point": [
+            686,
+            353.99999999999994
+          ],
+          "sharedNode": "abandoned"
+        },
+        {
+          "left": {
+            "id": "t7",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "② T7 超期",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "right": {
+            "id": "t5e",
+            "from": "escalated",
+            "to": "abandoned",
+            "label": "④ T5e",
+            "collectionIndex": 14,
+            "artifactIndex": 15
+          },
+          "point": [
+            686.0000000000001,
+            336
+          ],
+          "sharedNode": "abandoned"
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "t7",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "② T7 超期",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "bends": 2,
+          "stretch": 1.421,
+          "directCorridorBlockers": [
+            {
+              "id": "ignored",
+              "label": "ignored",
+              "box": [
+                242,
+                202,
+                140,
+                64
+              ]
+            },
+            {
+              "id": "pending_policy",
+              "label": "pending-policy",
+              "box": [
+                426,
+                202,
+                140,
+                64
+              ]
+            }
+          ]
+        },
+        {
+          "relationship": {
+            "id": "global-reassess",
+            "from": "reassess_queued",
+            "to": "abandoned",
+            "label": "⓪T8/①T12",
+            "collectionIndex": 18,
+            "artifactIndex": 19
+          },
+          "bends": 2,
+          "stretch": 1.356,
+          "directCorridorBlockers": [
+            {
+              "id": "ignored",
+              "label": "ignored",
+              "box": [
+                242,
+                202,
+                140,
+                64
+              ]
+            },
+            {
+              "id": "pending_policy",
+              "label": "pending-policy",
+              "box": [
+                426,
+                202,
+                140,
+                64
+              ]
+            }
+          ]
+        }
+      ],
+      "truncated": true
+    },
+    "repair": "Advisory only: this mode places or routes these relationships itself. Report them; do not remove relationships or meaning to reduce crossings."
+  }
+}

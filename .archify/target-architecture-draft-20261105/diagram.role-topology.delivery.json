@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "d4a86000-76df-4afb-8532-a4841c6c17f3",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.role-topology.json",
+  "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.role-topology.html",
+  "specification": {
+    "sha256": "4f5fce0d7a3127d731db3f8bcef77bed617d5b36c162c0cc6be4b63058413091",
+    "bytes": 4752
+  },
+  "artifact": {
+    "sha256": "631163529f33037f856881292a24573eef28e71c10b3945ccbc7a2df336169b7",
+    "bytes": 849970
+  }
+}

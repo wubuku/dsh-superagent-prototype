@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "目标架构粗稿：领域系统接入（制度 / 认知 / 运行事实）",
+    "subtitle": "〔目标〕三个端口；知识不授权：evidence 白名单是唯一强制闸门",
+    "locale": "zh-CN",
+    "output": ".archify/target-architecture-draft-20261105/diagram.domain-integration.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "agentrt", "type": "cloud", "label": "Agent Runtime", "sublabel": "执行 / 恢复；只读检索", "tag": "不直写账本", "pos": [40, 190], "size": [180, 84] },
+    { "id": "decision", "type": "security", "label": "Decision 平面", "sublabel": "gate / Mandate", "tag": "禁止读知识", "pos": [280, 100], "size": [170, 84] },
+    { "id": "work", "type": "backend", "label": "Work 平面", "sublabel": "Ticket / Assignment", "tag": "只存引用", "pos": [280, 280], "size": [170, 84] },
+    { "id": "process_port", "type": "backend", "label": "ProcessPort", "sublabel": "定义版本 / claim / signal", "tag": "能力声明", "pos": [560, 110], "size": [160, 84] },
+    { "id": "knowledge_port", "type": "backend", "label": "KnowledgePort", "sublabel": "只读检索 + provenance", "tag": "无写接口", "pos": [560, 270], "size": [160, 84] },
+    { "id": "runstate_port", "type": "backend", "label": "RunStatePort", "sublabel": "按 runId 读写 / TTL / 重建", "tag": "可丢弃", "pos": [560, 430], "size": [160, 84] },
+    { "id": "engine", "type": "external", "label": "流程引擎", "sublabel": "实例 / 任务 / 人工审批", "tag": "制度事实", "pos": [900, 110], "size": [180, 84] },
+    { "id": "knowledge", "type": "external", "label": "知识库", "sublabel": "评审后入库，可按版本检索", "tag": "认知事实", "pos": [900, 270], "size": [180, 84] },
+    { "id": "runstate", "type": "database", "label": "过程状态存储", "sublabel": "等待 / 尝试 / 假设", "tag": "运行事实", "pos": [900, 430], "size": [180, 84] }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "授权事实账本（单写者）· evidence 白名单在落库前强制", "wraps": ["decision", "work"], "pad": 18 }
+  ],
+  "connections": [
+    { "id": "engine-to-process", "from": "engine", "to": "process_port", "label": "任务 / signal", "variant": "emphasis" },
+    { "id": "process-to-work", "from": "process_port", "to": "work", "label": "实例引用", "variant": "dashed" },
+    { "id": "decision-to-process", "from": "decision", "to": "process_port", "label": "只读定义" },
+    { "id": "knowledge-to-knowledgeport", "from": "knowledge", "to": "knowledge_port", "label": "检索", "variant": "emphasis" },
+    { "id": "knowledgeport-to-agent", "from": "knowledge_port", "to": "agentrt", "label": "只读检索（带版本）" },
+    { "id": "knowledgeport-to-decision", "from": "knowledge_port", "to": "decision", "label": "禁止进入授权", "variant": "security" },
+    { "id": "runstate-to-runstateport", "from": "runstate", "to": "runstate_port", "label": "按 id 读写" },
+    { "id": "runstateport-to-agent", "from": "runstate_port", "to": "agentrt", "label": "等待 / 尝试", "variant": "dashed", "fromSide": "bottom", "toSide": "bottom", "via": [[640, 560], [130, 560]] }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "三类事实与写者",
+      "items": [
+        "制度事实：流程定义与实例，写者是流程引擎的定义仓库；实例钉住 definitionVersion（§19.2）",
+        "认知事实：知识条目，写者是知识库，且只接受人工评审后的提案（§19.2、§21.2）",
+        "运行事实：流程变量与 agent 运行状态；引擎变量或 RunStatePort 单写者（§19.2、§22）",
+        "授权事实：Decision/Mandate/Ticket/receipt，只属于控制面账本（§19.2）"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "知识不授权（§21.4）",
+      "items": [
+        "Decision 平面与 Mandate 生成路径不得读取知识库",
+        "AssessmentResult.evidence 只接受 source_event / mandate / policy_rule / prior_decision",
+        "knowledge_ref 只能进 rationale、执行说明与报告；命中 evidence 即 unauthorized_evidence",
+        "模块边界是第二道防线，协议白名单是强制闸门（§21.4、§21.4.1）"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "缺席与降级〔目标〕",
+      "items": [
+        "任一领域系统不可用，都不得阻塞 gate、Decision 写入与事件落库（§19.4）",
+        "检索失败不得当成“没有相关规则”；空结果 ≠ 不可用（§19.4、§21.3）",
+        "RunState 可整体丢弃重建，冲突时授权与工单以账本为准（§22.3、M4-6）",
+        "〔待验证〕端口替换不改业务代码、恶意知识条目不影响判定（M4-7、M4-8）"
+      ]
+    }
+  ]
+}

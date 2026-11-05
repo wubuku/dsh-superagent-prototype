@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "目标架构粗稿：五平面与唯一契约通道",
+    "subtitle": "〔目标〕五平面均不直写他人事实；标 * 的平面是自身事实的唯一写者",
+    "locale": "zh-CN",
+    "output": ".archify/target-architecture-draft-20261105/diagram.system-overview.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "event", "type": "messagebus", "label": "Event 平面", "sublabel": "Trigger* / Journal* / Thread*", "tag": "自身事实唯一写者", "pos": [40, 180], "size": [150, 84] },
+    { "id": "decision", "type": "security", "label": "Decision 平面", "sublabel": "gate / Assessor 请求与结果", "tag": "Decision* / Mandate*", "pos": [300, 180], "size": [160, 84] },
+    { "id": "work", "type": "backend", "label": "Work 平面", "sublabel": "Ticket* / Assignment* / 调度", "tag": "不拥有授权", "pos": [550, 180], "size": [160, 84] },
+    { "id": "delivery", "type": "messagebus", "label": "Delivery 平面", "sublabel": "Effect* / Delivery 状态* / Receipt*", "tag": "不改业务事实", "pos": [800, 180], "size": [160, 84] },
+    { "id": "agentrt", "type": "cloud", "label": "Agent Runtime", "sublabel": "能力声明 / inbox / 进度", "tag": "运行时适配层，非进程", "pos": [1050, 180], "size": [160, 84] },
+    { "id": "assessor", "type": "external", "label": "Assessor", "sublabel": "只产判断，不签发授权", "tag": "结果待控制面校验", "pos": [320, 370], "size": [170, 80] }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "授权与工作事实账本：单写者 + 单事务", "wraps": ["decision", "work"], "pad": 18 }
+  ],
+  "connections": [
+    { "id": "event-to-decision", "from": "event", "to": "decision", "label": "只读候选 + 版本", "variant": "emphasis" },
+    { "id": "decision-to-work", "from": "decision", "to": "work", "label": "单事务写入", "variant": "emphasis" },
+    { "id": "work-to-delivery", "from": "work", "to": "delivery", "label": "派发 effect" },
+    { "id": "delivery-to-agentrt", "from": "delivery", "to": "agentrt", "label": "投递 + 能力" },
+    { "id": "agentrt-to-work", "from": "agentrt", "to": "work", "label": "报告只回交（不直写域表）", "variant": "dashed", "fromSide": "top", "toSide": "top", "via": [[1130, 104], [630, 104]] },
+    { "id": "decision-to-assessor", "from": "decision", "to": "assessor", "label": "请求 / 结果两段式", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "唯一契约通道",
+      "items": [
+        "跨平面只能提交“请求”或“结果”，不得直写对方的域表（§3.2 单写者规则）",
+        "请求与结果都带 policyVersion 与 schemaVersion，接收方落库前比对（§3.2、§5.3）",
+        "一个平面不能顺手改另一个平面的事实（不突变原则，§3.2）"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "平面责任〔目标〕",
+      "items": [
+        "Event：规范化、去重、落库、按 Thread 归集与扇出（§3.2）",
+        "Decision：纯函数 gate、Assessor 请求/结果、Decision 与 Mandate 落库（§3.2、§5.3）",
+        "Work：Ticket/Assignment 状态机、调度与容量（§3.2、§3.3）",
+        "Delivery：投递、重试、保序、暂停与 receipt（§3.2、§5.1）",
+        "Agent Runtime：声明能力、接受输入、回报 accepted/claimed/processed（§3.2、§5.4）"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "边界与待验证",
+      "items": [
+        "调度不单独成平面，是 Work 内部的确定性规则（§3.1、§3.3）",
+        "Assessor 是外部判断来源：判定经 §5.3 校验链后才落库（§5.3）",
+        "〔待验证〕Assessor 端口闭合与 T1/T2 的实际隔离效果（§9.2、M1-4）"
+      ]
+    }
+  ]
+}

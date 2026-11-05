@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.role-topology.json",
+    "sha256": "4f5fce0d7a3127d731db3f8bcef77bed617d5b36c162c0cc6be4b63058413091",
+    "bytes": 4752
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.role-topology.html",
+    "sha256": "631163529f33037f856881292a24573eef28e71c10b3945ccbc7a2df336169b7",
+    "bytes": 849970
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.role-topology.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.role-topology.finalize-summary.json",
+    "browserCheckReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/.archify/target-architecture-draft-20261105/diagram.role-topology.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1936,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  }
+}

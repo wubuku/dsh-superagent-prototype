@@ -1,0 +1,91 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "目标架构 v2：Eval 状态 × 出口（按冻结矩阵重画）",
+    "subtitle": "图例：〔目标〕= 冻结版既定结构；〔待验证〕= 文档标为设想/待测。T10 是转移，图中以写入闸门表示。",
+    "locale": "zh-CN",
+    "output": ".archify/target-architecture-v2-20261105/diagram.ticket-lifecycle.html",
+    "quality_profile": "showcase"
+  },
+  "mainPath": ["queued", "assessing", "t10_gate", "accepted"],
+  "states": [
+    { "id": "queued", "type": "start", "label": "queued", "sublabel": "未领取，无 Eval.deadline", "tag": "⓪T8 / ①T12 前置" },
+    { "id": "assessing", "type": "active", "label": "assessing", "sublabel": "租约持有，判定进行中", "tag": "lease.generation = n" },
+    { "id": "t10_gate", "type": "decision", "label": "T10 写入闸门", "sublabel": "accepted 的唯一写入者", "tag": "非同事务不落库" },
+    { "id": "accepted", "type": "success", "label": "accepted", "sublabel": "Decision / Mandate / Ticket / 首 Assignment", "tag": "终态" },
+    { "id": "ignored", "type": "neutral", "label": "ignored", "sublabel": "终判原因见卡片", "tag": "终态" },
+    { "id": "pending_policy", "type": "waiting", "label": "pending-policy", "sublabel": "前 5 步 + 6① 通过", "tag": "窗口 ≤ 30s〔判断〕" },
+    { "id": "reassess_queued", "type": "active", "label": "reassess-queued", "sublabel": "按最新目标版本重派", "tag": "重判 ≤ 2 次〔判断〕" },
+    { "id": "escalated", "type": "external", "label": "escalated", "sublabel": "同事务建 HumanTask", "tag": "SLA 到期先于人工决策" },
+    { "id": "abandoned", "type": "failure", "label": "abandoned", "sublabel": "六类原因码，见卡片", "tag": "终态" }
+  ],
+  "transitions": [
+    { "id": "t1-claim", "from": "queued", "to": "assessing", "label": "④ T1 领取" },
+    { "id": "t7b", "from": "queued", "to": "abandoned", "label": "② T7b 超时", "variant": "security" },
+    { "id": "t10-write", "from": "t10_gate", "to": "accepted", "label": "单事务写入", "variant": "emphasis" },
+    { "id": "t10", "from": "assessing", "to": "t10_gate", "label": "④ T10 通过" , "variant": "emphasis" },
+    { "id": "t11", "from": "assessing", "to": "ignored", "label": "④ T11 终判" },
+    { "id": "t9", "from": "assessing", "to": "escalated", "label": "② T9 违规", "variant": "security" },
+    { "id": "t2", "from": "assessing", "to": "pending_policy", "label": "③ T2 版本变更", "variant": "security" },
+    { "id": "t4", "from": "pending_policy", "to": "reassess_queued", "label": "③ T4 关窗" },
+    { "id": "t5", "from": "pending_policy", "to": "escalated", "label": "④ T5 / T4b", "variant": "security" },
+    { "id": "t6", "from": "reassess_queued", "to": "assessing", "label": "④ T6 领取" },
+    { "id": "t7", "from": "reassess_queued", "to": "abandoned", "label": "② T7 超期", "variant": "security" },
+    { "id": "t5b", "from": "escalated", "to": "t10_gate", "label": "③ T5b 人工 accept", "variant": "emphasis" },
+    { "id": "t5c", "from": "escalated", "to": "abandoned", "label": "②③ T5c", "variant": "security" },
+    { "id": "t5d", "from": "escalated", "to": "reassess_queued", "label": "④ T5d" },
+    { "id": "t5e", "from": "escalated", "to": "abandoned", "label": "④ T5e" },
+    { "id": "global-queued", "from": "queued", "to": "abandoned", "label": "⓪T8/①T12", "variant": "security" },
+    { "id": "global-assessing", "from": "assessing", "to": "abandoned", "label": "⓪T8/①T12", "variant": "security" },
+    { "id": "global-pending", "from": "pending_policy", "to": "abandoned", "label": "⓪T8/①T12", "variant": "security" },
+    { "id": "global-reassess", "from": "reassess_queued", "to": "abandoned", "label": "⓪T8/①T12", "variant": "security" },
+    { "id": "global-escalated", "from": "escalated", "to": "abandoned", "label": "⓪T8/①T12", "variant": "security" },
+    { "id": "global-t10", "from": "t10_gate", "to": "abandoned", "label": "⓪T8/①T12", "variant": "security" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "求值规则与优先级",
+      "items": [
+        "同一状态按优先级升序求值，首个守卫通过即执行，其后不评估（§13.2.1）",
+        "T8 撤销 ⓪ 高于 T12 取消 ①，二者高于各状态本地 ②→④，对一切非终态恒成立（§13.2.1）",
+        "queued：T7b ② → T1a ③ → T1 ④；assessing：T9 ② → T2 ③ → T10/T11 ④（§13.2.1、§13.2.2）",
+        "pending：T3 ② → T4 ③ → T5/T4b ④；reassess：T7 ② → T6b ③ → T6 ④（§13.2.2）",
+        "escalated：T5c expired ② → T5b ③ / T5c reject ③ → T5d ④ / T5e ④（§13.2.2）"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "accepted 的唯一写入者",
+      "items": [
+        "T10 是 assessing → accepted 的唯一写入者；T5b 只把人工决定构造为判定消息，通过 1–8 后在同一事务转交 T10（§13.2.1）",
+        "T5b 进入前必须通过“无 active 租约”前置；若有孤儿租约，同事务置 expired 并记 lease.orphan_reclaimed（全文唯一“先清后签”）",
+        "人工 accept 不豁免第 5 步 evidence 白名单；证据类型只在 §5.3 第 5 步定义（§5.8）",
+        "T5b 任何出口都不得留 active 租约；人工 evidence 不自动复用到重判（§13.2.1）"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "两段时长与工单侧",
+      "items": [
+        "disclaimer：窗口 30s 与重判上限 2 次均为〔判断〕，无实测基线（§13.2.2）",
+        "deadline = 首次 claimedAt + evalTimeoutMs，只算一次；重判不重置（§13.2.1）",
+        "已 accept 的 Ticket 不因策略变更中止，只写 policy-changed（每工单每版本一条）（§13.2.3）",
+        "resume 前按 resume 当时的策略版本 revalidate，失败置 suspended（§13.2.3）"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "已知缺口（P1 未落地，不是设计）",
+      "items": [
+        "缺口：DB outbox + relay 未落地，队列与 DB 事务仍未结合",
+        "缺口：T1→T2 的迁移 / 双跑 / 回滚路径缺失",
+        "缺口：成本与容量断路器缺失",
+        "缺口：SLO 无数值，只有指标没有目标",
+        "缺口：索引与分区未定",
+        "缺口：降级矩阵漏控制面依赖"
+      ]
+    }
+  ]
+}

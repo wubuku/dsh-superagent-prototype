@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "目标架构粗稿：角色与进程拓扑（T0 → T2）",
+    "subtitle": "〔目标〕角色是职责与权限的最小单元，不等于进程；虚线为按需/只读路径",
+    "locale": "zh-CN",
+    "output": ".archify/target-architecture-draft-20261105/diagram.role-topology.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "source", "type": "external", "label": "Source Adapter", "sublabel": "只写 Trigger 与游标", "tag": "轮询 / webhook", "pos": [40, 120], "size": [150, 76] },
+    { "id": "engine", "type": "security", "label": "Engine", "sublabel": "授权事实单写者 + 租约服务", "tag": "单事务账本", "pos": [250, 120], "size": [160, 76] },
+    { "id": "router", "type": "backend", "label": "Router", "sublabel": "评估入口，不直接写域表", "tag": "T1 默认合进程", "pos": [500, 120], "size": [160, 76] },
+    { "id": "assessor", "type": "external", "label": "Assessor", "sublabel": "可缺席 / 可独立进程", "tag": "只产判断", "pos": [330, 360], "size": [180, 80] },
+    { "id": "worker", "type": "backend", "label": "Worker / Executor", "sublabel": "执行并回报，不能接受新工作", "tag": "可多节点", "pos": [780, 120], "size": [160, 76] },
+    { "id": "watchdog", "type": "security", "label": "Watchdog", "sublabel": "只读观察，只写 health/alert/finding", "tag": "禁止任何域写", "pos": [1020, 120], "size": [170, 76] },
+    { "id": "t0", "type": "cloud", "label": "T0 单进程", "sublabel": "全部角色合并 · 单 SQLite", "tag": "起点", "pos": [40, 520], "size": [170, 80] },
+    { "id": "t1", "type": "cloud", "label": "T1 同机多进程", "sublabel": "控制面 / 执行面 / Watchdog", "tag": "默认目标", "pos": [300, 520], "size": [170, 80] },
+    { "id": "t15", "type": "cloud", "label": "T1.5 按需", "sublabel": "Router 同机独立进程", "tag": "实测触发", "pos": [560, 520], "size": [170, 80] },
+    { "id": "t2", "type": "cloud", "label": "T2 跨机", "sublabel": "控制面 + 多执行节点 + 租约", "tag": "异构", "pos": [820, 520], "size": [180, 80] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "控制面进程（T0 单进程；T1 默认合进程）", "wraps": ["source", "engine", "router"], "pad": 18 },
+    { "kind": "region", "label": "执行面进程组（T1 起必须独立）", "wraps": ["worker"], "pad": 18 },
+    { "kind": "region", "label": "只读观察者进程（必须独立）", "wraps": ["watchdog"], "pad": 18 }
+  ],
+  "connections": [
+    { "id": "source-to-engine", "from": "source", "to": "engine", "label": "事件" },
+    { "id": "engine-to-router", "from": "engine", "to": "router", "label": "只读视图" },
+    { "id": "engine-to-assessor", "from": "engine", "to": "assessor", "label": "assess 请求 / 结果", "variant": "dashed", "fromSide": "bottom", "toSide": "top" },
+    { "id": "engine-to-worker", "from": "engine", "to": "worker", "label": "claim + 租约", "variant": "emphasis" },
+    { "id": "engine-to-watchdog", "from": "engine", "to": "watchdog", "label": "只读账本与 Journal", "variant": "dashed", "fromSide": "bottom", "toSide": "bottom", "via": [[330, 250], [1105, 250]] },
+    { "id": "t0-to-t1", "from": "t0", "to": "t1", "label": "四条判据" },
+    { "id": "t1-to-t15", "from": "t1", "to": "t15", "label": "实测命中" },
+    { "id": "t15-to-t2", "from": "t15", "to": "t2", "label": "跨机 + fencing" }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "必须进程隔离〔目标〕",
+      "items": [
+        "Executor：故障域与凭据域不同，worker 崩溃不能拖垮账本（§6.2）",
+        "Watchdog：只读且不能与写者共享故障域（§4.3、§6.2）",
+        "控制面账本写者：不能被执行节点共享（§6.3）"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "可以合进程〔目标〕",
+      "items": [
+        "Router 与 Engine 共享授权读视图与 policyVersion，T1 默认合进程（§6.2、§7-D8）",
+        "Router 只允许同机独立（T1.5），不允许从 T1 起跨机（§6.2、§10.3）",
+        "Assessor 可留在控制面，也可独立（可缺席，§4.3、§7-D5）"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "四档部署形态",
+      "items": [
+        "T0：单进程、单 stateDir、单 SQLite；四条判据全不满足（§6.1）",
+        "T1：控制面 + 执行面进程组 + 独立 Watchdog；最小改动面 6 项（§6.2）",
+        "T1.5：仅在 Router 触发条件被实测命中时启用（§10.3）",
+        "T2：控制面单写者 + 多执行节点 + 节点注册/租约/fencing（§6.3）"
+      ]
+    }
+  ]
+}
