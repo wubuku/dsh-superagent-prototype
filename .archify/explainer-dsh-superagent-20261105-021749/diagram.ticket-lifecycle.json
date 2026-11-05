@@ -15,7 +15,6 @@
   "mainPath": [
     "queued",
     "working",
-    "review",
     "ended"
   ],
   "states": [
@@ -91,7 +90,7 @@
     },
     {
       "id": "ended",
-      "type": "success",
+      "type": "neutral",
       "label": "Ended",
       "sublabel": "terminal",
       "sources": [
@@ -189,9 +188,9 @@
       "dot": "amber",
       "title": "Endings",
       "items": [
-        "Ready and dropped reports end; merged/closed threads end; human stop ends.",
+        "A ready report ends the ticket once followed threads are done; a dropped report ends it; human stop ends it.",
         "A ready report stays open while a followed thread is open.",
-        "Delivery, blocked, and failed wait for a person.",
+        "Delivery, blocked, and failed wait for a person; a human follow-up resumes blocked or failed.",
         "Resume needs a human message and a valid mandate."
       ]
     }

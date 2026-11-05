@@ -196,7 +196,7 @@
     },
     {
       "kind": "region",
-      "label": "领域核心（core/）",
+      "label": "领域核心（core/ 与 policy）",
       "wraps": [
         "engine",
         "policy"
@@ -204,7 +204,7 @@
     },
     {
       "kind": "region",
-      "label": "DSH Session（同一 Host 进程）",
+      "label": "DSH Session 与工单目录（同一进程）",
       "wraps": [
         "router",
         "worker",
@@ -286,7 +286,7 @@
       "id": "runtime-sqlite",
       "from": "runtime",
       "to": "sqlite",
-      "label": "transactions"
+      "label": "opens store"
     },
     {
       "id": "runtime-effects",
