@@ -14,7 +14,7 @@
 6. **必须同步完成的只有授权事实和工作单元事实；跨角色投递和外部副作用都可以异步。** 具体边界见 §3。把 gate、域事务、Ticket+Mandate 创建拆成远程调用，收益为负。
 7. **进程隔离真正新增的是协议能力，不是线程/进程数量：** 跨进程事件总线、执行节点注册与租约、四类幂等键、deadline 与心跳、失败与“结果未知”的区分、按角色拆权限域。没有这六样，拆进程只会得到更难排查的分布式单体。
 8. **事件事实与投递状态必须分成两层。** 同一个事件可能投给 Router、多个 Worker、审计与 watchdog；持久化、路由、接受、领取、处理是五个不同状态，任一层的成功都不能当作下一层完成。原型已有 `Trigger`、`Input`、`inputsDelivered` / `inputsRead` 的雏形，但缺少按消费者记录的通用投递表。〔外部材料主张 + 原型 + 判断〕
-9. **建议分三阶段：P0 端口闭合 + 事件日志/投递表（仍单进程，保留 eager Router）；P1 队列、租约、节点注册服务化并允许 Router 缺席；P2 角色进程拆分与异构适配器。** 先把协议写对，再拆进程；把“Router 可缺席”放在 P1，是因为端口未闭合时移除 eager ensure 的失败面过大。
+9. **建议分三阶段：P0 协议闭合（`AssessorService` + 事件日志/投递表，仍单进程，保留 eager Router）；P1 队列、租约、节点注册服务化并允许 Router 缺席；P2 角色进程拆分与异构适配器。** 先把协议写对，再拆进程；把“Router 可缺席”放在 P1，是因为协议未闭合时移除 eager ensure 的失败面过大。
 
 一句话结论：**先协议化，再进程化；保留“事务 + 持久队列 + 纯函数准入”的内核，把 Session、投递语义和权限绑定留在 DSH 适配器里。**
 
@@ -91,7 +91,7 @@
 | 3 | `passes.receive()` 成功后立即踢一拍 | 异步合并 | 进程内串行 pass | 失败只进 health，下一拍重试 | `src/app/passes.ts:34-46`；`src/app/passes.ts:56-62` |
 | 4 | 确定性 gate：`policy.gate` 纯函数，不调模型 | 同步 | 与建 Eval 同一事务 | 返回不可准入则记 Decision，不产生模型调用 | `src/core/evals.ts:96`；`src/policy.ts:191-211` |
 | 5 | 建 Eval、写 deadline、发 `eval.started`、`assessor.request()` | 同步写持久队列 | 业务写 + `effect` 行同一事务 | 行持久化，重启后重试 | `src/core/evals.ts:107-118`；`src/app/effects.ts:61-66` |
-| 6 | `assessment` effect：组卡并 steer 给主 Session，成功后设置 `delivered` 与 deadline | 异步、有界并发、退避 | 持久 effect；`candidate:<evalId>` 去重 | 退避重试；`paused` 时挂起 | `src/app/assessment.ts:96-101`；`src/app/effects.ts:70`；`src/app/effects.ts:130-145` |
+| 6 | `assessment` effect：组卡并 steer 给主 Session，成功后设置 `delivered` 与 deadline | 异步、有界并发、退避 | 持久 effect；`candidate:<evalId>` 去重 | 退避重试；`paused` 时挂起；deadline 原型从 `delivered` 起算，目标形态从 claim 起算（见 §6.4） | `src/app/assessment.ts:96-101`；`src/app/effects.ts:70`；`src/app/effects.ts:130-145` |
 | 7 | Router 的 turn 调 `orchestrator_eval` / `_read` / `_decide` / `orchestrator_route` | 模型驱动，时长不可控 | 每次工具调用各自开事务 | 超过 deadline 后 expire，重排队最多 2 次，然后 `unavailable` | `src/app/tools/main.ts:202-220`；`src/core/evals.ts:35-69` |
 | 8 | accept：同事务建 Ticket + Mandate + Subscription + 首 Assignment + 回执 + launch effect | 同步 | 单事务 | 整单回滚，不会出现“有工单无授权” | `src/core/tickets.ts:37-56` |
 | 9 | `launch` effect：准备目录、按需创建 `worker-<ticketId>` Session、以 JSON 下发任务 | 异步、受 worker 槽限制、退避 5s→300s | 持久 effect | `Later` 不计失败；真失败记 ticket failed，等人或重试 | `src/executor/dsh.ts:263-285`；`src/executor/dsh.ts:424-470` |
@@ -285,9 +285,9 @@
 
 | # | 耦合点 | 现状与证据 | 异构/隔离后会怎样 | 改造方向 | 代价 | 优先级 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 主 Session 在初始化中急切创建 | `await sessions.ensure(masterId, ...)`（`src/app/runtime.ts:210`） | Router 进程未起时，整个系统不能进入 ready | P1：初始化不创建 agent；Router 作为消费者按需注册；无消费者时 Eval 保留 deadline | 中 | P1 |
+| 1 | 主 Session 在初始化中急切创建 | `await sessions.ensure(masterId, ...)`（`src/app/runtime.ts:210`） | Router 进程未起时，整个系统不能进入 ready | P1：初始化不创建 agent；Router 作为消费者按需注册；无消费者时 Eval 不启动 deadline（从 claim 起算，见 §6.4） | 中 | P1 |
 | 2 | 评估投递目标写死 masterId | `deliver: (id, text) => sessions.prompt(masterId, ...)`（`src/app/runtime.ts:131-133`）；relay handler 同样（`src/app/sessions.ts:104`） | 无法把评估投给另一个 Router 实现或节点 | 引入 `RoleTarget`：按角色 + 租约解析目标，而不是固定 session id | 中 | P0 |
-| 3 | 判断只以主 Session 工具存在 | `orchestrator_eval*` / `orchestrator_route`（`src/app/tools/main.ts:202-220`）；工具只装在主 Session（`src/app/sessions.ts:149-153`） | 外部 Assessor 无法“回写判定”，端口不闭合 | 给 `Assessor` 端口加 `decide` / `cancel` / `heartbeat`，或另立 `AssessorService` 协议；工具只是其中一个适配器 | 高 | P0 |
+| 3 | 判断只以主 Session 工具存在 | `orchestrator_eval*` / `orchestrator_route`（`src/app/tools/main.ts:202-220`）；工具只装在主 Session（`src/app/sessions.ts:149-153`） | 外部 Assessor 无法“回写判定”，端口不闭合 | 另立宿主中立的 `AssessorService`（架构文档 D7）；现有 `Assessor` 端口降为 DSH 适配器；工具只是其中一个适配器 | 高 | P0 |
 | 4 | 通知只能 steer/inject 到已存在 agent | relay 与 notice handler（`src/app/sessions.ts:104-105`、`src/app/sessions.ts:162-186`） | Router 不在线时通知丢失或长期挂起 | 通知改成按事件 id 持久投递；接收方上线后补投；非 DSH 适配器可降级为队列 | 中 | P1 |
 | 5 | effect 派发与 handler 注册都在进程内 | `Effects` 持有 handler 表并 `queueMicrotask` 派发（`src/app/effects.ts:46-88`） | 多节点无法共享队列；节点崩溃后无人 claim | 拆成 queue 服务（先 SQLite 表，后可换 Redis/SQS）：claim / heartbeat / ack / visibility timeout | 高 | P1 |
 | 6 | 域事件没有事务性事件流，只是回调 | `emit` 在事务内回调，`runtime` 直接处理（`src/core/part.ts:64-65`；`src/app/runtime.ts:138-153`） | 跨进程消费者收不到事件；崩溃后无法补投 | 拆成 Event Journal（seq、type、payload、dedupeKey）与 Delivery 表（consumerId、state、attempts、due）；同事务写事件与待投递行 | 高 | P0 |
@@ -296,11 +296,11 @@
 
 ### 5.2 改造的先后顺序
 
-〔外部材料主张 + 判断〕外部材料建议以 Assessor 可插拔为切入点，不先拆 daemon。核对后本文采纳这个顺序：P0 只闭合端口、目标绑定与事件日志/投递表，保留 eager Router；把“Router 可缺席”下移到 P1。理由是 eager `ensure(masterId)` 同时影响启动、投递、deadline 与通知；在端口未闭合时移除它，失败面过大，也难以区分是协议问题还是装配问题。
+〔外部材料主张 + 判断〕外部材料建议以 Assessor 可插拔为切入点，不先拆 daemon。核对后本文采纳这个顺序：P0 只闭合协议、目标绑定与事件日志/投递表，保留 eager Router；把“Router 可缺席”下移到 P1。理由是 eager `ensure(masterId)` 同时影响启动、投递、deadline 与通知；在协议未闭合时移除它，失败面过大，也难以区分是协议问题还是装配问题。
 
-**P0：仍单进程，闭合 Assessor 端口与事件/投递表**
+**P0：仍单进程，闭合 `AssessorService` 协议与事件/投递表**
 
-1. `Assessor` 端口增加判定回写：`request(candidate) → AssessmentResult`，结果带 `evalId`、`policyVersion`、`assessorId`、`attempt`、`leaseId`、`actor`、`outcome`、`completedAt`、`evidence`；未持有租约的判定被拒绝。
+1. 另立宿主中立的 `AssessorService`（架构文档 D7、§10.2）：`request(candidate) → AssessmentResult`；现有 `Assessor` 端口降为 DSH 适配器。结果带 `evalId`、`policyVersion`、`assessorId`、`attempt`、`leaseId`、`actor`、`outcome`、`completedAt`、`evidence`；未持有租约的判定被拒绝。
 2. 新增 `DecisionCommand` 的认证与校验链：`evalId → policyVersion → Mandate rules → Engine.decide`；工具调用只是签发这个 command 的一种方式。
 3. 持久化 Eval → AssessmentTarget（runtimeType、sessionId、assessorProfile、policyVersion、deliveryState）；Engine 不再在构造期写死 session id，但默认仍解析到共享 Router，保留 eager ensure。
 4. `RoleTarget` 替代 `masterId` 直投：relay / notice / assessment 都按角色解析当前目标；解析不到时记录并排队，而不是静默丢弃。
@@ -315,9 +315,9 @@
 8. 执行节点注册：nodeId、roles、capacity、heartbeat、drain；worker 槽从本地设置（`src/policy.ts:93` 的 `maxWorkers` 默认 3）升级为节点容量声明。
 9. 失败分类：`rejected`（无副作用）、`failed`（已知无副作用）、`timeout`（结果未知）、`cancelled`（人停止）、`paused`（暂停）。`timeout` 不自动重试外部副作用，先对账。
 10. 按角色拆凭据与工具白名单：Router 无仓库写权限，Worker 无判定权限，Watchdog 无写权限。
-11. 移除 eager ensure：初始化只启动引擎与队列；Router 上线后消费评估队列，无消费者时 Eval 保留 deadline。
+11. 移除 eager ensure：初始化只启动引擎与队列；Router 上线后消费评估队列，无消费者时 Eval 不启动 deadline（从 claim 起算，见 §6.4）。
 
-验收信号：杀掉 Router 进程后，事件仍落库、Eval 保持 deadline、重启后能被新 Router 接走；节点失联后租约在 TTL 内被回收；另一个节点接管同一工作单元不会写出两份 Decision。 〔设想〕
+验收信号：杀掉 Router 进程后，事件仍落库、Eval 不被 deadline 耗光、重启后能被新 Router 接走；节点失联后租约在 TTL 内被回收；另一个节点接管同一工作单元不会写出两份 Decision。 〔设想〕
 
 **P2：角色进程拆分与异构适配器**
 
@@ -378,13 +378,13 @@
 
 原型的 Eval deadline 已经是一个好模型：
 
-- 候选送达后才开始计时（`src/app/assessment.ts:100`；`src/core/evals.ts:47-55`）；
+- 原型在候选送达后才开始计时（`src/app/assessment.ts:100`；`src/core/evals.ts:47-55`）；目标形态必须从 claim 起算，见下条第 1 点；
 - 暂停时冻结 deadline，恢复后平移（`src/core/evals.ts:35-46`）；
 - 过期后重排最多 2 次，然后记 `unavailable`（`src/core/evals.ts:19`、`src/core/evals.ts:60-69`）。
 
 〔判断〕跨进程后需要把它一般化为“三类时钟”：
 
-1. **评估 deadline**：从判定任务被某个 Assessor 领取开始计时，而不是从投递成功开始；否则消费者缺席时会把时间耗尽。
+1. **评估 deadline**：从判定任务被某个 Assessor 领取（claim）开始计时，而不是从投递成功开始；否则 Router 缺席或队列积压时，deadline 会在排队阶段被耗光，判定还没开始就过期。排队时长应由队列积压指标单独衡量，见架构文档 D5 与 §13.2 状态机。
 2. **租约心跳**：执行者必须定期续租；心跳丢失先标记“可疑”，到期才回收。
 3. **外部操作 deadline**：外部写操作必须有独立超时；超时进入“结果未知”，不能直接重试。
 
@@ -452,7 +452,7 @@
 | `trustLevel` | 不可信外部输入、已验证成员、系统内部 |
 | `schemaVersion` | 兼容升级用 |
 
-投递表字段建议：`deliveryId`、`eventId`、`consumerId`、`state`、`attempts`、`dueAt`、`leaseId`、`deadline`、`lastError`、`result`。唯一键是 `(eventId, consumerId)`，而不是单个事件行的 offset。
+投递表字段建议：`deliveryId`、`eventId`、`consumerId`、`state`、`attempts`、`dueAt`、`leaseId`、`deadline`、`lastError`、`result`。唯一键是 `(eventId, consumerId)`，而不是单个事件行的 offset。信封与投递字段的目标形态（含 `schemaVersion`、`trustLevel`、`capabilitySnapshot`）见架构文档 §5.1；本节不再复制。
 
 〔判断〕这里修正了本文此前的建议：此前写“加一张事件 outbox 表 + 消费者按 offset 拉取”，这暗含“一个事件一个投递位”。本系统的事件有多个消费者（Router、Worker、审计、watchdog），每个消费者的失败与重试是独立的，因此应拆成 Event Journal + Delivery。两者都在业务事务内写入，但允许 Delivery 尚未创建（消费者后注册时由 Journal 补建）。
 
@@ -499,6 +499,8 @@
 
 watchdog 也不应以 Session transcript 作为判定依据：transcript 是认知记录，不是业务事实；业务事实只在域表与 Journal。 〔判断〕
 
+完整只读输入集（含 Eval / Ticket / Assignment 只读视图、节点注册表）与确定性阈值要求见架构文档 §15.2；本节不复制。
+
 ## 7. 为什么“判断寄生在常驻 Router 会话”是瓶颈
 
 ### 7.1 五个具体瓶颈
@@ -514,18 +516,18 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 | 方案 | 判定单元 | 上下文/工具能力 | 隔离与并发 | 需要动的点 | 代价与风险 | 适用 |
 | --- | --- | --- | --- | --- | --- | --- |
 | A. 常驻 Router 会话（现状） | 主 Session 的一个 turn | 完整：可多步读 Thread、仓库、图片 | 无隔离；单 Session 串行 | 无 | 上下文污染、单点、难 A/B；启动耦合 | 单机、低负载 |
-| B. 每个 Eval 一个临时 DSH Session | 临时 Session | 完整；prompt/skill 可按评估配置 | 进程内并发；崩溃可丢 Session | 新增 Session 池/生命周期；`Assessor` 端口加结果回写；工具身份校验 | 创建成本；仍依赖 DSH；清理复杂 | 想保留工具能力但去串行 |
+| B. 每个 Eval 一个临时 DSH Session | 临时 Session | 完整；prompt/skill 可按评估配置 | 进程内并发；崩溃可丢 Session | 新增 Session 池/生命周期；`AssessorService` 接入；工具身份校验 | 创建成本；仍依赖 DSH；清理复杂 | 想保留工具能力但去串行 |
 | C. 一次性模型调用 | 一次 `ctx.llm.stream` | 仅预取上下文 + 结构化输出；不能多步读 | 最轻；易并发、易替换 provider | 预取 Thread/文件/图片；组装 prompt；schema 校验；重试与审计 | 复杂候选判断质量下降；无工具探索 | 低风险、规则明确、量大 |
 | D. 外部 agent 进程 | 一个工作单元 | 由外部 agent 决定；能力需声明 | 进程级隔离；可异构、可横向扩展 | 定义 AssessorService 协议（request/read/decide/cancel）、认证、租约、deadline、结果未知 | 协议与运维成本最高；需要节点注册与对账 | 多厂商、强隔离、规模化 |
 | E. 混合：预取 + C，复杂升级 B/D | 分级 | 简单走 C，复杂走 B/D | 按需 | 路由器/分级策略、预算、审计 | 策略复杂；需要质量基线 | 规模化且质量敏感 |
 
-〔判断〕对“比原型更通用 + agent 异构 + 角色进程隔离”的目标，推荐顺序是 **先做 D 的协议与端口闭合，再把 B 作为 DSH 适配器、C 作为轻量适配器**。不要先做 B 再改 D，否则 Session 语义会渗进协议。
+〔判断〕对“比原型更通用 + agent 异构 + 角色进程隔离”的目标，推荐顺序是 **先做 D 的 `AssessorService` 协议，再把 B 作为 DSH 适配器、C 作为轻量适配器**。不要先做 B 再改 D，否则 Session 语义会渗进协议。
 
 ### 7.3 具体要动的几处（原型参照）
 
 | 改动点 | 当前代码 | 改动内容 | 代价 |
 | --- | --- | --- | --- |
-| Assessor 端口 | `src/core/ports.ts:49-53` | P0：增加结果回写、取消、租约、身份；`request` 与 `assess` 成对 | 中高；影响 Engine、MasterAssessor、工具 |
+| Assessor 协议 | `src/core/ports.ts:49-53` | P0：另立宿主中立的 `AssessorService`（架构文档 D7、§10.2）；现有 `Assessor` 端口降为 DSH 适配器 | 中高；影响 Engine、MasterAssessor、工具 |
 | 判定入口 | `src/app/tools/main.ts:214-220`；`src/app/assessment.ts` 的 `decide` | P0：工具改为签发带认证的 `DecisionCommand`；外部适配器走同一命令 | 中 |
 | 投递目标 | `src/app/runtime.ts:131-133`；`src/app/sessions.ts:104` | P0：`RoleTarget` 解析；解析不到时排队，不丢 | 中 |
 | 初始化 | `src/app/runtime.ts:210-216` | P1：去掉 eager ensure；Router 作为消费者注册后再启动评估投递（P0 保留 eager Router） | 中；需要“无消费者”态与 deadline 规则 |
@@ -533,7 +535,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 | 队列派发 | `src/app/effects.ts:46-160` | P1：claim/lease/ack/visibility timeout；handler registry 可远程发现 | 高 |
 | 权限 | `src/app/sessions.ts:152` | P1：Router 只读 + decide；Worker 写工作区 + 受限外部写；Watchdog 只读 | 高 |
 
-〔判断〕其中“Assessor 端口闭合”是唯一一个**不做就无法真正异构**的改动；其余（队列服务化、权限拆分）可以分批做，但不做会让异构变成“同机多进程”。
+〔判断〕其中“`AssessorService` 协议落地”是唯一一个**不做就无法真正异构**的改动；其余（队列服务化、权限拆分）可以分批做，但不做会让异构变成“同机多进程”。
 
 ### 7.4 Assessor 可插拔的三步与结果合同
 
@@ -543,9 +545,11 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 
 | 步骤 | 外部材料主张 | 原型核对 | 核查后结论 |
 | --- | --- | --- | --- |
-| 1. Provider / Instance | `AssessorProvider.create(profile, candidate)` 返回 `AssessorInstance`，后者提供 `assess` / `dispose` | 端口只有 `request` / `release`（`src/core/ports.ts:49-53`）；`decide` 在应用类 `MasterAssessor` 上（`src/app/assessment.ts:272-279`），不在端口；结果最终由 `Engine.decide` 落库（`src/core/evals.ts:131-146`） | **部分成立，一处失准。** 领域层确实依赖端口，这一点成立；但“只差默认组装、Engine 不用重写”不成立——结果回写不在端口合同里，必须先给端口补 `assess` 与 `cancel`，否则外部 Assessor 无法交回判定 |
+| 1. Provider / Instance | `AssessorProvider.create(profile, candidate)` 返回 `AssessorInstance`，后者提供 `assess` / `dispose` | 端口只有 `request` / `release`（`src/core/ports.ts:49-53`）；`decide` 在应用类 `MasterAssessor` 上（`src/app/assessment.ts:272-279`），不在端口；结果最终由 `Engine.decide` 落库（`src/core/evals.ts:131-146`） | **部分成立，一处失准。** 领域层确实依赖端口，这一点成立；但“只差默认组装、Engine 不用重写”不成立——结果回写不在端口合同里；补法也不是给现有端口加方法（见下方“历史方案”），而是另立宿主中立的 `AssessorService`（架构文档 D7、§10.2），现有 `Assessor` 端口降为该协议的 DSH 实现适配器 |
 | 2. Session 定位 | `AssessorSessionProvider.resolve` / `ensure`；`ensure` 必须稳定身份、幂等创建，同一 Eval 重试不能建两个 Session | `Sessions.ensure` 已是 resolve-then-create（`src/app/sessions.ts:138-147`），但调用方固定传 `masterId`；`AssessmentTarget` 不存在，`resolve` 也没有 | **可复用，但需换键。** 现有 `ensure` 的“找不到才创建”可复用；新键应是 `(evalId, assessorProfile)`，而不是固定 id。并发下两个 `ensure` 是否只创建一个 Session 未验证，属〔推断〕风险 |
 | 3. 绑定持久化 | 存 `AssessmentTarget`：runtimeType、sessionId、assessorProfile、policyVersion、deliveryState | `Evaluation` 已存 `policyVersion`、`delivered`、`deadline`、`pausedAt`（`src/core/model.ts:136-154`），但没有 assessor / session / runtime 绑定 | **未落地，属新增。** 现有字段只够“这个评估什么时候到期”，不够“这个评估由谁在做、重启后回到哪” |
+
+**历史方案（已被裁决取代）：** 曾考虑在现有 `Assessor` 端口上直接补 `assess` / `cancel` 与租约——这是改动最小的做法。它的问题是把 DSH 的 Session 生命周期与类型带进协议：非 DSH 的 Assessor 必须迁就 DSH 语义，跨宿主复用无从谈起。架构文档 D7 因此裁决为另立宿主中立的 `AssessorService`，现有 `Assessor` 端口只作该协议的 DSH 实现适配器（§10.2）；取代理由是“跨宿主复用 vs 绑死 DSH 类型”。下面的 `AssessmentResult` 合同归 `AssessorService`，不再作为 `Assessor` 端口的方法。
 
 〔设想〕`AssessmentResult` 的字段分两批：外部材料给出 `evalId`、`policyVersion`、`assessorId`、`outcome`、`completedAt` 五个；本文再补 `attempt`、`leaseId`、`actor`、`evidence` 四个。后四个不是装饰：
 
@@ -555,7 +559,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 
 〔判断〕校验链应为 `evalId → policyVersion → Mandate rules → Engine.decide`。原型的现状是：`evalId` 已严格校验（`src/core/evals.ts:135`），`Mandate` 规则在 `assessmentOutcome` 与 `Engine.decide` 内校验（`src/app/assessment.ts:275-277`；`src/core/evals.ts:152-154`），但 **`policyVersion` 只被记录、未被比对**：Eval 记录开始时的版本（`src/core/evals.ts:111`），Decision 也沿用它（`src/core/evals.ts:330`），而结果映射用的是当前设置（`src/app/assessment.ts:275`）。如果评估进行中策略被修改，迟到的结果会按新规则计算，却仍挂着旧版本号。外部材料说“迟到的结果不应无条件成为有效授权”，这一点在原型里只靠 `evalId` 与 deadline 兜底，没有版本兜底。 〔原型 + 判断〕
 
-上述是原型现状，不是最终处置。架构文档 §13 已把它升级为有界重判协议：版本不匹配的判定进入 `pending-policy`，30 秒合并窗口关闭后按最新版本重派，每个 Eval 最多重判 2 次，幂等键为 `reassess:{evalId}:{policyVersion}`，到上限转人工 `escalated`；本文不再重复其状态机。
+上述是原型现状，不是最终处置。架构文档 §13 已把它升级为有界重判协议：版本不匹配的判定进入 `pending-policy`，30 秒合并窗口关闭后按最新版本重派，每个 Eval 最多重判 2 次，幂等键为 `reassess:{evalId}:{policyVersion}`，到上限转人工 `escalated`；本文不再重复其状态机。目标形态另有 `schemaVersion`（协议消息格式版本），与 `policyVersion` 不可合并，见架构文档 §13.1。
 
 ### 7.5 权属澄清：Decision 不在 Session 里
 
@@ -609,7 +613,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 | 平面 | 外部材料职责 | 原型对应 | 缺口 |
 | --- | --- | --- | --- |
 | Event Plane | Source 适配器 → Event Ingress → Event Journal → Subscription Registry → Event Router | Source registry 与 Intake（`src/core/intake.ts:19-61`）；Thread 是聚合边界（`src/core/model.ts:156-164`） | 无独立 Ingress、Journal、Subscription Registry、Event Router；事件直接从 Source 进 Engine 事务 |
-| Decision Plane | 确定性 Gate → 可插拔 Assessor → Decision → Mandate | `policy.gate`（`src/policy.ts:191-211`）→ `MasterAssessor` → `Engine.decide`（`src/core/evals.ts:131-156`）→ Mandate（`src/core/model.ts:125-133`） | Gate / Decision / Mandate 已在，Assessor 是唯一未闭合的端口 |
+| Decision Plane | 确定性 Gate → 可插拔 Assessor → Decision → Mandate | `policy.gate`（`src/policy.ts:191-211`）→ `MasterAssessor` → `Engine.decide`（`src/core/evals.ts:131-156`）→ Mandate（`src/core/model.ts:125-133`） | Gate / Decision / Mandate 已在，Assessor 协议是唯一未闭合的端口（另立 `AssessorService`，见架构文档 D7） |
 | Delivery Plane | Durable Delivery / Effects → Session Input Adapters | `Effects`（`src/app/effects.ts:46-160`）→ `AgentDelivery`（`src/app/delivery.ts:61-84`） | 无按消费者记录的投递表；适配器不可替换 |
 | Agent Runtime | Shared Router / Domain Router / Dedicated Assessor / Workers | 单一主 Session + 按需 worker（`src/app/sessions.ts:138-155`；`src/executor/dsh.ts:424-470`） | 只有 Shared Router 一种形态，无远程运行时 |
 | Work Plane | Ticket / Assignment → Worker → Report | Ticket + Mandate + Assignment（`src/core/tickets.ts:37-56`） | 已具备；缺“结果未知”的显式状态 |
@@ -618,12 +622,12 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 
 ### P0：协议闭合（仍单进程，保留 eager Router）
 
-1. `Assessor` 端口补结果回写与取消：`request(candidate) → AssessmentResult`；结果带 `evalId`、`policyVersion`、`assessorId`、`attempt`、`leaseId`、`actor`、`outcome`、`completedAt`、`evidence`；未持有租约的判定被拒绝。
+1. 另立宿主中立的 `AssessorService`（架构文档 D7、§10.2）：`request(candidate) → AssessmentResult`；现有 `Assessor` 端口降为 DSH 适配器。结果带 `evalId`、`policyVersion`、`assessorId`、`attempt`、`leaseId`、`actor`、`outcome`、`completedAt`、`evidence`；未持有租约的判定被拒绝。
 2. `DecisionCommand` 的认证与校验链：`evalId → policyVersion → Mandate rules → Engine.decide`；工具调用只是签发这个 command 的一种方式；版本不一致时的处置见架构文档 §13（`pending-policy` / 有界重判）。
 3. 持久化 `AssessmentTarget`（runtimeType、sessionId、assessorProfile、policyVersion、deliveryState）；`Engine` 不再在构造期写死 session id，但默认仍解析到共享 Router。
 4. `RoleTarget` 替代 `masterId` 直投；relay / notice / assessment 统一走角色解析；解析不到时记录并排队。
 5. 拆出 Event Journal 与 Delivery 表：事件事实与每个消费者各自的投递行同事务写入。
-6. 抽象 `AssessorProvider` / `AssessorInstance`（`create` / `assess` / `dispose`）与 `SessionProvider`（`resolve` / `ensure`）；`ensure` 以 `(evalId, assessorProfile)` 为键，重试不能建两个 Session。
+6. 抽象 `AssessorProvider` / `AssessorInstance`（`create` / `assess` / `dispose`）与 `SessionProvider`（`resolve` / `ensure`）；`AssessorProvider` 是 `AssessorService` 在 DSH 宿主内的装配，不是对外协议；`ensure` 以 `(evalId, assessorProfile)` 为键，重试不能建两个 Session。
 
 验收信号：同一 Eval 重试只产生一个 Assessor Session；迟到或旧 `policyVersion` 的 `AssessmentResult` 被拒绝；共享 Router 形态仍可运行。
 
@@ -633,9 +637,9 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 8. 执行节点注册：nodeId、roles、capacity、heartbeat、drain；`maxWorkers` 从本地设置（`src/policy.ts:93`）升级为节点容量声明。
 9. 失败分类补齐 `timeout` / `unknown`；外部副作用超时先对账再重试，不自动重放。
 10. 按角色拆凭据与工具白名单：Router 无仓库写权限，Worker 无判定权限，Watchdog 无写权限。
-11. 移除 eager ensure：初始化只启动引擎与队列；Router 上线后消费评估队列，无消费者时 Eval 保留 deadline。
+11. 移除 eager ensure：初始化只启动引擎与队列；Router 上线后消费评估队列，无消费者时 Eval 不启动 deadline（从 claim 起算，见 §6.4）。
 
-验收信号：杀掉 Router 进程后，事件仍落库、Eval 保持 deadline、重启后能被新 Router 接走；节点失联后租约在 TTL 内被回收；另一个节点接管同一工作单元不会写出两份 Decision。
+验收信号：杀掉 Router 进程后，事件仍落库、Eval 不被 deadline 耗光、重启后能被新 Router 接走；节点失联后租约在 TTL 内被回收；另一个节点接管同一工作单元不会写出两份 Decision。
 
 ### P2：角色进程拆分与异构
 
@@ -649,7 +653,7 @@ watchdog 也不应以 Session transcript 作为判定依据：transcript 是认�
 - P1：无 Router 时事件不丢；节点失联回收；fencing token；外部超时进入 unknown。
 - P2：同一引擎接两个不同实现的角色；替换其一不影响其他角色的测试。
 
-〔判断〕外部材料在“最终落地路线”里把 Event Ingress 排在 Assessor 之前（P1/P2），又在专章建议“先让 Assessor 可插拔”。两处顺序并不一致。本文取后者，但把 Event Journal / Delivery 与 Assessor 端口放在同一个 P0：两者都改协议，拆成两个阶段会经历一次“投递语义已换、判定仍走工具回写”的中间态，迁移成本更高。
+〔判断〕外部材料在“最终落地路线”里把 Event Ingress 排在 Assessor 之前（P1/P2），又在专章建议“先让 Assessor 可插拔”。两处顺序并不一致。本文取后者，但把 Event Journal / Delivery 与 `AssessorService` 协议放在同一个 P0：两者都改协议，拆成两个阶段会经历一次“投递语义已换、判定仍走工具回写”的中间态，迁移成本更高。
 
 ## 11. 关键引用索引
 
