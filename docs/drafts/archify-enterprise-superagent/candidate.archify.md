@@ -15,12 +15,12 @@
 @source assembly title="装配：只有抽象，没有具体系统" path=docs/drafts/enterprise-superagent-architecture.md lines=130:170
 @source entities title="核心实体：thread、来源轨道、编排事实" path=docs/drafts/enterprise-superagent-architecture.md lines=171:219
 @source ports title="四个接口的语义契约" path=docs/drafts/enterprise-superagent-architecture.md lines=220:255
-@source lifecycle title="三条生命周期" path=docs/drafts/enterprise-superagent-architecture.md lines=256:304
-@source isolation title="隔离与信任" path=docs/drafts/enterprise-superagent-architecture.md lines=305:358
-@source human title="人工介入的三个层次" path=docs/drafts/enterprise-superagent-architecture.md lines=359:372
-@source knowledge title="知识生产线" path=docs/drafts/enterprise-superagent-architecture.md lines=373:396
-@source inherit title="与原型的关系" path=docs/drafts/enterprise-superagent-architecture.md lines=397:429
-@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=430:508
+@source lifecycle title="三条生命周期" path=docs/drafts/enterprise-superagent-architecture.md lines=256:306
+@source isolation title="隔离与信任" path=docs/drafts/enterprise-superagent-architecture.md lines=307:360
+@source human title="人工介入的三个层次" path=docs/drafts/enterprise-superagent-architecture.md lines=361:374
+@source knowledge title="知识生产线" path=docs/drafts/enterprise-superagent-architecture.md lines=375:398
+@source inherit title="与原型的关系" path=docs/drafts/enterprise-superagent-architecture.md lines=399:431
+@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=432:510
 
 ## 三个系统与本项目怎么连起来？ {#assembly span=12}
 
