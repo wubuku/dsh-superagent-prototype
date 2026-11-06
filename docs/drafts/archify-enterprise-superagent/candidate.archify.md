@@ -48,7 +48,7 @@
 | node | orchestrator | 完成 + 副作用清单 | emphasis |
 | phase | 对账与收口 |
 | adapter | orchestrator | 核实结论 | security |
-| orchestrator | bos | 业务收口 | return |
+| orchestrator | bos | 回到既有流程 | return |
 
 判定「哪些事件属于同一条 thread」由来源适配器做，本项目只签发与保管标识。跨来源合并只能由人显式发起，合并后仍保留多条来源轨道。[](source:entities)
 
