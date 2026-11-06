@@ -28,7 +28,7 @@
 
 三个既有系统各管一摊，但管的不是同一类东西。BOS 管制度事实，Spring-AI-RAG 管认知事实；编排事实归本项目。[](source:ports)[](source:carriers)
 
-BlueCortex 管的是第四件事：**参与者的跨会话记忆**。它是 Claude-Mem（外挂记忆插件）的移植，从旁边观察每个 agent 的会话，把痕迹提炼成观察与摘要，下个会话开始时注入回去。它不承载协作状态。[](source:carriers)
+BlueCortex 管的是另一件事：**参与者的跨会话记忆**。它是 Claude-Mem（外挂记忆插件）的移植，从旁边观察每个 agent 的会话，把痕迹提炼成观察与摘要，下个会话开始时注入回去。它不承载协作状态。[](source:carriers)
 
 连接只走四个抽象接口：`FlowCatalog` 管制度、`KnowledgeQuery` 管认知、`TenantDirectory` 管租户身份。[](source:ports)
 

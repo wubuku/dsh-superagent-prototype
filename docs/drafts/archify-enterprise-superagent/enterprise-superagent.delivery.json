@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
-  "receiptId": "35a91fb3-d91b-4b2e-982d-dbf479daa81c",
+  "receiptId": "8d008bf8-0b24-4cbd-bafb-ca357b8d39b3",
   "status": "current",
   "command": "deliver",
   "type": "explainer",
   "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/candidate.archify.md",
   "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/enterprise-superagent.html",
   "specification": {
-    "sha256": "41ff2118e3fdb3388627e870f78b1de6054f6d64c3a0ce716b14b01da402e650",
+    "sha256": "41fb1454d4e3eaa55685d4ac34cc99f45636acbf7c4e90f47403493598d782e2",
     "bytes": 9607
   },
   "artifact": {
-    "sha256": "a1f5277fb9cfa4939192da4c532945f44caaee29aa32577957728b2bd63c10b5",
+    "sha256": "58caf1bc129458ad335fa1a9674941da667e23b2af680b7484e5be6357201340",
     "bytes": 2246813
   },
   "explainer": {
-    "preparedSha256": "71be023854897beb22a400a88b66054351828427cfb017210a6ab1c610a9804f",
+    "preparedSha256": "1224f1fd9b4425cfff0a02e72743aa752b565fc1513a4371ca3003af53929b10",
     "dependencies": [
       {
         "kind": "repository",
