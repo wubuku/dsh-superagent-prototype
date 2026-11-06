@@ -8,7 +8,7 @@
 - 这是架构设计，不是实现说明；每条结论都挂前提编号，尚未写任何代码。[](source:open)
 
 @answer scope="架构设计 · 设计基线 · 决策核对 · 尚未实现"
-@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=58f3403ece602edb52cc1730ed1c8d3031ac56f5
+@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=07f72e556a9c18727a711e4965b4a8f6a64cefc1
 @source intent title="设计起点：硬要求、盲区与划分理由" path=docs/drafts/enterprise-superagent-architecture.md lines=11:71
 @source carriers title="我们已有的三个系统" path=docs/drafts/enterprise-superagent-architecture.md lines=72:103
 @source facts title="三类事实与三条失效规则" path=docs/drafts/enterprise-superagent-architecture.md lines=104:129
