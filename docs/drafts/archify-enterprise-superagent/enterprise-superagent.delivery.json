@@ -1,117 +1,117 @@
 {
   "schemaVersion": 1,
-  "receiptId": "f628b6b8-ed71-46b3-8205-a7cb0bc84ba6",
+  "receiptId": "9f148184-28b9-4c7c-832e-d0a68f9c3f87",
   "status": "current",
   "command": "deliver",
   "type": "explainer",
   "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/candidate.archify.md",
   "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/enterprise-superagent.html",
   "specification": {
-    "sha256": "863be2c66d14ef24694b62776d6fcbdc3926d85c542053b4a0091dfaa88bc6a0",
+    "sha256": "34827487dcc77b88cf7cfe7f3f369c3ec6d1acff43b628abbc3646c0e8d0fe56",
     "bytes": 9693
   },
   "artifact": {
-    "sha256": "35a64e9851c5813cb18c452d6872e9eaa9855b648b9b8540f94934ffbcb3a656",
-    "bytes": 2252627
+    "sha256": "46a08f61c6ef41df2e2741221551ff7d3396defa21c7c117f03d34555cca3f15",
+    "bytes": 2316490
   },
   "explainer": {
-    "preparedSha256": "5a38cff9661a67e7cc787fcbe72c08168a31fddb12ad9eda3655b0bd92eadd2f",
+    "preparedSha256": "e6c3658e666c97bdd5979c38a5fe19c0d402eb01e5a05bb8376ac3e40167f484",
     "dependencies": [
       {
         "kind": "repository",
         "id": "intent",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "carriers",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "facts",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "assembly",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "entities",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "ports",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "lifecycle",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "isolation",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "human",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "knowledge",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "inherit",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "repository",
         "id": "open",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "879f9058a443def7270996a3d633d7fc9cdbf79c",
-        "sha256": "d350f5f06e3409a3a73aab628017506e2e1875653e789789dffd54c5488be4c9",
-        "bytes": 51449
+        "revision": "fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a",
+        "sha256": "0e447b4adae9f42e4ee5256c4245e44f7223960eea92945b70fec668c1c1698b",
+        "bytes": 55204
       },
       {
         "kind": "diagram-spec",
@@ -133,7 +133,7 @@
         "id": "thread-lifecycle-diagram",
         "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/diagram.thread-lifecycle.json",
         "relativePath": "diagram.thread-lifecycle.json",
-        "sha256": "d20599425d9a637a0f73372da8ea2cc51ee337ca1bf8d3841576571f1f89d7a9",
+        "sha256": "fd73b4ec8a18de79dd61164aa99368e6cde8565d1e63077f38a44f7edd080692",
         "bytes": 2299
       }
     ]

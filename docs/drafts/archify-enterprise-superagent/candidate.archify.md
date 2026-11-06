@@ -8,19 +8,19 @@
 - 这是架构设计，不是实现说明；每条结论都挂前提编号，尚未写任何代码。[](source:open)
 
 @answer scope="架构设计 · 设计基线 · 决策核对 · 尚未实现"
-@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=879f9058a443def7270996a3d633d7fc9cdbf79c
+@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=fe050cb3f1ed2cfc84e9feb0c12bb6905d36826a
 @source intent title="设计起点：硬要求、盲区与划分理由" path=docs/drafts/enterprise-superagent-architecture.md lines=11:73
 @source carriers title="我们已有的三个系统" path=docs/drafts/enterprise-superagent-architecture.md lines=74:107
 @source facts title="三类事实与三条失效规则" path=docs/drafts/enterprise-superagent-architecture.md lines=108:133
 @source assembly title="装配：只有抽象，没有具体系统" path=docs/drafts/enterprise-superagent-architecture.md lines=134:174
-@source entities title="核心实体：thread、来源轨道、编排事实" path=docs/drafts/enterprise-superagent-architecture.md lines=175:223
-@source ports title="四个接口的语义契约" path=docs/drafts/enterprise-superagent-architecture.md lines=224:259
-@source lifecycle title="三条生命周期" path=docs/drafts/enterprise-superagent-architecture.md lines=260:310
-@source isolation title="隔离与信任" path=docs/drafts/enterprise-superagent-architecture.md lines=311:364
-@source human title="人工介入的三个层次" path=docs/drafts/enterprise-superagent-architecture.md lines=365:378
-@source knowledge title="知识生产线" path=docs/drafts/enterprise-superagent-architecture.md lines=379:402
-@source inherit title="与原型的关系" path=docs/drafts/enterprise-superagent-architecture.md lines=403:435
-@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=436:516
+@source entities title="核心实体：thread、来源轨道、编排事实" path=docs/drafts/enterprise-superagent-architecture.md lines=175:225
+@source ports title="四个接口的语义契约" path=docs/drafts/enterprise-superagent-architecture.md lines=226:261
+@source lifecycle title="三条生命周期" path=docs/drafts/enterprise-superagent-architecture.md lines=262:312
+@source isolation title="隔离与信任" path=docs/drafts/enterprise-superagent-architecture.md lines=313:368
+@source human title="人工介入的三个层次" path=docs/drafts/enterprise-superagent-architecture.md lines=369:382
+@source knowledge title="知识生产线" path=docs/drafts/enterprise-superagent-architecture.md lines=383:406
+@source inherit title="与原型的关系" path=docs/drafts/enterprise-superagent-architecture.md lines=407:439
+@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=440:528
 
 ## 三个系统与本项目怎么连起来？ {#assembly span=12}
 
