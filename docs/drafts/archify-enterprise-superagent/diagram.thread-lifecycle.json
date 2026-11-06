@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wubuku/dsh-superagent-prototype.git",
       "provider": "github",
-      "revision": "3bca5165de68099cd9f100b6d275665f5a029871"
+      "revision": "281891d2b0d1c47c09e69ccbb5ce59cb165b9aa0"
     }
   },
   "mainPath": [
@@ -39,21 +39,8 @@
       "sources": [
         {
           "path": "docs/drafts/enterprise-superagent-architecture.md",
-          "line": 266,
-          "end_line": 272
-        }
-      ]
-    },
-    {
-      "id": "reconciling",
-      "type": "waiting",
-      "label": "待对账",
-      "sublabel": "在途清零",
-      "sources": [
-        {
-          "path": "docs/drafts/enterprise-superagent-architecture.md",
-          "line": 273,
-          "end_line": 292
+          "line": 258,
+          "end_line": 265
         }
       ]
     },
@@ -61,7 +48,7 @@
       "id": "ended",
       "type": "neutral",
       "label": "已结束",
-      "sublabel": "终止态",
+      "sublabel": "终止态，不可复活",
       "sources": [
         {
           "path": "docs/drafts/enterprise-superagent-architecture.md",
@@ -80,31 +67,10 @@
       "variant": "emphasis"
     },
     {
-      "id": "active-reconciling",
-      "from": "active",
-      "to": "reconciling",
-      "label": "在途清零",
-      "variant": "emphasis"
-    },
-    {
-      "id": "reconciling-active",
-      "from": "reconciling",
-      "to": "active",
-      "label": "派发新任务",
-      "variant": "dashed"
-    },
-    {
-      "id": "reconciling-ended",
-      "from": "reconciling",
-      "to": "ended",
-      "label": "对账完成",
-      "variant": "emphasis"
-    },
-    {
       "id": "active-ended",
       "from": "active",
       "to": "ended",
-      "label": "轨道全关",
+      "label": "轨道全关 + 在途清零",
       "variant": "emphasis"
     }
   ],

@@ -8,7 +8,7 @@
 - 这是架构设计，不是实现说明；每条结论都挂决策编号，尚未写任何代码。[](source:open)
 
 @answer scope="架构设计 · 设计基线 · 决策核对 · 尚未实现"
-@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=945355e47c1323c46817fbe6b1a210cb2fc798b3
+@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=281891d2b0d1c47c09e69ccbb5ce59cb165b9aa0
 @source intent title="设计起点：硬要求、盲区与划分理由" path=docs/drafts/enterprise-superagent-architecture.md lines=11:71
 @source carriers title="我们已有的三个系统" path=docs/drafts/enterprise-superagent-architecture.md lines=72:103
 @source facts title="三类事实与三条失效规则" path=docs/drafts/enterprise-superagent-architecture.md lines=104:129
@@ -88,7 +88,7 @@ thread 归属唯一租户，创建时写定，之后不可更换。要交给另�
 | **系统现状** | BOS 已能以 MCP 形式被消费；Spring-AI-RAG 的图谱与多租户仍在迭代；BlueCortex 的会话语义面向单个助手 | 图里画的是「如何使用」，不是「已经具备」 |
 | **接口细节** | 本文只写「问什么、答什么、不答什么」，不写传输与实现 | 接口名是语义切分，不是接口定义 |
 | **授权链** | 调用身份、Mandate（任务授权）、工具授权三层必须分开，但每层由谁判定尚未收敛 | 不要把三层合成一个权限字段 |
-| **未决问题** | 会话主语、与 BOS 的接缝、五层审查落点、异构 agent 之间的通信 | 四项留白。第四项已拆成九种模式与候选路线，均未定 |
+| **未决问题** | 会话主语、与 BOS 的接缝、多层审查落点、异构 agent 之间的通信 | 四项留白。第四项已拆成九种模式与候选路线，均未定 |
 | **跨进程通信** | 执行节点只出站、不直连编排存储、进度流不是权威 | 原型只有同进程对象调用，这三条是跨出去之后必须补的 |
 | **知识怎么写进去** | agent 只能提交提案，人确认后才入库；被推翻时另记一条溯源，历史决定保持原样 | 知识不由 agent 自行写入，这是它区别于「记忆」的地方 |
 
