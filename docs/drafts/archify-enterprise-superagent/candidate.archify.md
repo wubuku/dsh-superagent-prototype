@@ -20,7 +20,7 @@
 @source human title="人工介入的三个层次" path=docs/drafts/enterprise-superagent-architecture.md lines=359:372
 @source knowledge title="知识生产线" path=docs/drafts/enterprise-superagent-architecture.md lines=373:396
 @source inherit title="与原型的关系" path=docs/drafts/enterprise-superagent-architecture.md lines=397:427
-@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=428:450
+@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=428:501
 
 ## 三个系统与本项目怎么连起来？ {#assembly span=12}
 
@@ -88,7 +88,8 @@ thread 归属唯一租户，创建时写定，之后不可更换。要交给另�
 | **系统现状** | BOS 已能以 MCP 形式被消费；Spring-AI-RAG 的图谱与多租户仍在迭代；BlueCortex 新增了协作语义 | 图里画的是「如何使用」，不是「已经具备」 |
 | **接口细节** | 本文只写「问什么、答什么、不答什么」，不写传输与实现 | 接口名是语义切分，不是接口定义 |
 | **授权链** | 调用身份、Mandate（任务授权）、工具授权三层必须分开，但每层由谁判定尚未收敛 | 不要把三层合成一个权限字段 |
-| **未决问题** | 会话主语、与 BOS 的接缝、五层审查落点、异构 agent 之间的通信 | 四项如实留白；第四项已有候选：A2A 与 UHP 是互补的两段边界，委托与扇出可由重复调用搭出，互相发现仍是空白 |
+| **未决问题** | 会话主语、与 BOS 的接缝、五层审查落点、异构 agent 之间的通信 | 四项留白。第四项已拆成九种模式与候选路线，均未定 |
+| **跨进程通信** | 执行节点只出站、不直连编排存储、进度流不是权威；不做全网状互联 | 原型只有同进程对象调用，这三条是跨出去之后必须补的 |
 | **知识怎么写进去** | agent 只能提交提案，人确认后才入库；被推翻时另记一条溯源，历史决定保持原样 | 知识不由 agent 自行写入，这是它区别于「记忆」的地方 |
 
 执行节点属于人，因此租户边界只能由节点内部的任务域保证，不能由「归属哪个租户」保证。这是刻意的取舍：把节点绑死到租户上隔离最强，但员工要为每个团队各跑一个常驻组件。[](source:isolation)
