@@ -1,6 +1,6 @@
 # 企业级 Super-Agent：一页看懂它的架构设计
 
-被借鉴的原型只设计了一台「接活、派活、记账」的机器，没有设计它怎么**懂业务**。本设计补上这一块：**三类事实各归其位**——制度事实留在 BOS，认知事实留在 Spring-AI-RAG，运行事实落成本项目的编排事实。本项目只持有以 thread 为锚的编排事实，通过四个抽象接口与三个系统相连；不建流程、不建知识库、不复制治理语义。三条硬要求把范围撑开：事件来源更广；Router、Worker、Watchdog 可以是不同厂商、不同运行时的 agent；关键角色跨进程隔离。[](source:intent)[](source:facts)
+被借鉴的原型只设计了一台「接活、派活、记账」的机器，没有设计它怎么**懂业务**。本设计补上这一块：**三类事实各归其位**——制度事实留在 BOS，认知事实留在 Spring-AI-RAG，运行事实落成本项目的编排事实。本项目只持有以 thread（协作线索）为锚的编排事实，通过四个抽象接口与三个系统相连；不建流程、不建知识库、不复制治理语义。三条硬要求把范围撑开：事件来源更广；Router、Worker、Watchdog 可以是不同厂商、不同运行时的 agent；关键角色跨进程隔离。[](source:intent)[](source:facts)
 
 - 三类事实与三条失效规则是全篇的推导起点，模块与状态机都从它长出来，不从原型继承。[](source:facts)
 - 接口按语义切分，不按系统切分；换掉任何一个承载系统，上层都不用改。[](source:ports)
@@ -8,7 +8,7 @@
 - 这是架构设计，不是实现说明；每条结论都挂前提编号，尚未写任何代码。[](source:open)
 
 @answer scope="架构设计 · 设计基线 · 决策核对 · 尚未实现"
-@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=272cb2bf8127f9aba926042de7958ed44c9a687a
+@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=879f9058a443def7270996a3d633d7fc9cdbf79c
 @source intent title="设计起点：硬要求、盲区与划分理由" path=docs/drafts/enterprise-superagent-architecture.md lines=11:73
 @source carriers title="我们已有的三个系统" path=docs/drafts/enterprise-superagent-architecture.md lines=74:107
 @source facts title="三类事实与三条失效规则" path=docs/drafts/enterprise-superagent-architecture.md lines=108:133
@@ -91,7 +91,7 @@ thread 归属唯一租户，创建时写定，之后不可更换。要交给另�
 | 边界 | 本设计的内容 | 读图提示 |
 | --- | --- | --- |
 | **成熟度** | 架构设计，尚未实现；没有任何对应代码 | 不要把图当作可运行系统的说明书 |
-| **系统现状** | BOS 已能以 MCP 形式被消费；Spring-AI-RAG 的图谱与多租户仍在迭代；BlueCortex 是参与者一侧的跨会话记忆，不承载协作状态 | 图里画的是「如何使用」，不是「已经具备」 |
+| **系统现状** | BOS 已能以 MCP（Model Context Protocol）形式被消费；Spring-AI-RAG 的图谱与多租户仍在迭代；BlueCortex 是参与者一侧的跨会话记忆，不承载协作状态 | 图里画的是「如何使用」，不是「已经具备」 |
 | **接口细节** | 本文只写「问什么、答什么、不答什么」，不写传输与实现 | 接口名是语义切分，不是接口定义 |
 | **授权链** | 调用身份、Mandate（任务授权）、工具授权三层必须分开，但每层由谁判定尚未收敛 | 不要把三层合成一个权限字段 |
 | **未决问题** | 会话主语、与 BOS 的接缝、多层审查落点、异构 agent 之间的通信 | 四项留白。第四项已拆成九种模式与候选路线，均未定 |
@@ -100,7 +100,7 @@ thread 归属唯一租户，创建时写定，之后不可更换。要交给另�
 
 执行节点属于人，因此租户边界只能由节点内部的任务域保证，不能由「归属哪个租户」保证。这是刻意的取舍：把节点绑死到租户上隔离最强，但员工要为每个团队各跑一个常驻组件。[](source:isolation)
 
-人工介入分三层：节点上看与接、编排层改派与停止、业务系统里审批与验收。缺一层，BYOM 的意义就少一块。[](source:human)
+人工介入分三层：节点上看与接、编排层改派与停止、业务系统里审批与验收。缺一层，BYOM（员工机器上的 agent 加入协作）的意义就少一块。[](source:human)
 
 @callout id=design-goal level=note title="设计目标"
 企业级的第一性是适用范围的扩大——来源更多、参与者更多、部署位置更多——而不是能力更强。因此本设计先定边界与归属，再谈效率。
