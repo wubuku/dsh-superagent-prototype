@@ -459,7 +459,7 @@ agent 只能提交**提案**：一份草案、它依据的证据、以及它建�
 
 原型不是「没有 agent 间通信」，而是**只有同进程对象调用**。三处证据：
 
-- 投递前按 id 解析出的是**内存对象**：`resolveAgent(sessionId)` 返回同进程内的 Agent（`src/app/sessions.ts:163`）。
+- 投递前按 id 解析出的是**内存对象**：`resolveAgent(sessionId)` 返回同进程内的 Agent（`src/app/sessions.ts:158`）。
 - 投递时**按对象身份校验**：`ctx.agents.get(agent.id) !== agent` 就直接抛错（`src/app/delivery.ts:71`）。指针相等在跨进程时无从比较。
 - 投递目标是**进程内 inbox**：`agent.inbox.nextTurn` / `nextStep`（`src/app/delivery.ts:74`）；`relay` 与 `notice` 只是 `Effects` 队列里的内存动作（`src/app/sessions.ts:104-105`）。
 
