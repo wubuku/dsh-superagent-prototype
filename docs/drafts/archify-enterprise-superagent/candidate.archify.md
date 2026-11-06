@@ -20,7 +20,7 @@
 @source human title="人工介入的三个层次" path=docs/drafts/enterprise-superagent-architecture.md lines=359:372
 @source knowledge title="知识生产线" path=docs/drafts/enterprise-superagent-architecture.md lines=373:396
 @source inherit title="与原型的关系" path=docs/drafts/enterprise-superagent-architecture.md lines=397:427
-@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=428:501
+@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=428:505
 
 ## 三个系统与本项目怎么连起来？ {#assembly span=12}
 
