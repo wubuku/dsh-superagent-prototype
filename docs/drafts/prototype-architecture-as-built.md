@@ -161,6 +161,18 @@ SourceKind.apply
 
 事件只在事务提交前由领域代码发出；`Runtime` 的处理是同步的内存操作，需要持久化的动作必须自己进 effect 队列或 outbox。仓库里没有可回放的事件表。
 
+### 3.4 Thread 与 Ticket 的关系
+
+原型里这两者的关系是「多对多、不对称、清单由 Thread 持有」。它散见在两处英文材料里——`docs/001-domain.md` 的概念表与不变量表、`docs/007-architecture.md` 的端口与模块描述——本节集中陈述，结论全部回代码核对过（见「自查记录」13–19）。
+
+**先后次序：Thread 先于 Ticket。** Thread 由 Source 在摄入时确定归属，键为 `${source}:${id}`（`src/core/model.ts:12`），Trigger 至少属于一条 Thread 才被接受（`src/core/intake.ts:20-22`）。Ticket 只在 Eval 判定 accept 后由 `Tickets.create` 创建，带 Decision id 与 Mandate；创建时对 Eval 批次里每个 Trigger 的每条 Thread 逐一订阅（`src/core/tickets.ts:37-56`，订阅循环在 `:52`）。因此每条线索上总是「先有事件与评估，后有工单」。
+
+**多对多，清单只在 Thread 侧。** 订阅字段只有 Thread 有：`subscriptions` 是完整订阅，`context` 是只读跟随（`src/core/model.ts:163-169`）；Ticket 上没有订阅字段。一条 Thread 一生可以先后挂多个 Ticket——已结束的不摘除订阅（`src/core/intake.ts:44` 对已结束工单仍按条件命中）——但同一时刻每条 Thread 至多一个 live Ticket。这不是数据库约束，是评估纪律：已立项的 Trigger 被硬性忽略（`startedTicket`，`src/core/evals.ts:86-90`），评估上下文带上该 Thread 的全部工单（含已结束，`src/core/evals.ts:92`），重复立项由评估避免。反方向同样多对多：一个 Ticket 覆盖 origin 批次里每个 Trigger 的全部 Thread，加上后来 `bind` 进来的（`src/core/tickets.ts:61-72`）。
+
+**两种「跟随」不是一回事。** 订阅是消息面：命中的 Trigger 作为 Input 扇出给 live 工单（`src/core/intake.ts:33-53`）。只读跟随（经 `followForContext` 加入 `Thread.context`，`src/core/tickets.ts:402-414`）同样收得到消息，但不给授权、也不能唤醒已结束的工单——扇出时的恢复条件要求「人类写的、非 context、非 human-stopped」（`src/core/intake.ts:41-44`）；恢复按原 Mandate 直接进行，不产生新 Eval 与 Decision（`Tickets.wake`，`src/core/tickets.ts:252-266`），被人主动停止的工单什么也收不到。follows 是结束面：`bind` 同时写订阅与 `follows`（`src/core/tickets.ts:61-72`），每条记 `{thread, own, closed?}`，`own` 表示该 Thread 由工单自己打开（`src/core/model.ts:309-314`）；工单的结束由 follows 驱动——`ready` 报告只有在 `followsDone` 成立时才结束工单，而 Thread 关闭本身就足以结束「跟随已毕」的工单（`threadClosed`，`src/core/tickets.ts:74-93`）。`dropSubscriptions` 两侧一起摘（`src/core/tickets.ts:214-229`）；被普通订阅覆盖时工单从 `context` 挪回 `subscriptions`（`src/core/tickets.ts:417-423`）。
+
+**一句话**：Thread 是事件与评估的一致性边界（同一 Thread 同时只有一个评估在跑，`src/core/model.ts:135`、`:174`），Ticket 是评估接受之后产生的授权工作单元；订阅清单归 Thread 持有，结束依据（follows）归 Ticket 持有。
+
 ## 准入与策略
 
 ### 4.1 策略默认值
@@ -590,6 +602,13 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 | Worker 6 个工具 | `src/app/tools/executor.ts:29-75`、`src/app/tools/tool.ts:25` |
 | `noWait` 拒绝 30 秒以上 shell 与 5 秒以上 job 等待 | `src/app/sessions.ts:70-86` |
 | 启动脚本用 tmux 托管 DSH profile | `scripts/dsh-superagent:159-205` |
+| Thread 键 `${source}:${id}` | `src/core/model.ts:12` |
+| 工单创建即订阅批次全部 Thread | `src/core/tickets.ts:52` |
+| 订阅与只读跟随由 Thread 持有 | `src/core/model.ts:163-169` |
+| 只读跟随不授权、不唤醒 | `src/core/model.ts:165-169`、`src/core/intake.ts:41-44` |
+| 已立项 Trigger 不可再立项 | `src/core/evals.ts:86-90` |
+| `bind` 同时写订阅与 follows | `src/core/tickets.ts:61-72` |
+| Thread 关闭结束跟随已毕的工单 | `src/core/tickets.ts:74-93` |
 
 ## 参考资料索引
 
@@ -636,7 +655,7 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 
 ## 自查记录
 
-以下 12 条结论在写作后重新回代码核对，全部与正文一致。
+以下 19 条结论在写作后重新回代码核对，全部与正文一致。
 
 | # | 结论 | 回代码位置 | 结果 |
 | --- | --- | --- | --- |
@@ -652,6 +671,13 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 | 10 | GitHub 默认 60 秒、回看 14 天 | `src/sources/github.ts:25`、`:144`、`src/sources/poll.ts:6` | 一致 |
 | 11 | 飞书消费者 45 秒 ready 超时、1 MiB 单行上限 | `src/sources/feishu-loops.ts:78`、`:88` | 一致 |
 | 12 | 管理 API 只允许回环，靠请求头与同源 | `src/app/http.ts:62`、`:75-79`、`:231` | 一致 |
+| 13 | Thread 键 `${source}:${id}`；Trigger 至少属一条 Thread | `src/core/model.ts:12`、`src/core/intake.ts:20-22` | 一致 |
+| 14 | accept 创建工单，创建即订阅批次全部 Thread | `src/core/tickets.ts:37-56`、`:52` | 一致 |
+| 15 | 订阅与只读跟随两张清单只存在于 Thread 侧 | `src/core/model.ts:163-169` | 一致 |
+| 16 | 已立项 Trigger 硬性忽略（`startedTicket`） | `src/core/evals.ts:86-90` | 一致 |
+| 17 | 评估上下文含该 Thread 全部工单（含已结束） | `src/core/evals.ts:92` | 一致 |
+| 18 | 恢复条件：human 且非 context 且非 human-stopped | `src/core/intake.ts:41-44` | 一致 |
+| 19 | `bind` 写订阅与 follows；`dropSubscriptions` 两侧同摘 | `src/core/tickets.ts:61-72`、`:214-229` | 一致 |
 
 ## 〔未核实〕清单
 
