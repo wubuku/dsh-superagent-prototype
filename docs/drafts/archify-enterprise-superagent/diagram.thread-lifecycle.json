@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wubuku/dsh-superagent-prototype.git",
       "provider": "github",
-      "revision": "9c259f36b378616a445e52cd05574044744aba15"
+      "revision": "272cb2bf8127f9aba926042de7958ed44c9a687a"
     }
   },
   "mainPath": [
@@ -26,7 +26,7 @@
       "sources": [
         {
           "path": "docs/drafts/enterprise-superagent-architecture.md",
-          "line": 258,
+          "line": 262,
           "end_line": 265
         }
       ]
@@ -39,8 +39,8 @@
       "sources": [
         {
           "path": "docs/drafts/enterprise-superagent-architecture.md",
-          "line": 258,
-          "end_line": 265
+          "line": 272,
+          "end_line": 277
         }
       ]
     },
@@ -52,8 +52,8 @@
       "sources": [
         {
           "path": "docs/drafts/enterprise-superagent-architecture.md",
-          "line": 258,
-          "end_line": 265
+          "line": 266,
+          "end_line": 270
         }
       ]
     }
