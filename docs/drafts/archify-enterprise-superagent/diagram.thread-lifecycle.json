@@ -9,7 +9,7 @@
     "repository": {
       "url": "https://github.com/wubuku/dsh-superagent-prototype.git",
       "provider": "github",
-      "revision": "211116a065c09f63a118bfec19d4640aedc16b28"
+      "revision": "9df6d74420af334b6b25ea31764705dbfcb5e00f"
     }
   },
   "mainPath": [
