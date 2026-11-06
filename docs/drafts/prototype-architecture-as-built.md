@@ -495,6 +495,22 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 - 没有跨进程 Worker，也没有节点注册；`ctx.agents.get` 取的是同进程内的 agent（`src/app/runtime.ts:234-236`）。
 - Worker 内部可以使用 Subagent（`provider: spawn`）；Router 不能用（`cordis.patch.yml:102-111`、`:121-124`）。因此 Router 与 Worker 之间不是 Subagent 父子关系。
 
+**与 Thread、Ticket 的关系。**
+
+- 账本里没有 Worker 实体：域模型只定义了 Worker 的**回报形状** `WorkerReport`（六种状态与待答问题，`src/core/assignments.ts:11-18`）和记录它的 `Assignments` 模块；Worker 本身是执行层 DSH Session，靠 `worker-<ticketId>` 与工单对应。
+- 与 Ticket：`Assignment` 是绑定记录（一次执行尝试）；Ticket 把新事件、人的追问、恢复标记作为 Input 投喂，Worker 以 Report 回报；授权记在 Ticket 的 Mandate 上，Worker 不持有。retry / restart / resume 各开新的 Assignment（`src/core/tickets.ts:174`、`:263`、`:321`），但**复用同一 Session**（id 固定，`ensure` 幂等）。
+- 与 Thread：**没有直接关系**——Thread 的订阅清单里登记的是 Ticket id，扇出永远是 Thread → Ticket，Worker 只拿到工单转交给它的 Input。它对 Thread 的接触都经工单中转：恢复时执行器重新读取工单的 Threads；对外回复经 `Replies` → Outbox 发往工单的 Channel，而 Channel 是 Thread 上的写地址（`src/core/model.ts:8-9`、`:282-283`）。Thread 关闭不直接命令 Worker：只记入 Ticket 的 `follows`；工单因此结束或停止时，才由 `executor.stop` 处置。
+
+**结束时的会话处置。** `end` 对每个未结束的 Assignment 调 `executor.stop`（`src/core/tickets.ts:362`），分三种情况：
+
+- **自行收尾**（最近报告为 `ready` 或 `dropped`，且此后没有 Input 到达）→ **不取消会话**（`ownTurn` 分支，`src/executor/dsh.ts:361`）；同一工单后续的 Assignment 会再 `ensure` 回来。
+- **中途结束** → `cancel({kind:'user'}, {keepInbox:false})` 取消回合并丢弃等待中的 inbox，同时停掉 shell 作业与子代理（`src/executor/dsh.ts:365-367`）。
+- **停机**是另一套：停每个 Worker 的后台作业，对非 idle 的回合取消但**保留 inbox**（`src/executor/dsh.ts:391-398`）。
+
+结论：**没有「回收复用」，但也不是「结束一律取消」**——自行收尾的会话留在进程里，这是「同一工单跨多次执行复用同一 Session」的前提。
+
+**没有 Worker 池。** `WorkerSlots`（5.3 节）是**并发许可**，不是池：没有预先孵化、等待领活的 Worker 集合；Worker 按票即建、一票一个、专用不复用（`src/executor/dsh.ts:23-26`）。Router 相反，启动时急切创建（`src/app/runtime.ts:210`）。
+
 ### Watchdog
 
 **代码中不存在 watchdog。**
@@ -513,7 +529,7 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 | 角色 | 真实对应 | 生命周期 | 进程 |
 | --- | --- | --- | --- |
 | Router | 主 Session（`orchestrator-<hash>`） | 随 Runtime 启动急切创建，随 Runtime 停止取消 | DSH Host 进程内 |
-| Worker | 每工单一个 Session（`worker-<ticketId>`） | 按 `launch` 创建，工单结束/停机时取消 | 同一 DSH Host 进程内 |
+| Worker | 每工单一个 Session（`worker-<ticketId>`） | 按 `launch` 创建；同一工单跨 retry/restart/resume 复用同一 Session；结束时自行收尾则保留、中途结束则取消回合、停机保留 inbox（详见角色节 Worker） | 同一 DSH Host 进程内 |
 | Watchdog | 无 | 无 | 无 |
 
 ## 已知缺口（仅记录，不给方案）
@@ -609,6 +625,12 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 | 已立项 Trigger 不可再立项 | `src/core/evals.ts:86-90` |
 | `bind` 同时写订阅与 follows | `src/core/tickets.ts:61-72` |
 | Thread 关闭结束跟随已毕的工单 | `src/core/tickets.ts:74-93` |
+| Worker 无域实体，只有 `WorkerReport` 回报形状 | `src/core/assignments.ts:11-18` |
+| retry/restart/resume 开新 Assignment、复用同 Session | `src/core/tickets.ts:174`、`:263`、`:321` |
+| 自行收尾的会话不取消 | `src/executor/dsh.ts:361` |
+| 中途结束取消回合并停后台作业 | `src/executor/dsh.ts:365-367` |
+| 停机停后台作业、保留 inbox | `src/executor/dsh.ts:391-398` |
+| 回复经 Replies/Outbox 发往工单的 Channel | `src/core/replies.ts`、`src/core/model.ts:282-283` |
 
 ## 参考资料索引
 
@@ -655,7 +677,7 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 
 ## 自查记录
 
-以下 19 条结论在写作后重新回代码核对，全部与正文一致。
+以下 25 条结论在写作后重新回代码核对，全部与正文一致。
 
 | # | 结论 | 回代码位置 | 结果 |
 | --- | --- | --- | --- |
@@ -678,6 +700,12 @@ Worker Session 有 6 个应用工具：`orchestrator_read`、`orchestrator_ack`�
 | 17 | 评估上下文含该 Thread 全部工单（含已结束） | `src/core/evals.ts:92` | 一致 |
 | 18 | 恢复条件：human 且非 context 且非 human-stopped | `src/core/intake.ts:41-44` | 一致 |
 | 19 | `bind` 写订阅与 follows；`dropSubscriptions` 两侧同摘 | `src/core/tickets.ts:61-72`、`:214-229` | 一致 |
+| 20 | Worker 无域实体；`WorkerReport` 定义回报形状 | `src/core/assignments.ts:11-18` | 一致 |
+| 21 | resume 也开新 Assignment，复用同一 Session | `src/core/tickets.ts:263`、`:268` | 一致 |
+| 22 | 自行收尾的会话不被取消（`ownTurn`） | `src/executor/dsh.ts:361` | 一致 |
+| 23 | 中途结束 cancel(keepInbox:false) 并停后台作业 | `src/executor/dsh.ts:365-367` | 一致 |
+| 24 | 停机停后台作业、取消回合但保留 inbox | `src/executor/dsh.ts:391-398` | 一致 |
+| 25 | 回复经 Replies/Outbox 走工单的 Channel | `src/core/replies.ts`、`src/app/outbox.ts:24` | 一致 |
 
 ## 〔未核实〕清单
 
