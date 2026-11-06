@@ -9,24 +9,30 @@
 
 @answer scope="架构设计 · 设计基线 · 决策核对 · 尚未实现"
 @meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=868fc5f1c534de18622f84c2bdd2130a3af090f3
-@source intent title="设计起点：硬要求、盲区与划分理由" path=docs/drafts/enterprise-superagent-architecture.md lines=11:71
-@source carriers title="我们已有的三个系统" path=docs/drafts/enterprise-superagent-architecture.md lines=72:103
-@source facts title="三类事实与三条失效规则" path=docs/drafts/enterprise-superagent-architecture.md lines=104:129
-@source assembly title="装配：只有抽象，没有具体系统" path=docs/drafts/enterprise-superagent-architecture.md lines=130:170
-@source entities title="核心实体：thread、来源轨道、编排事实" path=docs/drafts/enterprise-superagent-architecture.md lines=171:219
-@source ports title="四个接口的语义契约" path=docs/drafts/enterprise-superagent-architecture.md lines=220:255
-@source lifecycle title="三条生命周期" path=docs/drafts/enterprise-superagent-architecture.md lines=256:306
-@source isolation title="隔离与信任" path=docs/drafts/enterprise-superagent-architecture.md lines=307:360
-@source human title="人工介入的三个层次" path=docs/drafts/enterprise-superagent-architecture.md lines=361:374
-@source knowledge title="知识生产线" path=docs/drafts/enterprise-superagent-architecture.md lines=375:398
-@source inherit title="与原型的关系" path=docs/drafts/enterprise-superagent-architecture.md lines=399:431
-@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=432:512
+@source intent title="设计起点：硬要求、盲区与划分理由" path=docs/drafts/enterprise-superagent-architecture.md lines=11:73
+@source carriers title="我们已有的三个系统" path=docs/drafts/enterprise-superagent-architecture.md lines=74:107
+@source facts title="三类事实与三条失效规则" path=docs/drafts/enterprise-superagent-architecture.md lines=108:133
+@source assembly title="装配：只有抽象，没有具体系统" path=docs/drafts/enterprise-superagent-architecture.md lines=134:174
+@source entities title="核心实体：thread、来源轨道、编排事实" path=docs/drafts/enterprise-superagent-architecture.md lines=175:223
+@source ports title="四个接口的语义契约" path=docs/drafts/enterprise-superagent-architecture.md lines=224:259
+@source lifecycle title="三条生命周期" path=docs/drafts/enterprise-superagent-architecture.md lines=260:310
+@source isolation title="隔离与信任" path=docs/drafts/enterprise-superagent-architecture.md lines=311:364
+@source human title="人工介入的三个层次" path=docs/drafts/enterprise-superagent-architecture.md lines=365:378
+@source knowledge title="知识生产线" path=docs/drafts/enterprise-superagent-architecture.md lines=379:402
+@source inherit title="与原型的关系" path=docs/drafts/enterprise-superagent-architecture.md lines=403:435
+@source open title="仍未回答的问题" path=docs/drafts/enterprise-superagent-architecture.md lines=436:516
 
 ## 三个系统与本项目怎么连起来？ {#assembly span=12}
 
-@diagram architecture id=assembly-map source=diagram.assembly.json title="三个承载系统与本项目的装配关系"
+@diagram architecture id=assembly-map source=diagram.assembly.json title="三个既有系统与本项目的装配关系"
 
-三个承载系统各管一类事实，本项目只管编排事实。连接只走四个抽象接口：`FlowCatalog` 管制度、`KnowledgeQuery` 管认知、`CollaborationMemory` 管协作线索、`TenantDirectory` 管租户身份。图中只画了前三个；`TenantDirectory` 的适配对象可以是 BOS，也可以是任何企业身份目录。[](source:ports)[](source:carriers)
+三个既有系统各管一摊，但管的不是同一类东西。BOS 管制度事实，Spring-AI-RAG 管认知事实；编排事实归本项目。[](source:ports)[](source:carriers)
+
+BlueCortex 管的是第四件事：**参与者的跨会话记忆**。它是 Claude-Mem（外挂记忆插件）的移植，从旁边观察每个 agent 的会话，把痕迹提炼成观察与摘要，下个会话开始时注入回去。它不承载协作状态。[](source:carriers)
+
+连接只走四个抽象接口：`FlowCatalog` 管制度、`KnowledgeQuery` 管认知、`TenantDirectory` 管租户身份。[](source:ports)
+
+`CollaborationMemory` 问「这条线索上发生过什么」，只问痕迹与推移，不问现状——现状是编排事实，归本项目。图中画了前三个接口和 BlueCortex 的钩子上报；`TenantDirectory` 的适配对象可以是 BOS，也可以是任何企业身份目录。[](source:ports)
 
 每个系统都只是某个接口的适配器，不是架构里的固定位置。换掉任何一个，上层都不用改；三个系统自己怎么演进，也不影响编排层的概念结构。[](source:assembly)
 
@@ -85,7 +91,7 @@ thread 归属唯一租户，创建时写定，之后不可更换。要交给另�
 | 边界 | 本设计的内容 | 读图提示 |
 | --- | --- | --- |
 | **成熟度** | 架构设计，尚未实现；没有任何对应代码 | 不要把图当作可运行系统的说明书 |
-| **系统现状** | BOS 已能以 MCP 形式被消费；Spring-AI-RAG 的图谱与多租户仍在迭代；BlueCortex 的会话语义面向单个助手 | 图里画的是「如何使用」，不是「已经具备」 |
+| **系统现状** | BOS 已能以 MCP 形式被消费；Spring-AI-RAG 的图谱与多租户仍在迭代；BlueCortex 是参与者一侧的跨会话记忆，不承载协作状态 | 图里画的是「如何使用」，不是「已经具备」 |
 | **接口细节** | 本文只写「问什么、答什么、不答什么」，不写传输与实现 | 接口名是语义切分，不是接口定义 |
 | **授权链** | 调用身份、Mandate（任务授权）、工具授权三层必须分开，但每层由谁判定尚未收敛 | 不要把三层合成一个权限字段 |
 | **未决问题** | 会话主语、与 BOS 的接缝、多层审查落点、异构 agent 之间的通信 | 四项留白。第四项已拆成九种模式与候选路线，均未定 |
