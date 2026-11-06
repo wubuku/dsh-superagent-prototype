@@ -2,7 +2,7 @@
   "schema_version": 3,
   "diagram_type": "lifecycle",
   "meta": {
-    "title": "thread 的生命周期与任务域的接缝",
+    "title": "thread 的生命周期：三个状态与终止条件",
     "locale": "zh-CN",
     "output": "docs/drafts/archify-enterprise-superagent/thread-lifecycle-diagram.html",
     "quality_profile": "showcase",

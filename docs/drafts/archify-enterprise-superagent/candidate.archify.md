@@ -5,7 +5,7 @@
 - 三类事实与三条失效规则是全篇的推导起点，模块与状态机都从它长出来，不从原型继承。[](source:facts)
 - 接口按语义切分，不按系统切分；换掉任何一个承载系统，上层都不用改。[](source:ports)
 - 执行节点属于人、不属于租户；节点内按任务域隔离，凭据随任务创建与销毁。[](source:isolation)
-- 这是架构设计，不是实现说明；每条结论都挂决策编号，尚未写任何代码。[](source:open)
+- 这是架构设计，不是实现说明；每条结论都挂前提编号，尚未写任何代码。[](source:open)
 
 @answer scope="架构设计 · 设计基线 · 决策核对 · 尚未实现"
 @meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=211116a065c09f63a118bfec19d4640aedc16b28
@@ -56,9 +56,9 @@
 
 「已确认」只认可核实的凭据。节点声称已提交但无从核实，一律记为未知；核实由来源适配器做，编排存储只收结论。[](source:lifecycle)
 
-## thread 与任务域怎么走完一生？ {#thread-lifecycle span=12}
+## thread 怎么走完一生，任务域在哪儿交接？ {#thread-lifecycle span=12}
 
-@diagram lifecycle id=thread-lifecycle-diagram source=diagram.thread-lifecycle.json title="thread 的生命周期与任务域的接缝"
+@diagram lifecycle id=thread-lifecycle-diagram source=diagram.thread-lifecycle.json title="thread 的生命周期：三个状态与终止条件"
 
 thread 归属唯一租户，创建时写定，之后不可更换。要交给另一个租户就新建 thread 并引用旧的，而不是转移归属。[](source:entities)
 
