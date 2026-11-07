@@ -129,20 +129,26 @@ Comma 不是营销口号里的「类似 Super-agent 的东西」，它是**把�
 
 ---
 
-## 7. BYOM 判定（单独追加）
+## 7. BYOM 判定（含两处拓扑修正）
 
-先行概念澄清：**DeepSeek 官方文章的 BYOM = Bring Your Own Machine**（原文：「即把用户日常使用的开发机或个人电脑接入云端 Agent」
-（DeepSeek 文章第 212 行，归档副本），可能间歇在线、有未提交修改与本地凭据）。注意它不是 bring-your-own-model；「cloud agents harness 保持无状态、会话日志在 harness 之外、按需接入执行环境」是 harness 侧的无状态化设计（文章第 212 行与 Anthropic「脑手分离」对齐）。我们的企业级项目里再加一层：一线在员工机器上，让机器提供执行面（BYOM）。
+先行概念澄清：**DeepSeek 官方文章的 BYOM = Bring Your Own Machine**（原文：「即把用户日常使用的开发机或个人电脑接入云端 Agent」，第 212 行，归档副本），可能间歇在线、有未提交修改与本地凭据。它不是 bring-your-own-model；「cloud agents harness 保持无状态、会话日志在 harness 之外、按需接入执行环境」是 harness 侧的无状态化设计（与 Anthropic「脑手分离」对齐）。我们的项目里再加一层：节点可以是云端、也可以是员工电脑，而**云端节点里的 agent 仍可把「手」放到员工本地电脑**（任务域绑定的是执行环境，不是「脑在哪」）。
 
-**Comma 没写过 BYOM 这个词**（docs 全仓 `BYOM|bring your own` 零命中）。但它对应了一套更窄的形态：
+**Comma 没写过 BYOM 这个词**（docs 全仓 `BYOM|bring your own` 零命中），但它同时实现了两种拓扑，覆盖了上述两种落点：
+
+| 拓扑 | 谁跑 agent loop（「脑」） | 谁是「手」 | 证据 |
+| --- | --- | --- | --- |
+| **A. 设备自跑**（station-hosted Task） | 设备上的 station 自己跑 `stillfail-runner` → claude/codex 子进程；模型调用从设备用设备自己的账号发出 | 设备本地文件系统 | `systems/station/README.md:3-4`；`systems/station/src/agents/runner.ts:1-20` |
+| **B. 云端脑、设备手**（connector `env.exec`） | 云端 Salix 的 Worker Session | 设备：connector 暴露文件系统/进程操作，云端 `env.exec` 经 EnvDispatch → Bridge → WebSocket 落到设备执行 | `systems/connector/README.md:4-16`（链路图）；`salix_web/env_dispatch.ex` |
+
+B 才是 DeepSeek 意义上的 BYOM（云端 agent 的「手」在员工/个人的本地电脑上）：连接只读起步、用户先在 Settings 授权才允许操作（`connector/README.md`「A device connection starts read-only…the user enables operations」）；A 则更像「脑也在设备上」，是 Comma 特有的延伸。两处**共享同一套 BYOM 纪律**：机器接入、凭据不落云端、连接可断可续（`connector_run_id` 轮换、`connector_token` 短期）、沙箱按需（磁盘只是缓存、持久数据在外，`docs/compute-devices.md` "Execution environments"）。
 
 | 维度 | DeepSeek BYOM 原文 | Comma 实际 | 判定 |
 | --- | --- | --- | --- |
-| 接入面 | 用户的日常开发机/个人电脑 | Salix/Connector 的 iroh 组网 Station（`systems/connector/`、`docs/compute-devices.md`） | ✅ 同构（机器进云端 Agent） |
-| 间歇性 | 可能间歇在线 | 设计容忍重连（`connector_run_id` 轮换、reconnect 修订路线；`connector_token` 短期） | ✅ 同构 |
-| 本地凭据隔离 | 本地凭据在终端 | 「凭证不自动导入，显式选源、按 profile 降级」(`docs/compute-devices.md` "Desktop machine accounts") | ✅ 已实现，形态更细 |
+| 接入面 | 用户的日常开发机/个人电脑 | iroh 组网 Station + connector（`systems/connector/`、`docs/compute-devices.md`） | ✅ 两种拓扑都覆盖 |
+| 间歇性 | 可能间歇在线 | 设计容忍重连（`connector_run_id` 轮换、reconnect 修订路线） | ✅ 同构 |
+| 本地凭据隔离 | 本地凭据在终端 | 「凭证不自动导入，显式选源、按 profile 降级」（`docs/compute-devices.md` "Desktop machine accounts"） | ✅ 已实现，形态更细 |
 | 执行面 | harness 无状态、会话在外部 | Sandbox 磁盘只是 cache，持久数据（Task Messages/VFS/Drive/pushed branches）在外 | ✅ 已实现 |
-| 人工介入 | （企业形态要求：必要时可介入，我们项目的硬约束） | 有 escalated / review / Task approve，但没有「看/接/批」三层（我们的 §8） | ❌ 无对应物 |
-| 云端面 | harness（云端）↔ 终端 间歇接入 | Salix 中央控制 + VMM 沙箱；它的「沙箱」就是云面的容器沙箱 | ✅ 同构（L4ES 按需沙箱） |
+| 权限治理 | （企业形态要求） | 连接只读起步、Settings 授权才允许操作；但无「看/接/批」三层人工介入（我们的 §8） | ⚠️ 有操作面授权，无三层介入 |
+| 云端面 | harness（云端）↔ 终端 间歇接入 | Salix 中央控制 + VMM 沙箱（L4ES 按需沙箱） | ✅ 同构 |
 
-**小结**：Comma 功能上就是 BYOM（机器接入、凭据不落云端、沙箱按需、磁盘只作缓存）。它的 BYOM 是**个人助理式的 BYOM**——「Cloud for work. Your device for identity.」（README Philosophy），不是 DeepSeek 为「企业间歇在线终端机器 + 本地未提交改动/凭据」设计的形态。共享机器、权限治理、审计这些 DeepSeek 企业语境里隐含的要点，Comma 不表述、也不承载。换言之：Commas 的形状不是「帮企业 BYOM」，而是「帮个人把云端的 Agent 接续到他的设备上」。
+**小结**：Comma 功能上就是 BYOM，且**同时**有「脑在云端、手在设备」（connector/env.exec，与 DeepSeek 原文同形）和「脑也在设备」（station-hosted Task）两种拓扑。它缺的不是 BYOM 形态，而是 DeepSeek 企业语境的治理层（共享机器、权限治理、审计、三层人工介入）；它的 BYOM 是**个人助理式的 BYOM**——「Cloud for work. Your device for identity.」（README Philosophy）。**对我们的直接意义**：我们的「节点可以是云端也可以是员工电脑、任务域绑定执行环境」恰好允许这两种拓扑并存；Comma 用 connector 的 `env.exec` 实现了前者、用 station 实现了后者——两种形态各有一个可参照的生产实现。
