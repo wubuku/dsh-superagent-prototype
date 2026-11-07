@@ -208,7 +208,21 @@ OpenClaw、Hermes、CompanyOS（除非单独做许可证与反模式研究）、
 | 会话备忘 | `docs/drafts/enterprise-superagent-session-notes.md` |
 | Comma / OpenMausBot 深查 | `docs/drafts/comma-deep-research-report.md`、`openmausbot-deep-research-report.md` |
 | 本文 | `docs/drafts/enterprise-superagent-borrowable-oss-survey.md` |
+| AGT 深查 | `docs/drafts/agt-deep-research-report.md` |
+| OpenSandbox 深查 | `docs/drafts/opensandbox-deep-research-report.md` |
+| CubeSandbox 深查 | `docs/drafts/cubesandbox-deep-research-report.md` |
+| SPACE 深查 | `docs/drafts/space-deep-research-report.md` |
+| nono 深查 | `docs/drafts/nono-deep-research-report.md` |
+| Paperclip 深查 | `docs/drafts/paperclip-deep-research-report.md` |
+| Archestra 深查 | `docs/drafts/archestra-deep-research-report.md` |
+| DeerFlow 深查 | `docs/drafts/deerflow-deep-research-report.md` |
+| OpenHands 深查 | `docs/drafts/openhands-deep-research-report.md` |
+| A2A 深查 | `docs/drafts/a2a-deep-research-report.md` |
+| ContextForge 深查 | `docs/drafts/contextforge-deep-research-report.md` |
+| Hatchet 深查 | `docs/drafts/hatchet-deep-research-report.md` |
+| k8s agent-sandbox 深查 | `docs/drafts/k8s-agent-sandbox-deep-research-report.md` |
+| dori-superagent 深查（脚注） | `docs/drafts/dori-superagent-deep-research-report.md` |
 
 ---
 
-*撰写说明：本文综合 2026-11-07 对公开 GitHub 的扩展检索与对高星产品清单的批判核验；只保留过 §0 门槛的借鉴项。*
+*撰写说明：本文综合 2026-11-07 对公开 GitHub 的扩展检索与对高星产品清单的批判核验；只保留过 §0 门槛的借鉴项。各过关项目的深入报告见上表（同目录）。*

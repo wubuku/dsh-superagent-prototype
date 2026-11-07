@@ -88,6 +88,7 @@
 - 会话备忘（讨论过程与全部结论编号）：`enterprise-superagent-session-notes.md` §11
 - 架构文档（设计结论）：`enterprise-superagent-architecture.md`（§1 三系统、§4.5 任务域、§7 隔离、§11 未决项与调研备注）
 - 深度报告：`comma-deep-research-report.md`、`openmausbot-deep-research-report.md`（同目录）
+- 各过关开源项目深查：见 `enterprise-superagent-borrowable-oss-survey.md` §8
 - 值得借鉴的开源项目综述（公开 GitHub 续篇）：`enterprise-superagent-borrowable-oss-survey.md`（同目录）
 - 原型代码事实：`prototype-architecture-as-built.md`
 - 各仓库本地路径见备忘 §11 的索引表
