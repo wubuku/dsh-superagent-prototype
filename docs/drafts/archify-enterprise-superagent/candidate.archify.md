@@ -8,7 +8,7 @@
 - 这是架构设计，不是实现说明；每条结论都挂前提编号，尚未写任何代码。[](source:open)
 
 @answer scope="架构设计 · 设计基线 · 决策核对 · 尚未实现"
-@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=2d9c77e4f209dd8dc1a6696b4048c9d5ab08eb29
+@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=ac28ef6e5ba6841fc4ebdbf8edff465b90524d12
 @source intent title="设计起点：硬要求、盲区与划分理由" path=docs/drafts/enterprise-superagent-architecture.md lines=11:73
 @source carriers title="我们已有的三个系统" path=docs/drafts/enterprise-superagent-architecture.md lines=74:107
 @source facts title="三类事实与三条失效规则" path=docs/drafts/enterprise-superagent-architecture.md lines=108:133
@@ -96,6 +96,7 @@ thread 归属唯一租户，创建时写定，之后不可更换。要交给另�
 | **授权链** | 调用身份、Mandate（任务授权）、工具授权三层必须分开，但每层由谁判定尚未收敛 | 不要把三层合成一个权限字段 |
 | **未决问题** | 会话主语、与 BOS 的接缝、多层审查落点、异构 agent 之间的通信 | 四项留白。第四项已拆成九种模式与候选路线，均未定 |
 | **跨进程通信** | 执行节点只出站、不直连编排存储、进度流不是权威 | 原型只有同进程对象调用，这三条是跨出去之后必须补的 |
+| **BYOM 双形态** | 执行节点可以是云端、也可以是员工电脑；云端节点的 agent 仍可把「手」伸到员工机器（嵌套 BYOM） | 两种都是预期形态；员工侧 daemon 的构建仍是未决问题 |
 | **知识怎么写进去** | agent 只能提交提案，人确认后才入库；被推翻时另记一条溯源，历史决定保持原样 | 知识不由 agent 自行写入，这是它区别于「记忆」的地方 |
 
 执行节点属于人，因此租户边界只能由节点内部的任务域保证，不能由「归属哪个租户」保证。这是刻意的取舍：把节点绑死到租户上隔离最强，但员工要为每个团队各跑一个常驻组件。[](source:isolation)
