@@ -37,12 +37,12 @@ OpenMausBot 是**一个真实运营的商业开源项目**：Apache 2.0 + 独立
 
 - **每个 engine 进程一个 bubblewrap 沙箱**（`server/bot-box/`）：`--unshare-user/ipc/uts/pid/net/cgroup-try` + seccomp + 私有挂载表（`/usr /etc /opt` 只读、数据目录 tmpfs 盖空、私有 PID/网络命名空间），见 `server/bot-box/plan.ts:222-230`。
 - **两道门**：egress 门（`egress-gate.ts`）只放公网——本机/局域网/云元数据按地址拒绝、DNS 自解析并 pin 防重绑定；harness 门（`harness-gate.ts`）只放 `/api/internal/`，其余 403。
-- **凭据 broker**（每轮能力令牌，四文件）、**登录回调中继**（`relay.ts` + `/run/omb/relay.sock`）、**29 项自检**（`box-probe.ts`，与文档逐一吻合）、启动 5 秒后自检一次。
+- **凭据 broker**（每轮能力令牌，四文件）、**登录回调中继**（`relay.ts` + `/run/omb/relay.sock`）、**自检**（`box-probe.ts` 在真实箱内跑两组检查：基础 23 + broker 6，文档称「29 in all」，为文档自称，未独立复核）、启动 5 秒后自检一次。
 - **关键限定**：沙箱**只在 Cloud home 默认开**（`detect.ts:27-38`），桌面/自托管默认关——所以「生产级沙箱」仅对 Cloud 成立。
 
 ### 2.3 审批：provider 权限模式透传 + 应用层补刀
 
-- 四级（Ask / Auto-accept edits / Approve for me / Full access）+ Custom，**默认 Full access**（`shared/approval-mode.ts:57`）。
+- 四级（Ask / Auto-accept edits / Approve for me / Full access）+ Custom，**默认 Full access**（`shared/approval-mode.ts:71` `DEFAULT_APPROVAL_MODE = "full"`）。
 - **原则**：`shared/approval-mode.ts:1-3`「OpenMausBot never decides a permission itself (Full access aside)」——权限由 provider 的 reviewer 判，OMB 只补口子（`server/auto-approve.ts:73-122`）：Full access 自动批、外发工具与沙箱放宽挡、保存命令/读自己文件批、`auto` 且 web search 批、其余留卡片。
 - **问题永不自动回答**（`auto-approve.ts:88-90`）；Chief 的等级沿委派链**只升不降**（`server/host/delegated-level.ts:29-89`）；bot 间联系也要审批卡（`server/peer-approval.ts`）。
 - **bot 读自己的文件永不问**（`docs/approval-levels.md` 的规则细化到管道/重定向/通配符）。
@@ -94,7 +94,7 @@ OpenMausBot 是**一个真实运营的商业开源项目**：Apache 2.0 + 独立
 
 ### 4.1 可以借鉴的（按分量）
 
-1. **统一 Assignment 运行时契约**（`server/runtime/`，7.5k 行 + 11k 测试）：树、状态机、重启对账、同请求合并、子问题打断等待——**这是我们 §11.2 C1/C2 与「编排事实」最直接的工程参照**，尤其「同一请求只答一次」与「重启不重复外发」。
+1. **统一 Assignment 运行时契约**（`server/runtime/`，7.5k 行 + 11k 测试）：树、状态机、重启对账、同请求合并、子问题打断等待——**这是我们 C1/C2 与编排事实最直接的工程参照**，尤其「同一请求只答一次」与「重启不重复外发」。
 2. **bot box 的双门 + 凭据 broker**：egress 按地址策略拒绝本机/局域网/元数据、harness 门只放内部路由、每轮能力令牌——与我们的「任务域信封」同构，可直接对照。
 3. **审批分层与「问题永不自动回答」**：provider 权限模式透传 + 应用层补刀 + Chief 层级只升不降——与我们 §7.4 三层授权、§8 三层人工介入同向。
 4. **connector 的「只出站 + 单连接」**：一次性码注册、Ed25519 pin、连接计数防密钥复制、yamux 流——**C1「节点只出站、中心复用连接」的生产实现**（比 Comma 的 iroh 更中心化）。
@@ -133,4 +133,4 @@ OpenMausBot 是**一个真实运营的商业开源项目**：Apache 2.0 + 独立
 - README.md、docs/runtime-contract.md、docs/bot-box.md、docs/approval-levels.md、docs/memory.md、docs/compute-devices.md、docs/cloud-pro.md、docs/byo-vps.md、docs/linux-desktop.md、docs/computer-use-integration.md、docs/mcp-server.md、docs/headless-cli.md、docs/proactive-routines.md、docs/sentinel.md、docs/team-cloud.md、docs/team-incidents.md
 - server/runtime/{types.ts,runtime.ts,store.ts,invariants.ts,level.ts,tree.ts}、server/runtime-coordinator.ts、server/same-request.ts、server/bot-box/{plan.ts,egress-gate.ts,harness-gate.ts,relay.ts,detect.ts}、server/drivers/{agents-catalog.ts,agents-call.ts,claude.ts,chat-tool-approval.ts}、server/auto-approve.ts、server/host/{share-answer.ts,delegated-level.ts,proactive-owner.ts,room-jobs.ts}、server/peer-approval.ts、server/turn-watchdog.ts、server/sentinel/、server/workspace.ts、server/memory-store.ts、server/message-db.ts、server/container-computer.ts、server/local-vm-settings.ts、server/local-vm-seat-pool.ts、server/boat.ts、server/vps-computer.ts、server/desktop-computer.ts、server/your-computer-consent.ts、server/computer-control.ts、server/admission.ts、server/app-triggers.ts、server/peer-roster.ts、server/chief-level.ts
 - connector/src/{main.ts,protocol.ts,agent.ts,mux.ts,home.ts,audit.ts,images.ts}、relay/src/{main.ts,server.ts,phone.ts,wire.ts}
-- 子核查产物：沙箱/运行时（bot-box argv、双门、自检计数 29、runtime 7.5k 行 + 11k 测试）、多 bot 委派（coordinate_bots 唯一入口、树、同请求合并、e2e）、计算面（四 surface、connector/relay 性质、隔离对照）
+- 子核查产物：沙箱/运行时（bot-box argv、双门、自检（文档自称 29 项）、runtime 7.5k 行 + 11k 测试）、多 bot 委派（coordinate_bots 唯一入口、树、同请求合并、e2e）、计算面（四 surface、connector/relay 性质、隔离对照）
