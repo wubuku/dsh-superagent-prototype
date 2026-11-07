@@ -35,7 +35,7 @@ OpenSandbox 是 **AAIF 旗下、Apache-2.0 的可自托管 Agent 沙箱运行时
 
 ### 2.2 Credential Vault：真密钥不进沙箱（对本设计权重最高）
 
-[文档] `docs/guides/credential-vault.md`：
+[文档+代码] `docs/guides/credential-vault.md`；vault 由 egress sidecar 实现（`components/egress/` 下的 vault 相关实现与测试）：
 
 1. Host SDK 把真实凭据写入 **egress sidecar** 的 Vault API；沙箱进程只见 fake/empty env。  
 2. 出站 HTTPS 经透明 MITM；**精确 binding**（scheme/host/port/method/path）匹配后注入 `Authorization` / apiKey / basic / customHeaders / passthrough substitutions。  
