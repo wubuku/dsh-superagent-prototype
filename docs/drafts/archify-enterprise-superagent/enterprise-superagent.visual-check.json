@@ -6,11 +6,11 @@
   "status": "pass",
   "visualReview": "pending",
   "provenance": "current",
-  "deliveryReceiptId": "e0318562-76de-44d4-b276-09c9eb93c209",
+  "deliveryReceiptId": "5aae2d8e-d199-4cee-9ffa-16b504e4f257",
   "artifact": {
     "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/enterprise-superagent.html",
-    "sha256": "de64d9b8e78c0e8a4ace103a24984d0597bb7abab8a0d064f9a10af347d5e87a",
-    "bytes": 2344638
+    "sha256": "b1ab387437f43647a5159fa4ff112b93fc449a136457d4de3cfbd7c3496bd702",
+    "bytes": 2344634
   },
   "state": {
     "detail": "read",
@@ -221,10 +221,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 4
+          "waitMs": 1
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=light",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=light",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -234,7 +234,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "DC77928089D217F4FD62E4C879AC5BA0",
+          "targetId": "BF6D9A6CF4D429B3EBE13660A73B15E6",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -666,7 +666,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           },
           {
@@ -1219,7 +1219,7 @@
           "waitMs": 2
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=light",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=light",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -1229,7 +1229,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "67EC79F942EAEA3E03AC120283A46742",
+          "targetId": "1F2E9950FC8D098FE66D36AE624335AE",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -1661,7 +1661,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 1
             }
           },
           {
@@ -1830,7 +1830,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 3
+              "waitMs": 2
             }
           }
         ],
@@ -2211,10 +2211,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 2
+          "waitMs": 1
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=dark",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=dark",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -2224,7 +2224,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "D363724154518134BDFF255F45ECB70C",
+          "targetId": "EF633BE4556F98963F69D052DD5D603F",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -2656,7 +2656,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 3
             }
           },
           {
@@ -2997,7 +2997,7 @@
           },
           "fontReadiness": {
             "status": "loaded",
-            "waitMs": 1
+            "waitMs": 2
           }
         },
         "width": 1280,
@@ -3206,10 +3206,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 1
+          "waitMs": 2
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=dark",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=dark",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -3219,7 +3219,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "8D2A3B7CF18DCDB6A184827994A10C29",
+          "targetId": "422096C5A01552A3F2AC935043081140",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -3820,7 +3820,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           }
         ],
@@ -3992,7 +3992,7 @@
           },
           "fontReadiness": {
             "status": "loaded",
-            "waitMs": 1
+            "waitMs": 2
           }
         },
         "width": 1440,
@@ -4240,10 +4240,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 4
+          "waitMs": 1
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=light",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=light",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -4253,7 +4253,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "DC77928089D217F4FD62E4C879AC5BA0",
+          "targetId": "BF6D9A6CF4D429B3EBE13660A73B15E6",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -4685,7 +4685,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           },
           {
@@ -5238,7 +5238,7 @@
           "waitMs": 2
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=light",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=light",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -5248,7 +5248,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "67EC79F942EAEA3E03AC120283A46742",
+          "targetId": "1F2E9950FC8D098FE66D36AE624335AE",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -5680,7 +5680,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 1
             }
           },
           {
@@ -5849,7 +5849,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 3
+              "waitMs": 2
             }
           }
         ],
@@ -6230,10 +6230,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 2
+          "waitMs": 1
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=dark",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=dark",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -6243,7 +6243,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "D363724154518134BDFF255F45ECB70C",
+          "targetId": "EF633BE4556F98963F69D052DD5D603F",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -6675,7 +6675,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 3
             }
           },
           {
@@ -7016,7 +7016,7 @@
           },
           "fontReadiness": {
             "status": "loaded",
-            "waitMs": 1
+            "waitMs": 2
           }
         },
         "width": 1280,
@@ -7225,10 +7225,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 1
+          "waitMs": 2
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=dark",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=dark",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -7238,7 +7238,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "8D2A3B7CF18DCDB6A184827994A10C29",
+          "targetId": "422096C5A01552A3F2AC935043081140",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -7839,7 +7839,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           }
         ],
@@ -8011,7 +8011,7 @@
           },
           "fontReadiness": {
             "status": "loaded",
-            "waitMs": 1
+            "waitMs": 2
           }
         },
         "width": 1440,
@@ -8225,10 +8225,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 4
+          "waitMs": 1
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=light",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=light",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -8238,7 +8238,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "DC77928089D217F4FD62E4C879AC5BA0",
+          "targetId": "BF6D9A6CF4D429B3EBE13660A73B15E6",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -8670,7 +8670,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           },
           {
@@ -9223,7 +9223,7 @@
           "waitMs": 2
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=light",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=light",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -9233,7 +9233,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "67EC79F942EAEA3E03AC120283A46742",
+          "targetId": "1F2E9950FC8D098FE66D36AE624335AE",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -9665,7 +9665,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 1
             }
           },
           {
@@ -9834,7 +9834,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 3
+              "waitMs": 2
             }
           }
         ],
@@ -10215,10 +10215,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 2
+          "waitMs": 1
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=dark",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=dark",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -10228,7 +10228,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "D363724154518134BDFF255F45ECB70C",
+          "targetId": "EF633BE4556F98963F69D052DD5D603F",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -10660,7 +10660,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 3
             }
           },
           {
@@ -11001,7 +11001,7 @@
           },
           "fontReadiness": {
             "status": "loaded",
-            "waitMs": 1
+            "waitMs": 2
           }
         },
         "width": 1280,
@@ -11210,10 +11210,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 1
+          "waitMs": 2
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=dark",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=dark",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -11223,7 +11223,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "8D2A3B7CF18DCDB6A184827994A10C29",
+          "targetId": "422096C5A01552A3F2AC935043081140",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -11824,7 +11824,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           }
         ],
@@ -11996,7 +11996,7 @@
           },
           "fontReadiness": {
             "status": "loaded",
-            "waitMs": 1
+            "waitMs": 2
           }
         },
         "width": 1440,
@@ -12210,10 +12210,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 4
+          "waitMs": 1
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=light",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=light",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -12223,7 +12223,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "DC77928089D217F4FD62E4C879AC5BA0",
+          "targetId": "BF6D9A6CF4D429B3EBE13660A73B15E6",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -12655,7 +12655,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           },
           {
@@ -13206,10 +13206,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 2
+          "waitMs": 1
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=dark",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=dark",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -13219,7 +13219,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "D363724154518134BDFF255F45ECB70C",
+          "targetId": "EF633BE4556F98963F69D052DD5D603F",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -13651,7 +13651,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 3
             }
           },
           {
@@ -13992,7 +13992,7 @@
           },
           "fontReadiness": {
             "status": "loaded",
-            "waitMs": 1
+            "waitMs": 2
           }
         },
         "width": 1280,
@@ -14205,7 +14205,7 @@
           "waitMs": 2
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=light",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=light",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -14215,7 +14215,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "67EC79F942EAEA3E03AC120283A46742",
+          "targetId": "1F2E9950FC8D098FE66D36AE624335AE",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -14647,7 +14647,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 1
             }
           },
           {
@@ -14816,7 +14816,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 3
+              "waitMs": 2
             }
           }
         ],
@@ -15198,10 +15198,10 @@
         ],
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 1
+          "waitMs": 2
         },
         "themeControl": "query",
-        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-4wYc2y/artifact-snapshot.html?theme=dark",
+        "navigationUrl": "file:///var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-inspection-p9XA9k/artifact-snapshot.html?theme=dark",
         "keyboardTraversal": {
           "count": 59,
           "reached": 59,
@@ -15211,7 +15211,7 @@
         "consoleErrors": [],
         "nativeViewer": {
           "available": true,
-          "targetId": "8D2A3B7CF18DCDB6A184827994A10C29",
+          "targetId": "422096C5A01552A3F2AC935043081140",
           "ready": "complete",
           "visibility": "visible",
           "href": "about:srcdoc",
@@ -15812,7 +15812,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           }
         ],
@@ -15984,7 +15984,7 @@
           },
           "fontReadiness": {
             "status": "loaded",
-            "waitMs": 1
+            "waitMs": 2
           }
         },
         "width": 1440,
@@ -16002,7 +16002,7 @@
     "contactSheet": "enterprise-superagent.visual-check.html"
   },
   "sidecars": {
-    "directory": "/Users/yangjiefeng/.claude/jobs/47331343/tmp/vis-byom",
+    "directory": "/Users/yangjiefeng/.claude/jobs/47331343/tmp/vis-byom2",
     "receipt": "enterprise-superagent.visual-check.json",
     "contactSheet": "enterprise-superagent.visual-check.html",
     "files": [
@@ -16012,18 +16012,18 @@
         "file": "enterprise-superagent.visual-check.html"
       },
       {
-        "sha256": "0e0503bc3cb8d2c924cba6a2bda471f25c740b09a81281b09289f0d3b20d172b",
-        "bytes": 207086,
+        "sha256": "6d9ed930c3fd180afb191316d8647c88888a79258d14d71b46b54a35cf72f8c8",
+        "bytes": 207104,
         "file": "enterprise-superagent.visual-check.1280x900.light.png"
       },
       {
-        "sha256": "54121bfb09919e4c6257c99447a67b4eee3669084c0203c3d8c73244957bc2e0",
-        "bytes": 208809,
+        "sha256": "f6e67ffd75463f6a5bc66e07a7665aef2497375a91d867fa0aeb9687c557b396",
+        "bytes": 208805,
         "file": "enterprise-superagent.visual-check.1280x900.dark.png"
       },
       {
-        "sha256": "7c561c6e7e5fd111c2b27656cf6727e577ee7e6c657e2836641c1345a9e39aba",
-        "bytes": 210108,
+        "sha256": "93d249bdb45c3ff6aeac5026082269b6c3b579116c8e60fc030c1477fc757486",
+        "bytes": 210101,
         "file": "enterprise-superagent.visual-check.1440x900.light.png"
       },
       {
@@ -16292,7 +16292,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           },
           {
@@ -16637,7 +16637,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 1
             }
           },
           {
@@ -16806,7 +16806,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 3
+              "waitMs": 2
             }
           }
         ]
@@ -16982,7 +16982,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 2
+              "waitMs": 3
             }
           },
           {
@@ -17496,7 +17496,7 @@
             },
             "fontReadiness": {
               "status": "loaded",
-              "waitMs": 1
+              "waitMs": 2
             }
           }
         ]
@@ -18019,7 +18019,7 @@
         },
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 1
+          "waitMs": 2
         }
       },
       {
@@ -18191,7 +18191,7 @@
         },
         "fontReadiness": {
           "status": "loaded",
-          "waitMs": 1
+          "waitMs": 2
         }
       }
     ]
