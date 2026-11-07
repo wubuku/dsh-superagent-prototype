@@ -780,6 +780,7 @@ Q-F（隐性知识的提请→确认→落库）
 | 原型仓库 | `dsh-superagent-prototype` | 代码事实见 `docs/drafts/prototype-architecture-as-built.md` |
 | DSH 主仓库 | https://github.com/deepseek-ai/deepseek-harness.git | 宿主能力边界 |
 | **HarnessRouter / UHP** | `../../../HarnessRouter` | 跨进程通信的候选协议与「驱动异构 harness」的参考实现；逐项账目与落点见架构文档 §11 |
+| **Comma** | `../../../AFK-surf/Comma` | AFK 的 sessionless 个人助理（Salix/Station 设备面、Lean 可执行内核、IFC、TLA+）；深度调研报告在会话工作目录，核心结论：个人助理级完整落地，企业级编排层未及 |
 | **BOS** | `../../../wubuku/AI-Native-Business-Operating-System` | 制度事实承载者 |
 | · 语义映射 | `docs/drafts/BOS-Workspace-BusinessApplication-Flowable语义映射决策备忘-2026-10-17.md` | 对象链与版本治理 |
 | · 隔离语义 | `docs/drafts/BOS-SaaS租户与Organization-Workspace隔离语义决策备忘-2026-10-17.md` | 租户/组织/工作空间边界 |
