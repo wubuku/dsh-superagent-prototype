@@ -779,6 +779,7 @@ Q-F（隐性知识的提请→确认→落库）
 | 设计文章（归档） | `../../../deepseek-harness/docs/drafts/reference-materials/super-agent-design-exploration.md` | 可检索副本 + 配图 |
 | 原型仓库 | `dsh-superagent-prototype` | 代码事实见 `docs/drafts/prototype-architecture-as-built.md` |
 | DSH 主仓库 | https://github.com/deepseek-ai/deepseek-harness.git | 宿主能力边界 |
+| **参考项目综述（入口文档）** | `docs/drafts/enterprise-superagent-reference-survey.md` | 全部已考察项目的综述、对照表、共同结论（三个空位）与 GitHub 继续搜索的关键字 | 
 | **HarnessRouter / UHP** | `../../../HarnessRouter` | 跨进程通信的候选协议与「驱动异构 harness」的参考实现；逐项账目与落点见架构文档 §11 |
 | **Comma** | `../../../AFK-surf/Comma` | AFK 的 sessionless 个人助理（Salix/Station 设备面、Lean 可执行内核、IFC、TLA+）；深度调研报告见 `docs/drafts/comma-deep-research-report.md`，核心结论：个人助理级完整落地，企业级编排层未及 |
 | **OpenMausBot** | `../../../milind-soni/OpenMausBot` | Apache 2.0 多 bot 桌面平台（统一 Assignment 运行时、bot box 沙箱、审批分层、MCP/headless 互操作）；深度调研报告见 `docs/drafts/openmausbot-deep-research-report.md`，核心结论：多 agent 委派生产级，无通用准入链/任务域焚毁/组织治理 |
