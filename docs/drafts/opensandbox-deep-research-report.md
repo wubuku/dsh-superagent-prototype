@@ -60,7 +60,7 @@ OpenSandbox 是 **AAIF 旗下、Apache-2.0 的可自托管 Agent 沙箱运行时
 - Snapshot 把运行态发布为可复用制品。  
 - API：`POST .../pause|resume|snapshots` → 202 异步。  
 
-**对我们的纪律**：这些能力对 RL/评测/成本优化有价值；作为**任务域默认生命周期则与焚毁相反**——暂停保留状态、快照可复活身份连续。借鉴清单里只保留「destroy/kill 必达」与「vault 在 pause 后须重建」的警告，不把 pause 写成任务域标准动作。
+**对我们的纪律**：这些能力对 RL/评测/成本优化有价值；作为**任务域默认生命周期则与焚毁相反**——暂停保留状态；**快照不延续身份**——`POST /sandboxes {"snapshotId": …}` 恢复会得到**新的 sandbox ID**（"the snapshot is a starting point, not a continuation"）；延续身份的是 pause→resume（同一 ID + UID fencing）。借鉴清单里只保留「destroy/kill 必达」与「vault 在 pause 后须重建」的警告，不把 pause 写成任务域标准动作。
 
 ### 2.5 多语言 SDK / CLI / MCP / 示例生态
 
@@ -73,8 +73,8 @@ OpenSandbox 是 **AAIF 旗下、Apache-2.0 的可自托管 Agent 沙箱运行时
 
 | 本设计概念 | OpenSandbox | 判定 |
 | --- | --- | --- |
-| Trigger→Eval→Mandate | 无；谁都能调 API（鉴权是平台运维问题） | ❌① |
-| 任务域**产品语义**（每任务一域、只留移交包） | 有 destroy；**无**移交包一等公民；pause/snapshot 鼓励状态保留 | ⚠️②部分基建 |
+| Trigger→Eval→Mandate | 无：平台**有** API key 鉴权（`OPEN-SANDBOX-API-KEY`，未授权 401）与租户 namespace 隔离，缺的是**按工作发起的准入/开票域模型**，不是「无鉴权」 | ❌① |
+| 任务域**产品语义**（每任务一域、只留移交包） | 有 destroy；**无**移交包一等公民（最接近的只是 OSEP-0020 的 `preTerminate`/`postResume` 生命周期钩子，status: implementing，是通用钩子而非移交包语义）；pause/snapshot 鼓励状态保留 | ⚠️②部分基建 |
 | 副作用清单 / 对账三态 | 无 | ❌ |
 | 组织治理 / 冻结 / 知识生产线 | 无（多租户 ns 是控制面租户，≠编排事实租户） | ❌③ |
 | BYOM 员工节点 daemon | 面向集群/本机 Docker，不是「节点属于人」模型 | ❌（执行面可选后端） |
@@ -92,14 +92,20 @@ OpenSandbox 是 **AAIF 旗下、Apache-2.0 的可自托管 Agent 沙箱运行时
 2. **`destroy`/`kill` 作为任务结束的必达路径**  
    - SDK 示例 `finally: destroy()` 文化——编排层派发完成协议应强制调用，失败进「中断待恢复」而非静默泄漏域。
 
-3. **Pause 后 vault 必须重建的运维纪律**  
-   - 写入我们的节点手册：任何「休眠」路径都视为凭据失效。
+3. **Pause 后 vault 的处置按 profile 分（抄自 `credential-vault.md`）**  
+   - K8s sidecar profile：pause 删 Pod，resume 后 vault 为空，**必须在 Running 后重建**；Docker profile：pause/unpause 保留 sidecar 与 vault，**无需重建**；fast-sandbox profile：vault 以每沙箱一个 `emptyDir` 明文文件随 snapshot bundle 迁移（信任面仍是 emptyDir/memory）。  
+   - 我们取最严的一条写进节点手册：**任何休眠路径一律视为凭据失效**（并吊销绑定）——这是我们的纪律，不是平台行为。
 
 4. **SandboxProvider 抽象的对接面**  
    - 与 DeerFlow 的 provider 插槽一致：控制平面只依赖「创建/执行/销毁/注入 vault」接口。
 
 5. **路径歧义 / 编码穿越防护（Vault Path Ambiguity Guard）**  
-   - 注入前拒绝 `..` / 歧义 `%2f` 跨 binding——可抄进我们的能力代理。
+   - 注入前的路径守卫：`.`/`..`/反斜杠（`%5c`）在任何百分号解码深度一律 403；`%2f` **在绑定内允许**（如 npm scope 路径），仅当解码会跨越 binding 边界时拒绝——可抄进我们的能力代理。
+
+### 4.1.6 供应链：可借 digest pin，但缺口必须一起抄
+
+- **可借**：README 建议「Pin production images by digest」（`README.md:249`），并有 release BOM 的 digest 校验流程（`docs/community/release-verification.md:98-172`，含 cosign/provenance 检查位）。
+- **缺口**：当前 umbrella release 流程**不含** cosign 签名与 GitHub build-provenance attestation 步骤（已登记 Issue #2463，涉 release-1.1.0/1.1.1/1.2.0）——「按 digest 固定」≠「可验证来源」，抄的时候要把缺口一起抄。
 
 ### 4.2 不可借的（禁借清单）
 

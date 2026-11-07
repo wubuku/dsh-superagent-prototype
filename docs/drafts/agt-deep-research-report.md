@@ -20,7 +20,7 @@ AGT 是**动作级、确定性的应用层治理中间件**（Public Preview）�
 | **技术栈** | Python 为主（完整栈）；另有 TypeScript / .NET / Rust / Go SDK；策略决策运行时上游为 `agent-control-spec`（Rust core） |
 | **规模与活跃** | ~6.5k stars、~1.1k forks（**stars 不作生产证据**）；仓库体量大（约 50MB GitHub size）；CI / Discord / PyPI / npm / NuGet 齐全；状态为 **Public Preview**（[文档] README） |
 | **许可** | MIT |
-| **包切分（v4.1+ 合并后）** | `agent-governance-toolkit-core`（策略/审计/身份/MCP 网关）、`…-runtime`（特权环/saga/终止）、`…-sre`、`…-cli`；`[full]` 元包 |
+| **包切分（v5.0.0 实况）** | PyPI 实际发布 `agent-governance-toolkit-core`（策略引擎/能力模型/审计/MCP 网关/身份/信任）、`…-integrations`（框架适配）、`…-cli`（`agt` CLI + SRE + sandbox）、`…-protocols`，以及元包 `agent-governance-toolkit[full]`（`.github/workflows/publish.yml:77-80`）。README 的「v4.1.0 合并后」表仍列 `…-runtime`/`…-sre`，但这两个发行版已不在 PyPI 上；仓库内 `agent-runtime/`、`agent-sre/`、`agent-hypervisor/`、`agent-mesh/`、`agent-os/` 是**弃用桩**（如 `agent-runtime/pyproject.toml:8`「Deprecated… Install agent-governance-toolkit-core instead」），源码被 force-include 进 `-core`（agent_os/agent_runtime/hypervisor/agentmesh）与 `-cli`（agent_sre）。**特权环/saga/终止在 `-core`，SLO/circuit breaker 在 `-cli`** |
 | **组件目录** | [代码·包结构] `agent-governance-python/` 下含 `agent-os`、`agent-mesh`、`agent-runtime`、`agent-sre`、`agent-compliance`、`agent-hypervisor`、`agent-marketplace`、`agent-lightning` 等；另有 `policy-engine/` |
 
 ---
@@ -31,7 +31,7 @@ AGT 是**动作级、确定性的应用层治理中间件**（Public Preview）�
 
 - [文档] README：「Every tool call, message send, and delegation is intercepted in deterministic application code *before* the model's intent reaches the wire. Actions the AGT kernel denies are … **structurally impossible**.」
 - 最小用法：`govern(my_tool, policy="policy.yaml")`；策略可 `deny` / `require_approval`（带 `approvers`）。
-- 完整宿主：`AgentControl.from_path(manifest)` → `evaluate(...)` → `verdict`（ACS 路径）。
+- ACS 宿主（**README 片段**）：`AgentControl.from_path(manifest)` → `evaluate(...)` → `verdict`。**注意这只是 README 的写法**：当前 Python SDK 的 `AgentControl` 只有 `evaluate_intervention_point()`（async）/`run()`/`run_tool()`/`protect_tool()`，**没有** `evaluate`/`close`；同步 `evaluate(...)` 在 `HostSession` 上（`policy-engine/sdk/python/agent_control_specification/_host.py:308,359`）。§7.1 讨论「把 AGT 的 evaluate 接到事件进线」时，应指名 `HostSession.evaluate` 或 `evaluate_intervention_point`。
 - 这与我们 §7.4「工具授权」层同向：**答的是「这次动作能不能做」**，不是「这次工作凭什么被允许」（Mandate）。
 
 ### 2.2 策略、身份、审计分层（可选叠层）
@@ -47,8 +47,8 @@ Agent → Policy Engine → Identity → Audit Log
                              Decision Record
 ```
 
-- **身份**：AgentMesh 的 Ed25519 / SPIFFE / DID、信任分 0–1000、委派链。
-- **审计**：[文档] `docs/specs/AUDIT-COMPLIANCE-1.0.md`——`AuditEntry`（decision: allow/deny/escalate/warn）、Merkle 链、Decision BOM（事后重建决策输入）、合规框架映射（SOC2 / HIPAA / EU AI Act / GDPR）。
+- **身份**：AgentMesh 的 Ed25519 / SPIFFE / DID、信任分 0–1000。**委派链需限定**：spec §22.4 与若干框架适配包里有 `DelegationChain` 实现，但社区 provider 的 `get_delegation_chain()` 在无高级 provider 时抛 `NotImplementedError`——只能借形状，不能当现成能力。
+- **审计**：[文档] `docs/specs/AUDIT-COMPLIANCE-1.0.md`——`AuditEntry`（decision: allow/deny/escalate/warn；**但 v5 运行时已不再产出 escalate**，升级路径是「escalate = 带 approval 块的 deny」，由宿主解析审批，故 `require_approval` 实为「被挂起的 deny」，见 `agent_os/integrations/_native_adapter_runtime.py:188-191`）、Merkle 链、Decision BOM（事后重建决策输入）、合规框架映射（SOC2 / HIPAA / EU AI Act / GDPR）。
 - **特权环**：[文档] `docs/specs/AGENT-HYPERVISOR-EXECUTION-CONTROL-1.0.md`——Ring 0–3；Ring 0 需 SRE Witness；默认最小权限；fail-closed。
 - **Kill switch**：[文档] LIMITATIONS §13——跨 SDK 语义不一致；Python 靠注册回调，`terminated=False` 时**不能**当作进程已停。对我们：可借「急停接口形状」，不可当 OS 级焚毁。
 
@@ -56,7 +56,7 @@ Agent → Policy Engine → Identity → Audit Log
 
 - 适配 LangChain / LangGraph / AutoGen / CrewAI / OpenAI Agents / Claude Code 插件等。
 - MCP Security Gateway：工具投毒、漂移、隐藏指令扫描（规格 `docs/specs/MCP-SECURITY-GATEWAY-1.0.md`）。
-- 示例含 `k8s-agent-sandbox-governed`——在 K8s sandbox **之上**再挂预调度命令策略（说明 AGT 自认是应用层，需外加隔离）。
+- 示例含 `k8s-agent-sandbox-governed`——在 K8s sandbox **之前**（命令 dispatch 前）加治理，示例自述为 defense-in-depth *before* isolation, not a substitute for it（说明 AGT 自认是应用层，需外加隔离）。
 
 ### 2.4 它自己承认的边界（高价值）
 
@@ -66,7 +66,7 @@ Agent → Policy Engine → Identity → Audit Log
 | --- | --- |
 | Action ≠ Reasoning | 不治理「想什么」；不防跨会话拼出的恶意工作流 |
 | Audit = attempt，非 outcome | 与我们「对账三态 / 外部核实」**不对齐**——AGT 记允许/拒绝，不记外部世界是否真发生 |
-| 非 OS 隔离 | 与 agent 同进程边界；生产要再叠容器/VM |
+| 非 OS 隔离 | 与 agent 同进程边界（`README.md:392`）；生产要再叠容器/VM |
 | Knowledge governance gap | 不治理 RAG 知识流——对齐我们「认知事实归 Spring-AI-RAG + 知识生产线」 |
 | **Credential persistence gap** | **不**在任务边界吊销凭据——与 §4.5 / §7.5「凭据随域生灭」**反向空缺** |
 | Kill switch 非跨 SDK 统一「进程已死」证明 | 急停要自己验收 |
