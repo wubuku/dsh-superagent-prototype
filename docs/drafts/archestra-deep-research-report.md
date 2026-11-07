@@ -71,7 +71,7 @@ Archestra 是 **企业 AI 平台外壳（Open Core）**：SSO/RBAC、LLM/MCP/A2A
 ### 2.5 MCP / A2A / LLM 网关
 
 - LLM gateway：多供应商、虚拟 API key、成本限额、动态路由。
-- MCP gateway：OAuth + On-Behalf-Of（工具以用户身份跑，非共享服务账号）。
+- MCP gateway：OAuth 代用户调用（Microsoft Entra On-Behalf-Of 与应用授权码 on-behalf-of-users 两种形态；工具以用户身份跑，非共享服务账号）。
 - A2A gateway：agent-to-agent 触发。
 - 私有 MCP registry + K8s operator 编排。
 
@@ -97,7 +97,7 @@ Archestra 是 **企业 AI 平台外壳（Open Core）**：SSO/RBAC、LLM/MCP/A2A
 ### 4.1 可以借鉴
 
 1. **平台外壳清单**：SSO/RBAC 资源动作表、environment egress、虚拟密钥、成本限额——组织入口外形。
-2. **On-Behalf-Of MCP**：工具以终端用户身份调用——对照「调用身份 ≠ Mandate」，但强化身份传递。
+2. **代用户 MCP（Entra OBO / 授权码）**：工具以终端用户身份调用——对照「调用身份 ≠ Mandate」，但强化身份传递。
 3. **Guardrails 标签单调收紧 + 人批单次调用**：动作级治理与 Lethal Trifecta 叙事，可对照 AGT / 我们 §7.4 工具权限层。
 4. **A2A/Webhook 触发外形**：作为通道适配器先例，不升格为 Eval。
 5. **Open Core 边界意识**：哪些在 AGPL、哪些在 EE——我们自建时避免无意污染。

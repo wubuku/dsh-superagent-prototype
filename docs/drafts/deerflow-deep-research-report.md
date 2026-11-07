@@ -6,7 +6,7 @@
 
 ## 0. 一句话结论
 
-DeerFlow 2.0 是 **长周期 Super-Agent Harness（运行时外壳）**：LangGraph + Gateway + subagents + memory + skills + **可插拔 `SandboxProvider`** + Message/IM Gateway，把「研究/编码/创作类长任务」跑成产品。它的价值在于 **执行环境 Provider 抽象与工程边界**，不是企业准入控制平面——**无 Trigger→Eval→Mandate**，沙箱按 thread/user scope 获取与释放，**不等于** 我们的任务域焚毁产品语义（虽可对接 OpenSandbox 等销毁型后端）。
+DeerFlow 2.0 是 **长周期 Super-Agent Harness（运行时外壳）**：LangGraph + Gateway API + subagents + memory + skills + **可插拔 `SandboxProvider`** + IM Channels（Feishu/Slack/Telegram/DingTalk），把「研究/编码/创作类长任务」跑成产品。它的价值在于 **执行环境 Provider 抽象与工程边界**，不是企业准入控制平面——**无 Trigger→Eval→Mandate**，沙箱按 thread/user scope 获取与释放，**不等于** 我们的任务域焚毁产品语义（虽可对接 OpenSandbox 等销毁型后端）。
 
 **判定：外围 Harness 先例（P1）；禁止当成企业 Control Plane。**
 

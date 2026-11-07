@@ -1,12 +1,12 @@
 # perplexityai/SPACE 深度调研报告
 
 对象：`perplexityai/SPACE`（Sandboxed Platform for Agentic Code Execution），远端 `https://github.com/perplexityai/SPACE`。  
-基线：HEAD 附近 `2f19d5fd7`（2026-11-07，`template: partition template caches by execution environment`）；同日有大量 lifecycle admission / store 重构提交。  
+基线：HEAD **恰为** `2f19d5f`（2026-11-07，`template: partition template caches by execution environment (#1075)`）；同日有大量 lifecycle admission / store 重构提交。  
 调研方式：README、`docs/architecture.md`、`docs/first-sandbox.md`、egress profiles 与本仓库 §4.5 / §6.2 / §7 对照；事实分 [文档] / [代码·结构]。
 
 ## 0. 一句话结论
 
-SPACE 是 Perplexity 开源的 **Firecracker 微 VM 沙箱平台**：应用通过 HTTP API 走 **template → sandbox → command session → delete**，控制面状态在 PostgreSQL，执行面与数据面分离。它把「可销毁的隔离执行环境」做成干净、可运维的 API 形状，同时一等公民支持 **pause / suspend / wake**（保活与成本优化）。**没有** OpenSandbox/Cube 那种一等公民 Credential Vault；也没有 Trigger→Eval→Mandate 或组织治理。
+SPACE 是 Perplexity 开源的 **Firecracker 微 VM 沙箱平台**：应用通过 HTTP API 走 **template → sandbox → command session → delete**，控制面状态在 PostgreSQL，执行面与数据面分离。它把「可销毁的隔离执行环境」做成干净、可运维的 API 形状，同时一等公民支持 **pause / suspend / wake**（保活与成本优化）。**没有** OpenSandbox/Cube 那种面向 agent 的一等 Credential Vault API（但**确有出口侧凭据注入**：credential reference + credmgr + 网关注入 header，默认关闭、public API 标 Incubating）；也没有 Trigger→Eval→Mandate 或组织治理。
 
 **判定：空位②的「微 VM 生命周期 API」先例（偏索引/契约）；销毁路径存在（DELETE），但 pause/suspend 不得被叙述成焚毁。产品语义（移交包、凭据随域生灭、BYOM 节点）仍须自建。**
 
@@ -75,15 +75,15 @@ ECW（E2B Compatibility Wrapper）：E2B 的 pause ≈ SPACE suspend，resume �
 ### 2.5 安全边界与 egress
 
 - Firecracker 隔离 guest；管理令牌 ≠ 数据面 attachment token（不可互换）。  
-- Kind 部署：sandbox namespace NetworkPolicy 限制出口。  
-- [文档] `tls_interception_exemptions` / operator egress profiles：可组合出站策略；**豁免不授予 egress 许可**，也不做凭据注入。  
+- Kind 部署：K8s 层 default-deny 兜底（NetworkPolicy 仍放行大部分地址），租户出口限制主要由 VM 内 net-gateway 策略执行。  
+- [文档] `tls_interception_exemptions` / operator egress profiles：可组合出站策略；**豁免不授予 egress 许可**。SPACE 本身**有**出口凭据注入（`crates/l20_domain/net/common/src/lib.rs` 的 `credential_header_bindings`、`crates/l40_api/net/gateway/server/src/tcp_proxy/tls_http/credentials.rs` 的 `inject()`），但默认 `SPACE_SBXMGR_NETWORK_CREDENTIALS_ENABLED=off`、public API 标 Incubating、文档几乎不覆盖。  
 - 对比 OpenSandbox/Cube：**SPACE 文档重心在生命周期与隔离，不在箱外密钥代理**——凭据卫生要上层补（env 明文风险需自管）。
 
 ### 2.6 工程硬度（可借鉴的「平台味」）
 
 - Idempotency-Key、operation 轮询、安全重试指南（first-sandbox / troubleshooting）。  
-- Inline durable execution：API 进程可内联执行部分 lifecycle，失败由 dispatcher 认领——偏运维可靠性。  
-- `admit_user_lifecycle`：所有用户生命周期请求过统一准入点（提交信息显示仍在硬化）——这是 **sandbox API 准入**，不是业务 Trigger→Eval。
+- Inline durable execution：API 进程可内联执行部分 lifecycle；不满足内联条件时排队给 dispatcher，API 进程中途死亡则在 60 秒 claim 陈旧窗口后由 dispatcher 重新认领——偏运维可靠性。  
+- `admit_user_lifecycle`（[代码] `crates/l40_api/api/src/controllers/sandbox/lifecycle/user_admission.rs:107`）：所有用户生命周期请求过一个统一准入接缝，但**函数体当前恒返回 `Admitted`**（同文件 `:100-114`，注释明言「every request is admitted alike」）——是**预留接缝，不是闸门**。这是 **sandbox API 准入**，不是业务 Trigger→Eval。
 
 ---
 
@@ -93,7 +93,7 @@ ECW（E2B Compatibility Wrapper）：E2B 的 pause ≈ SPACE suspend，resume �
 | --- | --- | --- |
 | Trigger→Eval→Mandate | 无业务开票；只有 API/组织鉴权与 sandbox lifecycle admission | ❌① |
 | 任务域焚毁产品语义 | 有 DELETE；默认文化含 pause/suspend；无移交包 | ⚠️② API 先例 |
-| Credential Vault / 凭据出箱 | 无与 OpenSandbox/Cube 同级的一等 vault | ❌（需自建） |
+| Credential Vault / 凭据出箱 | 仓库无 vault 概念；有出口侧凭据代理但 Incubating、默认关闭、文档缺失 | ⚠️（相对弱于 OpenSandbox/Cube 的理由是成熟度，不是「不做注入」） |
 | 对账三态 / 冻结 / 知识生产线 | 无 | ❌③ |
 | BYOM 员工节点 | 集群/Kind worker 模型 | ❌ |
 | 副作用清单上报 | 无；应用自己决定保留什么 | ❌ |
@@ -114,7 +114,7 @@ ECW（E2B Compatibility Wrapper）：E2B 的 pause ≈ SPACE suspend，resume �
 3. **管理面 / 数据面令牌分离**  
    - 与「调用身份 ≠ 工具能力」同向：attachment token 只能流式拉输出，不能改生命周期。
 
-4. **Template 不可变 + digest 记录**  
+4. **Template 内容寻址 + digest 引用**（admin 面仍可更新模板记录，非严格不可变）  
    - 沙箱响应带 resolved template digest——利于审计「跑的是哪份环境」，对齐认知/制度版本化精神（环境制品侧）。
 
 5. **作为 SandboxProvider 的「干净 API 索引」**  
@@ -124,7 +124,7 @@ ECW（E2B Compatibility Wrapper）：E2B 的 pause ≈ SPACE suspend，resume �
 
 - **pause / suspend / 自动 idle suspend 当任务域完成。**  
 - **长寿 sandbox 多命令复用 = 一任务一域**——同箱多 process 共享 FS，削弱任务边界。  
-- **无 vault 就假设凭据安全**——env 继承字段明确存在（first-sandbox 表格）。  
+- **无面向 agent 的一等 vault 就假设凭据安全**——env 继承字段明确存在（first-sandbox 表格），出口注入链默认关闭且属 Incubating。  
 - **把 `admit_user_lifecycle` 当成 DSH Eval。**  
 - **整包当企业 Control Plane 或组织治理。**  
 - **以 stars 或「Perplexity 出品」代替验收。**

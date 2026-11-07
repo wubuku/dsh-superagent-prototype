@@ -36,14 +36,16 @@ Paperclip 是 **「AI Agent Workforce」的组织/工单控制平面外形**：�
 | `companies.ts` | `status`、`pauseReason`、`budgetMonthlyCents`、`requireBoardApprovalForNewAgents` | 公司边界 + 公司级预算/暂停 |
 | `agents.ts` | `companyId`、`reportsTo`、`adapterType`/`adapterConfig`、`runtimeConfig`、`budgetMonthlyCents`、`lastHeartbeatAt`、`permissions` | org chart + **Runtime 经 adapter 解耦** |
 | `goals.ts` | `companyId`、`parentId`、`ownerAgentId`、`level`/`status` | 目标树 |
-| `issues.ts` | `assigneeAgentId`/`assigneeUserId`、`checkoutRunId`/`executionRunId`→`heartbeat_runs`、`goalId`/`projectId`/`parentId`、`executionWorkspaceId`、`originKind`、原子签出相关索引 | **工单即 Assignment 载体**（无独立 `assignments` 表名，指派在 issue 上） |
+| `issues.ts` | `assigneeAgentId`/`assigneeUserId`、`checkoutRunId`/`executionRunId`→`heartbeat_runs`、`goalId`/`projectId`/`parentId`、`executionWorkspaceId`、`originKind`（原子签出由服务端事务 + 行锁保证，schema 中无 checkout 相关索引） | **工单即 Assignment 载体**（无独立 `assignments` 表名，指派在 issue 上） |
 | `heartbeat_runs.ts` | `agentId`、`issueId`、`invocationSource`、`status`、成本记账、liveness、retry、日志引用 | Heartbeat 执行账本 |
 | `approvals.ts` | `type`、`requestedByAgentId`、`status`、`payload`、`decidedByUserId` | 审批记录 |
 | `budget_policies.ts` | `scopeType`/`scopeId`、`hardStopEnabled`、`warnPercent`、`unpricedUsagePolicy` | 预算策略硬停 |
 
 另有大量配套表：`execution_workspaces`、`routines`、`company_secrets`、`issue_watchdogs`、`heartbeat_run_watchdog_decisions` 等——组织外形厚度远超「一个 issue tracker」。
 
-**关键负向核实**：对 `repo:paperclipai/paperclip path:packages/db` 搜索 `mandate` → **total_count: 0**。无 `mandate` 表、无 Mandate 领域对象。
+**工程化准入缝（本仓库对 Trigger→Eval 最可参照处）**：Paperclip 无业务资格评估，但有**容量与项目归属层面的执行准入**——`packages/db/src/schema/execution_admissions.ts`（admittedProjectIds、contextRevision、settlementId/settledAt 的幂等结算）、`project_task_execution_policies.maxConcurrentTasks`、`server/src/modules/execution-admission/`、`server/src/services/task-admission.ts`。
+
+**关键负向核实**：对 `repo:paperclipai/paperclip path:packages/db` 搜索 `mandate` → **total_count: 0**。无 `mandate` 表、无 Mandate 领域对象。**但仓库层面确有 mandate 概念**：task watchdog 的 `WATCHDOG_DEFAULT_MANDATE`（`packages/adapter-utils/src/server-utils.ts:223`）与 `doc/TASK-WATCHDOG.md`——它是**提示词层不可被自定义指令覆盖的安全约束契约**，不是 DB 实体。
 
 ### 2.2 Heartbeat ≠ Eval
 
@@ -66,7 +68,7 @@ Paperclip 是 **「AI Agent Workforce」的组织/工单控制平面外形**：�
 - 审批：board / execution policy / connection action approvals。
 - 预算：company/agent/project 级；hard stop。
 - 公司可暂停；atomic task checkout；activity log。
-- Watchdog 相关表存在（`issue_watchdogs`、`heartbeat_run_watchdog_decisions`）——偏运行恢复/生产力审查，**不是**异构只读 Watchdog agent 角色模型。
+- Watchdog 相关表存在（`issue_watchdogs`、`heartbeat_run_watchdog_decisions`）：**task watchdog 是被指派的 agent 角色**（`issue_watchdogs.watchdogAgentId → agents.id`），语义是「读其他 agent 的声明、对照证据核实停工是否成立」的 verification-shaped 角色（`doc/TASK-WATCHDOG.md:26-30`，可写/可 reopen）；另两类是静默运行 watchdog 与 liveness recovery，productivity review 已退役（`doc/execution-semantics.md:1841`）。**这是 Paperclip 里最接近我们「独立核实/对账」的可借件。**
 
 ---
 
@@ -109,7 +111,7 @@ Paperclip 是 **「AI Agent Workforce」的组织/工单控制平面外形**：�
 2. **建议动作**：
    - 精读 `packages/db/src/schema/{companies,agents,goals,issues,heartbeat_runs,approvals,budget_policies}.ts`，画一张与我们 thread/编排事实的映射表（只映射外形，不合并领域）；
    - 精读 adapter registry 与 heartbeat 调度边界，写入「Runtime Adapter 契约」草案；
-   - 在材料索引中 **书面标注：无 Mandate；eval-kernel≠准入 Eval**；
+   - 在材料索引中 **书面标注：无 Mandate 数据实体（有提示词层 watchdog mandate）；eval-kernel≠准入 Eval**；
    - 不将 OpenClaw/Hermes 适配器路径纳入主推审计。
 3. **三空位**：①不填 ②弱 ③部分外形。
 

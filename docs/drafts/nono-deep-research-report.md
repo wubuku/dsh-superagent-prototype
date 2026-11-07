@@ -46,7 +46,7 @@ nono 是 **agent 运行时安全层（runtime security）**，不是控制平面
 - 支持系统 keystore、1Password `op://` URI。
 - phantom tokens：把凭据使用限制在批准的工具上（README 明示）。
 
-[代码] `crates/nono-proxy/`（`server.rs`、`config.rs`、`tls_intercept/`）与 `crates/nono-cli/src/proxy_runtime.rs` 支撑代理运行时——与我们「节点不持有租户凭据、凭据随域注入」的纪律同向，但是 **工具调用级 vault**，不是任务域级 vault。
+[代码] `crates/nono-proxy/src/`（`server.rs`、`config.rs`、`tls_intercept/`）与 `crates/nono-cli/src/proxy_runtime.rs` 支撑代理运行时——与我们「节点不持有租户凭据、凭据随域注入」的纪律同向，但是 **工具调用级 vault**，不是任务域级 vault。
 
 ### 2.3 网络 / 供应链 / 审计 / 回滚
 

@@ -50,7 +50,7 @@
 | --- | --- | --- | --- | --- |
 | **microsoft/agent-governance-toolkit（AGT）** | 公开项目里最接近动作级治理的形状：确定性策略闸、Decision Record、kill-switch、身份绑定。用来决定空位①上「动作是否允许」写到哪一层 | ①部分（动作是否允许）。开票权仍空 | `docs/drafts/agt-deep-research-report.md` | `require_approval` 与动作闸不是 Trigger→Eval→Mandate |
 | **OpenSandbox + CubeSandbox**（一条架构课；**SPACE 作 API 伴读**） | 销毁路径 + 箱外 Credential Vault，对齐架构 §4.5 / §6.2 的基建。填的是空位②的基础设施，不是移交包产品语义。SPACE 只贡献 Firecracker「模板→沙箱→会话→delete」的 API 清洁度，vault 弱于前两者 | ②部分（基建）。①③不填 | `docs/drafts/opensandbox-deep-research-report.md`、`docs/drafts/cubesandbox-deep-research-report.md`；伴读 `docs/drafts/space-deep-research-report.md` | pause / resume / snapshot 不得当任务域默认；没有移交包不得宣布焚毁已解决 |
-| **paperclipai/paperclip** | 空位③目前最好的组织外形：Org / Goal / Issue / Assignment / Heartbeat / Budget，且控制面与 Runtime Adapter 解耦。schema 已核实无 Mandate | ③部分外形。①明确不填。②弱 | `docs/drafts/paperclip-deep-research-report.md` | 无 Mandate；`paperclip-eval-kernel` 是产品评测，不是准入 Eval |
+| **paperclipai/paperclip** | 空位③目前最好的组织外形：Org / Goal / Issue / Assignment / Heartbeat / Budget，且控制面与 Runtime Adapter 解耦。schema 已核实无 Mandate 数据实体 | ③部分外形。①无开票链，但有**工程化执行准入缝**（execution_admissions + maxConcurrentTasks + 幂等结算）。②弱 | `docs/drafts/paperclip-deep-research-report.md` | 无 Mandate 实体（只有提示词层 watchdog mandate）；`paperclip-eval-kernel` 是产品评测，不是准入 Eval |
 | **入口综述已深查**（Comma / OpenMausBot / UHP；BOS / Spring-AI-RAG 为承载者） | 与上三行同一档，正文不在本文展开。Comma 送达、OpenMausBot 委派账本、UHP 驱动契约是生产级通道 / 账本先例；BOS 与 Spring-AI-RAG 是制度 / 认知事实的承载者，决定 Control Plane **不复刻什么** | 通道与账本有先例；三个空位仍空。承载者不是空位填充物 | `docs/drafts/enterprise-superagent-reference-survey.md` §2、§4；`docs/drafts/comma-deep-research-report.md`；`docs/drafts/openmausbot-deep-research-report.md`（UHP 无独立深查，见入口综述 §4.1 与架构 §11.2） | 通道先例不是准入链、任务域焚毁或组织治理；个人助理 / 桌面委派整包不是企业 Control Plane |
 
 ### A / 有价值（裁剪外形或边界，不进控制平面核心）
@@ -58,7 +58,7 @@
 | 项目 | 对架构的真实价值（一句） | 主要空位 | 深查报告相对路径 | 禁借一句话 |
 | --- | --- | --- | --- | --- |
 | **archestra-ai/archestra** | 平台外壳：SSO / RBAC、触发入口、MCP / A2A 网关、成本与护栏。可裁「组织怎么进门」 | ③部分外形。①②弱 | `docs/drafts/archestra-deep-research-report.md` | 整包替代三类事实归位；AGPL-3.0 + Enterprise 未评估不得当底座 |
-| **bytedance/deer-flow** | `SandboxProvider`、Message Gateway、subagent 的 harness 边界。执行环境可插拔，本身不定义企业准入 | 不进控制平面。②仅当后端本身可销毁时才沾边 | `docs/drafts/deerflow-deep-research-report.md` | 长周期 harness 不是企业准入，也不是组织治理 |
+| **bytedance/deer-flow** | `SandboxProvider`、Gateway API + IM Channels、subagent 的 harness 边界。执行环境可插拔，本身不定义企业准入 | 不进控制平面。②仅当后端本身可销毁时才沾边 | `docs/drafts/deerflow-deep-research-report.md` | 长周期 harness 不是企业准入，也不是组织治理 |
 | **OpenHands/OpenHands** | Automation Service 与 Agent Server 分开：何时起跑，和谁在跑，是两段 | 不进控制平面。研发域触发不是 Eval | `docs/drafts/openhands-deep-research-report.md` | Cron / Webhook 自动化不是 Trigger→Eval→Mandate |
 | **hatchet-dev/hatchet**（或 Temporal 同类，二选一） | 多租户 durable 存储外形：事件触发、重试、可观测。可选的编排存储外壳 | ③仅外形。①②不填 | `docs/drafts/hatchet-deep-research-report.md` | 通用工作流引擎不是 Mandate、任务域或制度事实 |
 | **nolabs-ai/nono** | 工具粒度的一次一箱 + 凭据代理。与 OpenMausBot bot-box、UHP relay 同族，密钥出进程 | ②原语，粒度错位（工具不是任务域信封）。①③无 | `docs/drafts/nono-deep-research-report.md` | 工具级隔离不得升成任务域产品 |
@@ -107,11 +107,11 @@
 | **S** | **microsoft/agent-governance-toolkit** | MIT | 确定性动作策略闸、审计 Decision Record、kill-switch、身份绑定形状 | 把动作审批当成 Trigger→Eval 开票链 | ①部分 ②弱 ③部分 | **部分填空**（动作准入/审计） |
 | **S** | **opensandbox-group/OpenSandbox** | Apache-2.0 | `create→run→destroy`、Credential Vault（真密钥出箱）、egress、多租户 ns | pause/resume 当默认生命周期；无移交包就当已解决焚毁 | ②部分 | **部分填空**（焚毁基建） |
 | **S** | **TencentCloud/CubeSandbox** | Apache-2.0 | MicroVM + credential vault + 生命周期 API（E2B 兼容） | 快照/常驻哲学；当任务域信封产品 | ②部分 | **部分填空**（同左，硬件隔离更强） |
-| **S（API 伴读）** | **perplexityai/SPACE** | Apache-2.0 | Firecracker 沙箱：模板→沙箱→会话→delete 的干净 API | 无移交包、无组织编排；无一等公民 Credential Vault，不得单列升格 | ②部分 | **先例**（微 VM API；不单列） |
+| **S（API 伴读）** | **perplexityai/SPACE** | Apache-2.0 | Firecracker 沙箱：模板→沙箱→会话→delete 的干净 API | 无移交包、无组织编排；无面向 agent 的一等 vault（出口凭据注入存在但 Incubating、默认关闭），不得单列升格 | ②部分 | **先例**（微 VM API；不单列） |
 | **A** | **nolabs-ai/nono** | Apache-2.0 | 每工具一次临时沙箱、凭据代理注入、审计 | 产品定位（可包装个人助理）；工具粒度≠任务域信封 | ②部分（粒度错位） | **部分填空**（工具级隔离） |
-| **S** | **paperclipai/paperclip** | MIT | Org / Goal / Issue / Assignment / Heartbeat / Budget / Approval 外形；控制面与 Runtime Adapter 解耦 | `eval-kernel`（产品评测，不是准入 Eval）；整包当 Mandate 系统；依赖消费级助理生态叙事 | ①无 ②弱 ③部分外形 | **过关新参照**（组织/Assignment 外形） |
+| **S** | **paperclipai/paperclip** | MIT | Org / Goal / Issue / Assignment / Heartbeat / Budget / Approval 外形；控制面与 Runtime Adapter 解耦；task watchdog 是**被指派的核实型 agent 角色**；有工程化执行准入缝 | `eval-kernel`（产品评测，不是准入 Eval）；整包当 Mandate 系统；依赖消费级助理生态叙事 | ①无开票链（有容量级准入缝）②弱 ③部分外形 | **过关新参照**（组织/Assignment 外形 + 核实型 watchdog） |
 | **A** | **archestra-ai/archestra** | AGPL-3.0 + Enterprise | SSO/RBAC、触发入口、MCP/A2A 网关、成本/护栏外形 | 整包替代三类事实归位；AGPL/EE 双许可未评估就商用 | ①弱 ②弱–中 ③部分外形 | **部分填空**（平台外壳） |
-| **A** | **bytedance/deer-flow** | MIT | 长周期 harness、`SandboxProvider` 抽象、Message Gateway、subagent | 当成企业准入控制平面 | ①无 ②弱–中 ③无 | **外围先例**（Harness） |
+| **A** | **bytedance/deer-flow** | MIT | 长周期 harness、`SandboxProvider` 抽象、Gateway API + IM Channels、subagent | 当成企业准入控制平面 | ①无 ②弱–中 ③无 | **外围先例**（Harness） |
 | **A** | **OpenHands/OpenHands** | MIT | Automation Service ↔ Agent Server 分层；Cron/事件触发后的调度与失败处理 | 研发工作流自动化 ≠ 通用企业 Super-Agent | ①无 ②弱 ③无 | **外围先例**（工程边界） |
 | **B** | **a2aproject/A2A** | Apache-2.0 | Agent↔Agent 互操作契约形状 | 用协议代替 Mandate/Assignment 领域模型 | 不填空位 | **先例**（C 类协议） |
 | **B** | **IBM/mcp-context-forge** | Apache-2.0 | MCP/A2A/REST 联邦网关：发现、鉴权、限流、可观测 | 用网关代替编排事实账本或 BOS | ①弱 ②无 ③弱 | **先例**（MCP host） |

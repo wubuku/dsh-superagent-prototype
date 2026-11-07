@@ -8,7 +8,7 @@
 
 ## 0. 一句话结论
 
-dori 用约 1.6k 行 TypeScript（Bun）在 herdr + omo 上实现 **Lead / Lane / Duty / merge gate / inbox 批处理 / hourly loop**：与 DeepSeek dsh-superagent-prototype 的 Router/Worker/Watchdog/Trigger 批处理在结构上一一对应，并多了证据化 READY 与 PR merge gate。它验证「三角色 + 忙时收件箱 + 值班升级」可在极小代码量落地，但绑定个人 coding 终端拓扑，**无企业租户、无通用 Eval/Mandate、无任务域焚毁**。
+dori 用约 2.1k 行 TypeScript（Bun，`src/` 六个文件实测 2146 行；README 自述约 1,600 行）在 herdr + omo 上实现 **Lead / Lane / Duty / merge gate / inbox 批处理 / hourly loop**：与 DeepSeek dsh-superagent-prototype 的 Router/Worker/Watchdog/Trigger 批处理在结构上一一对应，并多了证据化 READY 与 PR merge gate。它验证「三角色 + 忙时收件箱 + 值班升级」可在极小代码量落地，但绑定个人 coding 终端拓扑，**无企业租户、无通用 Eval/Mandate、无任务域焚毁**。
 
 **判定：主动式角色切分的脚注对照；三空位皆无；勿升主参照。**
 

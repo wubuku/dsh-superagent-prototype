@@ -7,7 +7,7 @@
 
 ## 0. 一句话结论
 
-CubeSandbox 是 **基于 RustVMM/KVM MicroVM 的高密度 Agent 沙箱服务**（E2B API 兼容）：硬件级每箱一内核、毫秒级创建、CubeEgress **L7 安全代理 + Credential Vault**（密钥永不进箱）。生命周期 API 支持创建/删除，也大力宣传 **AutoPause、跨节点 pause/resume、CubeCoW 快照/克隆/回滚**——这些是产品卖点，但对我们的任务域而言属于**必须裁掉的默认哲学**。
+CubeSandbox 是 **基于 RustVMM/KVM MicroVM 的高密度 Agent 沙箱服务**（E2B SDK 接口兼容但有缺口）：硬件级每箱一内核、毫秒级创建（hypervisor 是 Cloud Hypervisor 派生，承 rust-vmm / Firecracker / crosvm 血统，**不是** Firecracker 本体）、CubeEgress **L7 安全代理 + Credential Vault**（密钥永不进箱）。生命周期 API 支持创建/删除，也大力宣传 **AutoPause、跨节点 pause/resume、CubeCoW 快照/克隆/回滚**——这些是产品卖点，但对我们的任务域而言属于**必须裁掉的默认哲学**。
 
 **判定：空位②的「更强隔离 + vault」部分填空先例（硬件隔离强于普通容器）；pause/snapshot ≠ 焚毁。可借 MicroVM 边界、CubeEgress 注入与审计；禁借常驻/休眠/快照复活当任务域信封。**
 
@@ -21,7 +21,7 @@ CubeSandbox 是 **基于 RustVMM/KVM MicroVM 的高密度 Agent 沙箱服务**�
 | **技术栈** | Go（Cubelet 等）+ Rust（API/Hypervisor 系）+ OpenResty/Lua（CubeEgress）+ eBPF（CubeVS）；Python SDK `cubesandbox`；E2B 兼容 |
 | **规模与活跃** | ~13.2k stars、~1.2k forks；2026-11-07 仍有生产向修复；CNCF Landscape 收录（叙事，非达标证明） |
 | **许可** | **Apache-2.0**（`LICENSE` 全文 + 第三方 NOTICE） |
-| **结构** | [代码] `CubeAPI/`、`CubeMaster/`、`Cubelet/`、`CubeEgress/`、`CubeProxy/`、`CubeOps/`、`hypervisor/`、`cubecow/`、`sdk/`、`deploy/`、`docs/`、`openapi.yml` |
+| **结构** | [仓库布局] `CubeAPI/`、`CubeMaster/`、`Cubelet/`、`CubeEgress/`、`CubeProxy/`、`CubeOps/`、`CubeNet/`、`CubeShim/`、`CubeS3lvol/`、`CubeTemplateCenter/`、`cube-lifecycle-manager/`、`hypervisor/`、`cubecow/`、`sdk/`、`deploy/`、`agent/`、`web/`、`docs/`、`openapi.yml` |
 
 ---
 
@@ -29,7 +29,7 @@ CubeSandbox 是 **基于 RustVMM/KVM MicroVM 的高密度 Agent 沙箱服务**�
 
 ### 2.1 硬件级隔离 + 高密度
 
-- [文档] README：每沙箱独立 OS 内核（MicroVM）；冷启动宣称 &lt;60ms；内存开销 &lt;5MB 量级（benchmark 文档另册）。  
+- [文档] README：每沙箱独立 OS 内核（MicroVM）；冷启动宣称 &lt;60ms；内存开销 &lt;5MB 量级（README 口径；仓库自带 benchmark 实测每 VM 摊销 ~21.5–25.7 MB，与之冲突）。  
 - 组件：`CubeHypervisor` / `CubeShim`（containerd shim v2）把沙箱接入容器运行时生态。  
 - **对我们**：故障域 / 文件边界（§7 表）比共享内核容器更接近「任务崩溃不拖垮邻居」；仍须上层保证「一任务一域」调度，而不是一会话一长寿 VM。
 
@@ -56,7 +56,7 @@ CubeSandbox 是 **基于 RustVMM/KVM MicroVM 的高密度 Agent 沙箱服务**�
 
 ### 2.4 E2B 兼容与部署面
 
-- 换 endpoint 即可从 E2B Cloud 迁到自托管——降低 harness 对接成本（DeerFlow/OpenHands 类 Provider）。  
+- 接口层面接近 drop-in：换 endpoint 即可从 E2B Cloud 迁到自托管——降低 harness 对接成本（DeerFlow/OpenHands 类 Provider）；但官方兼容矩阵自承仍有缺口（ok 14 / warn 7 / missing 10 / bad 3），上游路线图也把「补齐与 E2B 规范的差距」列为待办。  
 - 部署：裸金属 KVM、PVM 云主机、Terraform、K8s（preview）。  
 - Volume 框架：卷可跨沙箱共享、独立生命周期——**与「任务域销毁只留移交包」冲突风险**：共享卷若持有任务私货，会破坏焚毁；借鉴时 Volume 只宜只读材料，不写任务状态。
 
