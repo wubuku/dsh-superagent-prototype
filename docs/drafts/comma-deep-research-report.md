@@ -38,8 +38,8 @@ Comma 不是营销口号里的「类似 Super-agent 的东西」，它是**把�
 
 ### 3.1 编排层：单 Router + 一 Task 一 Worker + 分段看门狗
 
-- 角色白名单只有三种：`worker / router / meeting`（`agent_control.ex:1675`）。**无 `sub-agent` 代码**——README「Workers and Sub-agents」是营销话；且 BFT Workers 已于 **2026-10-19 retire**（`agents.ex:26-28` → `:workers_retired`，410）。
-- 默认执行者：**Group 内一个 Salix 预分配的 Task agent**（固定 ID、Group 内预建；`task_agent.ex:3-6,109-121`）。Router 无权管理 Worker（tool 侧禁用 `agent.*`，`tool_policy.ex:517`）。
+- 角色白名单只有三种：`worker / router / meeting`（`agent_control.ex` 的 `validate_role`（1675 行））。**无 `sub-agent` 代码**——README「Workers and Sub-agents」是营销话；且 BFT Workers 已于 **2026-10-19 retire**（`agents.ex:26-28` → `:workers_retired`，410）。
+- 默认执行者：**Group 内一个 Salix 预分配的 Task agent**（固定 ID、Group 内预建；`task_agent.ex` 头部定义与 `create/2`（3-6、109-121 行））。Router 无权管理 Worker（tool 侧禁用 `agent.*`，`tool_policy.ex` 的 `role_disabled_tools("router")`，约 517 行）。
 - **Router 的「决策权」不在运行时**：委派入口只有一条 `im_api.internal.task.create`（`provider/internal.ex:74-82`），（`task.create` 的目标是单 Agent；任务图已退役）：Worker id / model / `runs_on` 都由 **Router prompt 提示词**（`tool_policy.ex`）决定，运行时只做「Task 类型检查（one-shot/Loop 校验）」。Router 是有限的规则上限，不是 agent 间协商编排。
 - **委派面**：participant 模型 —— delegator（通知过滤）+ worker（物化新 Session + pin 模型）；Router canonical Session 是唯一长期执行上下文（多对话共享）。`wait_for` 是 Lean 内核的**可持久化休眠状态**（timers 驱动探针续等），不耗轮次（`agent-runtime.md:55`「Waits consume no rounds」）；算力预算 `input_round_cap` 120 轮（`internal_session/state.ex:42`）。
 - **Watchdog 语义由 Runtime Actor 承担**：`TaskWorkerWatch`（1 分钟后提醒 Worker 一次、再通知 Router）与 `StationTaskWatch`（7 阶段与各自阈值，`vm_not_ready/station_offline/not_given/running/idle_no_reply/cannot_start/given_no_reply`）。**它们是运行时 Actor，不是独立只读 agent**——「只是运行时 Actor，永不执行」。
@@ -49,9 +49,9 @@ Comma 不是营销口号里的「类似 Super-agent 的东西」，它是**把�
 
 这是对我们最有参照分量的部分：
 
-- **双运行模型**：Station 是「用户自己机器上的常驻 agent 进程」（`systems/station/README.md:3-4` 写「replaces the Go salix-connect connector」），与 Cloud VM **双向转发**（`docs/compute-devices.md` "Execution environments"、Station invite 机制）：「A Station on the user's or Group's own hardware … and a Sandbox the platform manages」と「A sandbox disk is a cache. Durable data lives in Salix, VFS, Drive and pushed branches」。**「沙箱磁盘不存账本」与我们「移交包只留摘要」同源。**
+- **双运行模型**：Station 是「用户自己机器上的常驻 agent 进程」（`systems/station/README.md:3-4` 写「replaces the Go salix-connect connector」），两种执行环境并列（`docs/compute-devices.md` "Execution environments"）：「A Station on the user's or Group's own hardware … and a Sandbox the platform manages」；持久数据（Task Messages/VFS/Drive/pushed branches）在 Salix 侧，**「a sandbox disk is a cache」说的是沙箱磁盘不存账本**——与我们「移交包只留摘要」同源（注意：这句原文针对 sandbox，station 是常驻执行体，不适用）。
 - **Task 的执行面选择（`runs_on`）**：`{kind: salix | runtime | sandbox | device.station:<id> | cloud_vm}`——这就是我们的「任务派发 + BYOM 落点」。装置：sandbox 是真隔离（L4ES VM one Task、零 GitHub token、GROUP token 只在 L4ES 节点的代理、每启动轮换）；station 是用户机器（read-only by default，opt-in 才执行）。
-- **客户机替身架构**：station/`salix-connect`（Go 连接器，`systems/connector/salix-connect`，含 `claude_runtime.go` 等）从 **2026-08 起被 station TypeScript 根源重写**（Effect TS、Rust native）；主要负责：沙箱运行时托管、CLI 运行时（`claude_runtime.go`）、archive/restore、设备访问。**注意**：这部分正在被重写；`connector` 是连接面不是身份面（`docs/compute-devices.md` "Installation and Runner"）。
+- **两代设备面组件**：旧的 **Go connector**（`salix-connect`，`systems/connector/salix-connect`，109 个 `.go`，含 `claude_runtime.go` 等）与新的 **TypeScript/Effect station**（`systems/station`，197 个 `.ts`，Rust native addon）。station README 明言它「replaces the Go salix-connect connector」——即 connector 是过渡期组件，station 是目标形态；未找到「2026-08 起」这类时间承诺，本报告不写日期。`connector` 是连接面不是身份面（`docs/compute-devices.md` "Installation and Runner"）。
 - **网络穿透是 iroh 中继，而不是反向隧道**：Station/connector **直接出站**到对象 Group；Station invite 走「已建的连接」（`tasks.md`），设备连上后先说 `task.hello`（报名）。这与我们推演的「执行节点只出站、节点主动连」**同构**，用于参考 C1/C2 的形态约束一点问题没有。
 - **「桌面 station 第一登录不自动导入本地 CLI 登录」**（`docs/compute-devices.md` "Comma desktop machine accounts"）：BYOM 的账号模型是**显式选源、优先降级、按 profile 隔离**；这是一个比「直接继承本地登录」更干净的账号面，也是值得抄的细节。
 
@@ -83,8 +83,8 @@ Comma 不是营销口号里的「类似 Super-agent 的东西」，它是**把�
 | DeepSeek 文章概念 | Comma 对应 | 证据 | 判定 |
 | --- | --- | --- | --- |
 | Session 是界面，Task/状态才是连续的 | literally Sessionless：Conversation/Session 接口，状态在 S3+Task | README:32「Conversations are just interfaces. Tasks are the persistent execution state.」 | **无疑问（实现强于文章）** |
-| Router/Worker/Watcher 三类角色 | Router（当前协调者）+ Worker（当前配置的）+ Meeting roles + Task agent（默认执行者） | role whitelist（`agent_control.ex:1675`）、task_agent.ex | **角色部分同构，数量面简化** |
-| Watcher（运行时 Actor）盯进展 | TaskWorkerWatch + StationTaskWatch（分段阈值） | `task_worker_watch.ex:1-78`、`tasks-background-execution.md` StationTaskWatch 阶段表 | **机制在，角色化不在**（它不是 agent） |
+| Router/Worker/Watcher 三类角色 | Router（当前协调者）+ Worker（当前配置的）+ Meeting roles + Task agent（默认执行者） | role whitelist（`agent_control.ex` 的 `validate_role`（1675 行））、task_agent.ex | **角色部分同构，数量面简化** |
+| Watcher（运行时 Actor）盯进展 | TaskWorkerWatch + StationTaskWatch（分段阈值） | `task_worker_watch.ex`（1-78 行）、`tasks-background-execution.md` StationTaskWatch 阶段表 | **机制在，角色化不在**（它不是 agent） |
 | Meta/工作流：Task/Messages/Loops（通过性准入） | Triage pipeline（Slack 入线专用）、Loops（代码侦听）、Routines、task/status 推进 | `triage/*`（实目录）、`PRODUCT_MODEL.md:87-112` | **四条机制俱全，框架只有 Triage 一条** |
 | 进程隔离关键角色 | seed：OTP 进程存活 per agent；sandbox 即沙箱 | README「where device for」，沙箱说明 | **有隔离，粒度与我们的任务域可类比但不同生** |
 | BYOM/主动任务 | Salix/Connector + Station 同步成熟制品链（`salix-connect` Go 连入层）、机器账号本地源选购 | `systems/connector/salix-connect`、mac accounts 段 | **设备面同构，账号面互补**（Comma 用「bring your account」模型——BYOM 直接接入的是人的使用环境、本地登录与个人 Agent 进程） |
@@ -135,12 +135,14 @@ Comma 不是营销口号里的「类似 Super-agent 的东西」，它是**把�
 
 **Comma 没写过 BYOM 这个词**（docs 全仓 `BYOM|bring your own` 零命中），但它同时实现了两种拓扑，覆盖了上述两种落点：
 
-| 拓扑 | 谁跑 agent loop（「脑」） | 谁是「手」 | 证据 |
-| --- | --- | --- | --- |
-| **A. 设备自跑**（station-hosted Task） | 设备上的 station 自己跑 `stillfail-runner` → claude/codex 子进程；模型调用从设备用设备自己的账号发出 | 设备本地文件系统 | `systems/station/README.md:3-4`；`systems/station/src/agents/runner.ts:1-20` |
-| **B. 云端脑、设备手**（connector `env.exec`） | 云端 Salix 的 Worker Session | 设备：connector 暴露文件系统/进程操作，云端 `env.exec` 经 EnvDispatch → Bridge → WebSocket 落到设备执行 | `systems/connector/README.md:4-16`（链路图）；`salix_web/env_dispatch.ex` |
+按「脑 = Agent loop + 状态、手 = BYOM 执行环境」的定义，Comma 两种拓扑的**状态都在云**（Task/Message 的 host 是 Salix），区别只在**脑的 loop 在哪**：
 
-B 才是 DeepSeek 意义上的 BYOM（云端 agent 的「手」在员工/个人的本地电脑上）：连接只读起步、用户先在 Settings 授权才允许操作（`connector/README.md`「A device connection starts read-only…the user enables operations」）；A 则更像「脑也在设备上」，是 Comma 特有的延伸。两处**共享同一套 BYOM 纪律**：机器接入、凭据不落云端、连接可断可续（`connector_run_id` 轮换、`connector_token` 短期）、沙箱按需（磁盘只是缓存、持久数据在外，`docs/compute-devices.md` "Execution environments"）。
+| 拓扑 | 脑·loop | 脑·状态 | 手 | 证据 |
+| --- | --- | --- | --- | --- |
+| **A. 设备自跑**（station-hosted Task） | 设备：station 的 `stillfail-runner` → claude/codex 子进程，模型调用从设备用设备自己的账号发出 | **云**：Task 的 Message「只存在 host 上」，host 是 Salix；设备只留 Session Event 执行历史 | 设备本地文件系统 | `systems/station/docs/tasks.md:7-11`（Message 只在 host、Session Event 只在 Station）；`systems/station/src/agents/runner.ts:1-20` |
+| **B. 云端脑、设备手**（connector `env.exec`） | 云：Salix 的 Worker Session | 云 | 设备：connector 暴露文件系统/进程操作，云端 `env.exec` 经 EnvDispatch → Bridge → WebSocket 落到设备执行 | `systems/connector/README.md:4-16`（链路图）；`salix_web/env_dispatch.ex` |
+
+B 才是 DeepSeek 意义上的 BYOM（云端 agent 的「手」在员工/个人的本地电脑上）：连接只读起步、用户先在 Settings 授权才允许操作（`connector/README.md`「A device connection starts read-only…the user enables operations」）。A 是 Comma 特有的延伸：**脑的 loop 在设备、状态仍在云**——按上面的定义，这是三者分离里最极端的一种（状态在云、loop 在手），设备只是执行体，Task 的权威状态始终在云（`DOMAIN_CONCEPTS.md:347`「Salix is the station the Task is kept on…takes what its Session writes as the Worker's Messages」）。两处**共享同一套 BYOM 纪律**：机器接入、凭据不落云端、连接可断可续（`connector_run_id` 轮换、`connector_token` 短期）、沙箱按需（磁盘只是缓存、持久数据在外，`docs/compute-devices.md` "Execution environments"）。
 
 | 维度 | DeepSeek BYOM 原文 | Comma 实际 | 判定 |
 | --- | --- | --- | --- |
@@ -151,4 +153,4 @@ B 才是 DeepSeek 意义上的 BYOM（云端 agent 的「手」在员工/个人�
 | 权限治理 | （企业形态要求） | 连接只读起步、Settings 授权才允许操作；但无「看/接/批」三层人工介入（我们的 §8） | ⚠️ 有操作面授权，无三层介入 |
 | 云端面 | harness（云端）↔ 终端 间歇接入 | Salix 中央控制 + VMM 沙箱（L4ES 按需沙箱） | ✅ 同构 |
 
-**小结**：Comma 功能上就是 BYOM，且**同时**有「脑在云端、手在设备」（connector/env.exec，与 DeepSeek 原文同形）和「脑也在设备」（station-hosted Task）两种拓扑。它缺的不是 BYOM 形态，而是 DeepSeek 企业语境的治理层（共享机器、权限治理、审计、三层人工介入）；它的 BYOM 是**个人助理式的 BYOM**——「Cloud for work. Your device for identity.」（README Philosophy）。**对我们的直接意义**：我们的「节点可以是云端也可以是员工电脑、任务域绑定执行环境」恰好允许这两种拓扑并存；Comma 用 connector 的 `env.exec` 实现了前者、用 station 实现了后者——两种形态各有一个可参照的生产实现。
+**小结**：Comma 功能上就是 BYOM，且**同时**有「脑在云端、手在设备」（connector/env.exec，与 DeepSeek 原文同形）和「脑的 loop 在设备、状态在云」（station-hosted Task）两种拓扑。它缺的不是 BYOM 形态，而是 DeepSeek 企业语境的治理层（共享机器、权限治理、审计、三层人工介入）；它的 BYOM 是**个人助理式的 BYOM**——「Cloud for work. Your device for identity.」（README Philosophy）。**对我们的直接意义**：我们的「节点可以是云端也可以是员工电脑、任务域绑定执行环境」恰好允许这两种拓扑并存；Comma 用 connector 的 `env.exec` 实现了前者、用 station 实现了后者——两种形态各有一个可参照的生产实现。
