@@ -781,6 +781,7 @@ Q-F（隐性知识的提请→确认→落库）
 | DSH 主仓库 | https://github.com/deepseek-ai/deepseek-harness.git | 宿主能力边界 |
 | **HarnessRouter / UHP** | `../../../HarnessRouter` | 跨进程通信的候选协议与「驱动异构 harness」的参考实现；逐项账目与落点见架构文档 §11 |
 | **Comma** | `../../../AFK-surf/Comma` | AFK 的 sessionless 个人助理（Salix/Station 设备面、Lean 可执行内核、IFC、TLA+）；深度调研报告见 `docs/drafts/comma-deep-research-report.md`，核心结论：个人助理级完整落地，企业级编排层未及 |
+| **OpenMausBot** | `../../../milind-soni/OpenMausBot` | Apache 2.0 多 bot 桌面平台（统一 Assignment 运行时、bot box 沙箱、审批分层、MCP/headless 互操作）；深度调研报告见 `docs/drafts/openmausbot-deep-research-report.md`，核心结论：多 agent 委派生产级，无通用准入链/任务域焚毁/组织治理 |
 | **BOS** | `../../../wubuku/AI-Native-Business-Operating-System` | 制度事实承载者 |
 | · 语义映射 | `docs/drafts/BOS-Workspace-BusinessApplication-Flowable语义映射决策备忘-2026-10-17.md` | 对象链与版本治理 |
 | · 隔离语义 | `docs/drafts/BOS-SaaS租户与Organization-Workspace隔离语义决策备忘-2026-10-17.md` | 租户/组织/工作空间边界 |
