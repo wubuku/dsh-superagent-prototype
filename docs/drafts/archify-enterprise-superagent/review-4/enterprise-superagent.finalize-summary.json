@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "explainer",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/candidate.archify.md",
+    "sha256": "2dc65a14b507dbf682534235c08abda5599e38763028050f3fd35ecbf15df1fd",
+    "bytes": 11227
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/enterprise-superagent.html",
+    "sha256": "37e007c513626adac8a6ae1e29a63f14a87192e270152e4946e06985f3ab0620",
+    "bytes": 2394434
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "not-run"
+  },
+  "diagnostics": [
+    {
+      "code": "explainer/writing-light-verb",
+      "severity": "warning",
+      "message": "A light-verb construction can obscure the action.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/candidate.archify.md",
+        "line": 46,
+        "component": "prose",
+        "panelId": "assembly"
+      },
+      "evidence": {
+        "reason": "A light-verb construction can obscure the action.",
+        "example": "进行检查 → 检查；做出决定 → 决定; make a decision → decide",
+        "rule": "light-verb",
+        "matched": "进行到哪"
+      },
+      "supportedFixes": [
+        "Use the direct action verb where it preserves the meaning; name who performs the action."
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/review-4/enterprise-superagent.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-enterprise-superagent/review-4/enterprise-superagent.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1552,
+  "browserCheck": {
+    "requested": false,
+    "ran": false
+  }
+}

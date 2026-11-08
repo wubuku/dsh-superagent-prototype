@@ -1,89 +1,89 @@
 {
-  "schema_version": 3,
-  "diagram_type": "lifecycle",
-  "meta": {
-    "title": "thread 的生命周期：三个状态与终止条件",
-    "locale": "zh-CN",
-    "output": "docs/drafts/archify-enterprise-superagent/thread-lifecycle-diagram.html",
-    "quality_profile": "showcase",
-    "repository": {
-      "url": "https://github.com/wubuku/dsh-superagent-prototype.git",
-      "provider": "github",
-      "revision": "b7b47ddec3155a7f782e08baaed8ac1186266232"
+ "schema_version": 3,
+ "diagram_type": "lifecycle",
+ "meta": {
+  "title": "thread 的生命周期：三个状态与终止条件",
+  "locale": "zh-CN",
+  "output": "docs/drafts/archify-enterprise-superagent/thread-lifecycle-diagram.html",
+  "quality_profile": "showcase",
+  "repository": {
+   "url": "https://github.com/wubuku/dsh-superagent-prototype.git",
+   "provider": "github",
+   "revision": "3fd0a1d3b45a6110a63b4d0c1af26809a83e5e9a"
+  }
+ },
+ "mainPath": [
+  "created",
+  "active",
+  "ended"
+ ],
+ "states": [
+  {
+   "id": "created",
+   "type": "start",
+   "label": "新建",
+   "sublabel": "归属写定",
+   "sources": [
+    {
+     "path": "docs/drafts/enterprise-superagent-architecture.md",
+     "line": 268,
+     "end_line": 271
     }
+   ]
   },
-  "mainPath": [
-    "created",
-    "active",
-    "ended"
-  ],
-  "states": [
+  {
+   "id": "active",
+   "type": "active",
+   "label": "进行中",
+   "sublabel": "任务域执行",
+   "sources": [
     {
-      "id": "created",
-      "type": "start",
-      "label": "新建",
-      "sublabel": "归属写定",
-      "sources": [
-        {
-          "path": "docs/drafts/enterprise-superagent-architecture.md",
-          "line": 268,
-          "end_line": 271
-        }
-      ]
-    },
-    {
-      "id": "active",
-      "type": "active",
-      "label": "进行中",
-      "sublabel": "任务域执行",
-      "sources": [
-        {
-          "path": "docs/drafts/enterprise-superagent-architecture.md",
-          "line": 278,
-          "end_line": 283
-        }
-      ]
-    },
-    {
-      "id": "ended",
-      "type": "neutral",
-      "label": "已结束",
-      "sublabel": "终止态，不可复活",
-      "sources": [
-        {
-          "path": "docs/drafts/enterprise-superagent-architecture.md",
-          "line": 272,
-          "end_line": 276
-        }
-      ]
+     "path": "docs/drafts/enterprise-superagent-architecture.md",
+     "line": 278,
+     "end_line": 283
     }
-  ],
-  "transitions": [
+   ]
+  },
+  {
+   "id": "ended",
+   "type": "neutral",
+   "label": "已结束",
+   "sublabel": "终止态，不可复活",
+   "sources": [
     {
-      "id": "created-active",
-      "from": "created",
-      "to": "active",
-      "label": "任务域建立",
-      "variant": "emphasis"
-    },
-    {
-      "id": "active-ended",
-      "from": "active",
-      "to": "ended",
-      "label": "轨道全关 + 在途清零",
-      "variant": "emphasis"
+     "path": "docs/drafts/enterprise-superagent-architecture.md",
+     "line": 272,
+     "end_line": 276
     }
-  ],
-  "cards": [
-    {
-      "dot": "amber",
-      "title": "任务域的接缝",
-      "items": [
-        "任务域是执行节点上为单个任务建的独立执行环境：独立目录、独立凭据、独立出口策略。",
-        "凭据随任务域创建与销毁，节点本身不持有任何租户凭据。",
-        "任务域销毁时只留一份到期即删的只读移交包，原始数据不在节点留存。",
-        "归属写定后不可更换：要换租户就新建 thread 并引用旧的。"
-      ]
-    }
-  ]
+   ]
+  }
+ ],
+ "transitions": [
+  {
+   "id": "created-active",
+   "from": "created",
+   "to": "active",
+   "label": "任务域建立",
+   "variant": "emphasis"
+  },
+  {
+   "id": "active-ended",
+   "from": "active",
+   "to": "ended",
+   "label": "轨道全关 + 在途清零",
+   "variant": "emphasis"
+  }
+ ],
+ "cards": [
+  {
+   "dot": "amber",
+   "title": "任务域：给每个任务一间独立办公室",
+   "items": [
+    "任务域是执行节点上为单个任务建的独立执行环境：独立目录、独立凭据、独立出口策略。",
+    "凭据随任务域创建与销毁，节点本身不持有任何租户凭据。",
+    "任务域销毁时只留一份到期即删的只读移交包，原始数据不在节点留存。",
+    "归属写定后不可更换：要换租户就新建 thread 并引用旧的。"
+   ]
+  }
+ ]
 }
