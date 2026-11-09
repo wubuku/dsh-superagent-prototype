@@ -7,7 +7,7 @@
 
 ## 0. 一句话结论
 
-Herdr 是一个 **「给 coding agent 用的终端复用器 + agent 运行时」**：tmux 形状的 workspace/tab/pane 拓扑 + 一套**数据驱动的 agent 检测引擎**（23+ 种 agent 的屏幕/OSC 规则清单）+ 五态生命周期（idle / working / blocked / done / unknown）+ 可靠的 prompt 提交与等待语义 + agent 原生的 CLI/socket API（agent 之间可以互相派活、等对方真正 blocked）+ 会话持久化与按 agent 自报命令的 resume。**判定：它是 Driver B（驱动员工已有 agent）方向上最完整的工程参照——「怎么识别、怎么喂活、怎么等、怎么记账」四个问题它都给出了生产级答案；但它完全没有云端治理（无多租户、无准入、无对账、无台账），这些仍归我们。**
+Herdr 是一个 **「给 coding agent 用的终端复用器 + agent 运行时」**：tmux 形状的 workspace/tab/pane 拓扑 + 一套**数据驱动的 agent 检测引擎**（22 份 agent 检测清单 + agent 自报状态）+ 四态生命周期（idle / working / blocked / unknown，另有一个由 server seen 状态派生的 done）+ 可靠的 prompt 提交与等待语义 + agent 原生的 CLI/socket API（agent 之间可以互相派活、等对方真正 blocked）+ 会话持久化与按 agent 自报命令的 resume。**判定：它是 Driver B（驱动员工已有 agent）方向上最完整的工程参照——「怎么识别、怎么喂活、怎么等、怎么记账」四个问题它都给出了生产级答案；但它完全没有云端治理（无多租户、无准入、无对账、无台账），这些仍归我们。**
 
 ## 1. 系统一览
 
@@ -23,9 +23,10 @@ Herdr 是一个 **「给 coding agent 用的终端复用器 + agent 运行时」
 
 ### 2.1 Agent 检测：数据驱动的规则清单，不是硬编码
 
-- `src/detect/manifests/*.toml`——**23+ 种 agent**（claude、codex、cursor、copilot、gemini、grok、qwen、devin、muse…）各一份 TOML 清单，`include_str!` 编译进二进制；三级来源：bundled / remote / 本地 override。
+- `src/detect/manifests/*.toml`——**实测 22 份清单**（amp、antigravity、claude、cline、codex、cursor、devin、droid、gemini、github-copilot、grok、hermes、kilo、kimi、kiro、letta、maki、muse、opencode、pi、qodercli、qwen），`include_str!` 编译进二进制；三级来源：bundled / remote / 本地 override。官方文档另列 25 种「受支持」agent 与 5 种「自报状态」型 agent（自报型不需要清单）。
 - 规则语法：按屏幕区域（`osc_title` / `bottom_non_empty_lines(N)` / `after_last_horizontal_rule` / `prompt_box_body`…）+ 正则/contains 组合，带 **priority**（OSC 序列 1100 > 底部强信号 980 > 弱信号 600）、**`not` 反证**（如「出现 'esc to cancel' 就不是 working」）、**`skip_state_update`**（transcript 查看器等「看见了但别改状态」的场景）。
 - 输入三路：屏幕快照 + OSC title + OSC progress（`DetectionInput`）；输出带完整**可解释性**（`DetectionExplain`：命中哪条规则、为何跳过、fallback 原因、清单版本）。
+- **官方文档的口径**：「When an integration also reports state, Herdr uses those reports instead of reading the screen」——**agent 自报状态优先，屏幕读取兜底**；这正是我们要借的「信号优先」原则。
 - 例（claude.toml）：working = 标题栏盲文转轮正则 + 「esc to interrupt」行 + MCP 后台任务正则（带 not 反证防止用户 prompt 冒充）；blocked = 权限弹窗（「do you want to proceed?」+ yes/❯ 分支，注释里连 issue #2650/#3283 的回归原因都写了）。
 
 ### 2.2 生命周期五态与「seen」语义
@@ -132,6 +133,6 @@ Herdr 是一个 **「给 coding agent 用的终端复用器 + agent 运行时」
 
 **结论：直接相关的约 15–20%；Driver B 的 Go 实现估算 7–12k 行（约 Herdr 的 3–4%）。**
 
-**分水岭——要不要 VT 屏幕仿真**：Herdr 的检测 = PTY 字节 → VT 仿真出屏幕 → 屏幕文本跑正则（ghostty-vt 12.2k + terminal 9.1k + 每 agent 的屏幕规则清单）。我们**不以这条路为首选**：结构化事件优先（如 Claude Code 的 `stream-json` 等 headless/JSON 输出模式），状态判定退化为「事件→五态状态机」，不需要 VT 仿真；屏幕规则只作**兜底**，且兜底结果只当「非权威进度流」（架构文档 C4 语义）——这在架构上比 Herdr 更稳，因为它绕开了「agent 改版即失效」的维护债。
+**分水岭——要不要 VT 屏幕仿真**：Herdr 的检测 = PTY 字节 → VT 仿真出屏幕 → 屏幕文本跑正则（ghostty-vt 12.2k + terminal 9.1k + 每 agent 的屏幕规则清单）。我们**不以这条路为首选**：按 daemon 方案 §4.0 的单路径模型，永远跑 PTY + 真 harness，状态信号来自 agent 自报（OSC / hooks / status 行，Herdr 官方也是「自报优先、屏幕兜底」），屏幕规则只作**兜底**——只有走到兜底时才需要 VT 仿真。因此我们**不使用** harness 的 `--print` / `--output-format stream-json` 这类 headless/JSON 专用模式（Claude Code 确有 `--print/-p` 与 `--output-format text|json|stream-json`，`stream-json` 需 `--verbose`、输出 JSONL——但那条路是「另一种执行模式」，与单路径模型冲突）。兜底结果只当「非权威进度流」（架构文档 C4 语义），避免「agent 改版即失效」的维护债。
 
 **要借的是语义，不是体量**：Herdr 的 1798 个 commit 换来的是规则与边界条件（提交可靠性、blocked 判定、seen、resume 去重），抄进设计的成本是几页纸；我们没有理由重写一个 TUI 产品。
