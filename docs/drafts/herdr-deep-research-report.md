@@ -102,3 +102,35 @@ Herdr 是一个 **「给 coding agent 用的终端复用器 + agent 运行时」
 - `src/persist/{restore.rs,snapshot.rs}`、`src/agent_resume.rs`（ReportedAgentResume / dedupe_key）
 - `src/remote/{host.rs,saved.rs,restart_policy.rs}`（SSH 桥与机器转发）
 - 相关本仓库文档：`enterprise-superagent-node-daemon-plan.md`（BOS 仓库）§4；`enterprise-superagent-architecture.md` §11；`Flowable-BOS人工与Agent协同节点及本地Agent接入设计`（BOS 仓库）
+
+## 7. 如果借鉴它实现 Driver B：取舍与规模估算（306k 行的去向）
+
+实测行数分布（`find <dir> -name '*.rs' | xargs wc -l`，基线 `5da0a01e`，总计约 30.6 万行含测试）：
+
+| 模块 | 行数 | Driver B 需要吗 |
+| --- | --- | --- |
+| `src/client`（TUI：渲染/鼠标/剪贴板/图形协议） | 61.8k | ❌ |
+| `src/app`（应用状态/布局/焦点） | 36.8k | ❌ |
+| `src/server`（他们的会话服务端） | 29.0k | ❌（用我们自己的 byomd 服务端） |
+| 顶层杂项（render、copy_mode、selection、kitty_graphics、popup、sound…） | ~28.6k | ❌ |
+| `src/platform` | 13.8k | ⚠️ 只有进程/Job Object 一小块 |
+| `src/pane` | 12.3k | ⚠️ 部分（PTY+状态推进） |
+| `crates/ghostty-vt`（VT 终端仿真） | 12.2k | ⚠️ **分水岭，见下** |
+| `src/integration` | 11.7k | ⚠️ resume 部分 |
+| `src/cli` | 10.3k | ❌ |
+| `src/api`（socket API） | 9.2k | ⚠️ 订阅/回放语义 |
+| `src/terminal`（屏幕状态提取） | 9.1k | ⚠️ 依赖 VT |
+| `src/config` | 7.9k | ❌ |
+| `src/remote`（SSH 多机） | 6.5k | ❌（C1 通道已覆盖） |
+| **`src/detect`（检测引擎+23 份清单）** | **5.4k** | ✅ 核心可借 |
+| `src/persist` | 5.1k | ⚠️ 我们有自己的状态与 outbox |
+| `src/input` | 4.4k | ⚠️ bracketed paste 一小块 |
+| `src/pty` | 3.1k | ✅ 概念可借 |
+| `api/wait.rs` | 0.85k | ✅ |
+| 测试 | ~35k | — |
+
+**结论：直接相关的约 15–20%；Driver B 的 Go 实现估算 7–12k 行（约 Herdr 的 3–4%）。**
+
+**分水岭——要不要 VT 屏幕仿真**：Herdr 的检测 = PTY 字节 → VT 仿真出屏幕 → 屏幕文本跑正则（ghostty-vt 12.2k + terminal 9.1k + 每 agent 的屏幕规则清单）。我们**不以这条路为首选**：结构化事件优先（如 Claude Code 的 `stream-json` 等 headless/JSON 输出模式），状态判定退化为「事件→五态状态机」，不需要 VT 仿真；屏幕规则只作**兜底**，且兜底结果只当「非权威进度流」（架构文档 C4 语义）——这在架构上比 Herdr 更稳，因为它绕开了「agent 改版即失效」的维护债。
+
+**要借的是语义，不是体量**：Herdr 的 1798 个 commit 换来的是规则与边界条件（提交可靠性、blocked 判定、seen、resume 去重），抄进设计的成本是几页纸；我们没有理由重写一个 TUI 产品。

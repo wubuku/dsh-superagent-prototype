@@ -93,6 +93,7 @@
 - 值得借鉴的开源项目综述（公开 GitHub 续篇）：`enterprise-superagent-borrowable-oss-survey.md`（同目录）；架构设计价值分级（S/A/B）见该文 §1
 - 原型代码事实：`prototype-architecture-as-built.md`
 - 各仓库本地路径见备忘 §11 的索引表
+- **内部工程文档（BOS 私有仓库 `docs/drafts/`）**：`enterprise-superagent-dev-plan.md`（技术开发计划）、`enterprise-superagent-node-daemon-plan.md`（执行节点 Daemon）、`byom-daemon-go-vs-rust-research-note.md`（选型调研笔记）、三份客户 deck；从本目录出发的相对路径是 `../../../../wubuku/AI-Native-Business-Operating-System/docs/drafts/`
 
 ## 7. 如何继续找：GitHub 搜索关键字
 
