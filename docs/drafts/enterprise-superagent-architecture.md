@@ -508,6 +508,8 @@ agent 只能提交**提案**：一份草案、它依据的证据、以及它建�
 | C1 / C2 / C3 | HTTPS + JSON + 幂等键；节点侧 outbox（先落库、后投递的本地待发队列）；节点主动拉取或维持一条**出站**长连接 | 每节点一条队列（NATS / RabbitMQ 这类消息中间件）；或 gRPC（一种二进制 RPC 框架） | 员工机器不能接收入站，只能主动连；节点侧 outbox 让离线不丢 |
 | C4 | SSE（HTTP 单向流）+ `Last-Event-ID` 续传 | WebSocket（确需双向时）；gRPC streaming | 易穿代理；与 UHP 的流式模型同形 |
 | C5 | HTTP 请求/响应 + 适配器侧回执 | 事件 + 定期对账扫描 | 三态语义要明确回执，不能靠轮询猜 |
+
+> **落地物**：C1/C2/C3/C4/C8 的首个具体化是 byomd 契约 v0.1 初稿——BOS 仓库 `docs/drafts/byomd-contract-v0.1/`（自本文件相对路径 `../../../../wubuku/AI-Native-Business-Operating-System/docs/drafts/byomd-contract-v0.1/`；15 条消息 + JSON Schema + 语义表 + 错误码 + 黄金夹具）。该契约随 ADR-001 定案后升级为唯一真源。
 | C6 | 编排存储 + outbox 表，消费方轮询或订阅变更流 | Postgres `LISTEN/NOTIFY`（小规模）；JetStream / Kafka（需回放） | 单写者 + 代际，避免双写与乱序 |
 | C7 | A2A（带 Agent Card 发现），或**经编排层中转** | 直接 HTTP + 关联 id | 避免全网状互联；中转复用既有路径 |
 | C8 | 管理面板 + BOS 的人审通道 | 消息通知（邮件 / 即时消息）作为提醒 | 审批的权威在 BOS，本项目只把人带到正确的位置 |

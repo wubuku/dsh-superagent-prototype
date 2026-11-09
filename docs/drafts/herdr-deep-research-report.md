@@ -105,6 +105,7 @@ Herdr 是一个 **「给 coding agent 用的终端复用器 + agent 运行时」
 - `src/persist/{restore.rs,snapshot.rs}`、`src/agent_resume.rs`（ReportedAgentResume / dedupe_key）
 - `src/remote/{host.rs,saved.rs,restart_policy.rs}`（SSH 桥与机器转发）
 - 相关本仓库文档：`enterprise-superagent-node-daemon-plan.md`（BOS 仓库）§4；`enterprise-superagent-architecture.md` §11；`Flowable-BOS人工与Agent协同节点及本地Agent接入设计`（BOS 仓库）
+- **本文 §5 第 5 条的落地物**：byomd 契约 v0.1 初稿（BOS 仓库 `docs/drafts/byomd-contract-v0.1/`；控制面 JSON 契约 + 协议版本号 + SSE 追赶显式 `FELL_BEHIND`，均照本文 §2.6 的 Herdr 语义）
 
 ## 7. 如果借鉴它实现 Driver B：取舍与规模估算（306k 行的去向）
 
