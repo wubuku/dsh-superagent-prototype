@@ -24,6 +24,7 @@
 | **HarnessRouter / UHP** | 开源（协议开放） | **C 类通信的候选协议**（§11.2） | 调用方↔Server 契约；任务域信封明文 out of scope |
 | **Comma**（AFK-surf） | AGPL-3.0 + 自托管 | **送达语义与验证强度的参照** | 个人助理级完整落地；企业级编排层未及 |
 | **OpenMausBot** | Apache 2.0 + enterprise 层 | **委派运行时与 C1 通道的参照** | 多 agent 委派生产级；无准入链/任务域焚毁/组织治理 |
+| **Herdr** | Apache-2.0（Rust，单二进制） | **Driver B（驱动员工已有 agent）的工程参照** | manifest 驱动的 agent 检测（23+ 种）+ 五态生命周期 + 可靠 prompt 提交；纯本地单用户，无云端治理 |
 
 ## 2. 三个承载者（既有系统）
 
@@ -87,7 +88,7 @@
 
 - 会话备忘（讨论过程与全部结论编号）：`enterprise-superagent-session-notes.md` §11
 - 架构文档（设计结论）：`enterprise-superagent-architecture.md`（§1 三系统、§4.5 任务域、§7 隔离、§11 未决项与调研备注）
-- 深度报告：`comma-deep-research-report.md`、`openmausbot-deep-research-report.md`（同目录）
+- 深度报告：`comma-deep-research-report.md`、`openmausbot-deep-research-report.md`、`herdr-deep-research-report.md`（同目录）
 - 各过关开源项目深查：见 `enterprise-superagent-borrowable-oss-survey.md` §8
 - 值得借鉴的开源项目综述（公开 GitHub 续篇）：`enterprise-superagent-borrowable-oss-survey.md`（同目录）；架构设计价值分级（S/A/B）见该文 §1
 - 原型代码事实：`prototype-architecture-as-built.md`
