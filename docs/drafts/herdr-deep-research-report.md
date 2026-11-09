@@ -80,6 +80,7 @@ Herdr 是一个 **「给 coding agent 用的终端复用器 + agent 运行时」
 2. **Prompt 提交可靠性三件套**：有序提交（paste+Enter 原子写入）→ 活动门（提交后必须观察到 working，否则 stalled）→ 「stalled ≠ 未送达，禁止盲目重发」。→ Driver B 喂任务的**提交语义**照此实现。
 3. **Settled-state 等待语义**：`--wait` 等稳定态、`--until` 等特定态、seen 状态按客户端独立——这套等待语义可直接成为我们「助理等待 agent」的接口契约。
 4. **Blocked 信号 = 人工介入触发器**：Herdr 的 `blocked`（审批/提问 UI）正是我们「编排层人工介入」在 Driver B 场景下的探针——blocked 上抛 = 该节点提示人介入。
+5. **单执行路径模型的产品验证**：Herdr 永远跑 PTY + TUI（它根本没有「无头模式」），「有头」只是有人 attach，「无头」只是没人 attach——detach/reattach 证明「进程不随查看器生灭」。这直接支持 byomd Driver B 的单路径设计（daemon 方案 §4.0）：有头/无头不是两种执行模式，而是观察器在不在。
 
 ### 不可借
 
