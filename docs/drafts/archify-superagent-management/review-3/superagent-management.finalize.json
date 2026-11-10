@@ -1,0 +1,831 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "explainer",
+  "quality": "showcase",
+  "startedAt": "2026-11-10T16:31:11.477Z",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+    "sha256": "7e664f9917b3c5a772b8e5384f79c1ccba95a1f98a6edf6d5d9c451606bfe4b4",
+    "bytes": 8385
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+    "sha256": "138da1e16b062b505ff8cb628b6bf2f8543086e4752c111293ec85c50e0b7f7b",
+    "bytes": 1544350
+  },
+  "stages": {
+    "browser-check": {
+      "status": "not-run",
+      "execution": "not-requested"
+    },
+    "validate": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": null,
+      "execution": "embedded-in-deliver",
+      "command": [
+        "/Users/yangjiefeng/.nvm/versions/node/v24.21.0/bin/node",
+        "/Users/yangjiefeng/.agents/skills/archify/bin/archify.mjs",
+        "deliver",
+        "explainer",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": true,
+        "command": "validate",
+        "specification": {
+          "sha256": "7e664f9917b3c5a772b8e5384f79c1ccba95a1f98a6edf6d5d9c451606bfe4b4",
+          "bytes": 8385
+        },
+        "validation": {
+          "checksPassed": 4,
+          "checkCount": 4,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        }
+      }
+    },
+    "deliver": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 685,
+      "command": [
+        "/Users/yangjiefeng/.nvm/versions/node/v24.21.0/bin/node",
+        "/Users/yangjiefeng/.agents/skills/archify/bin/archify.mjs",
+        "deliver",
+        "explainer",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "receiptId": "cb7d547f-3292-434b-aee2-2b104af24681",
+        "ok": true,
+        "command": "deliver",
+        "type": "explainer",
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+        "explainer": {
+          "preparedSha256": "92c955fd8179e31ff354d4054cded5917a656516f780b6518efa4e836d5c6d92",
+          "dependencies": [
+            {
+              "kind": "repository",
+              "id": "lifecycle",
+              "path": "docs/drafts/enterprise-superagent-architecture.md",
+              "revision": "2a78e8e8b2e811bd313ceae7e0a67550be24b195",
+              "sha256": "6a5790c98a7ffffa33f31b4711d8bf3c491caa397b2516eff7b4dade9fe7d054",
+              "bytes": 98009
+            },
+            {
+              "kind": "diagram-spec",
+              "id": "system-map",
+              "inline": true,
+              "sha256": "9dd1a90d338aab36a7a5a6dba38865362b14ba43b3430beaccec690c6731035d",
+              "bytes": 1704
+            },
+            {
+              "kind": "diagram-spec",
+              "id": "route-flow",
+              "inline": true,
+              "sha256": "723e7c24a001b90127ebb72ef74ffd13732c104da1a851e407c3ce6a52c02ec8",
+              "bytes": 1539
+            },
+            {
+              "kind": "diagram-spec",
+              "id": "scene-seq",
+              "inline": true,
+              "sha256": "6a00146449503163d1b58685ff861a8e83c85eecd10b5d0fdeb93ea443377629",
+              "bytes": 2088
+            }
+          ]
+        },
+        "specification": {
+          "sha256": "7e664f9917b3c5a772b8e5384f79c1ccba95a1f98a6edf6d5d9c451606bfe4b4",
+          "bytes": 8385
+        },
+        "artifact": {
+          "sha256": "138da1e16b062b505ff8cb628b6bf2f8543086e4752c111293ec85c50e0b7f7b",
+          "bytes": 1544350
+        },
+        "validation": {
+          "checksPassed": 4,
+          "checkCount": 4,
+          "compositionProfile": "showcase",
+          "compositionStatus": "pass",
+          "errors": 0,
+          "warnings": 0
+        },
+        "diagnostics": [
+          {
+            "code": "explainer/writing-de-chain",
+            "severity": "warning",
+            "message": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+            "subject": {
+              "line": 3,
+              "component": "answer",
+              "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md"
+            },
+            "evidence": {
+              "rule": "de-chain",
+              "reason": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+              "example": "负责处理用户提交的订单的服务的日志 → 订单服务的日志。它记录用户提交的订单。",
+              "matched": "一句话：给公司装一个「AI 员工团队」，难点从来不是让它会说话，而是让它只做被批准的事、在隔离的地方做、做完留下可查的账。"
+            },
+            "supportedFixes": [
+              "Split the sentence or move a modifier into its own clause."
+            ]
+          },
+          {
+            "code": "explainer/writing-sentence-length",
+            "severity": "warning",
+            "message": "Sentence has 51 reading units, above the configured zh limit of 50.",
+            "subject": {
+              "line": 3,
+              "component": "answer",
+              "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md"
+            },
+            "evidence": {
+              "rule": "sentence-length",
+              "reason": "Sentence has 51 reading units, above the configured zh limit of 50.",
+              "example": "先查缓存。未命中时再查数据库。 / Check the cache first. Query the database on a miss.",
+              "units": 51,
+              "limit": 50
+            },
+            "supportedFixes": [
+              "Split at a logical action or condition boundary while preserving qualifications and causal links."
+            ]
+          },
+          {
+            "code": "explainer/writing-de-chain",
+            "severity": "warning",
+            "message": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+            "subject": {
+              "line": 123,
+              "component": "prose",
+              "panelId": "status",
+              "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md"
+            },
+            "evidence": {
+              "rule": "de-chain",
+              "reason": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+              "example": "负责处理用户提交的订单的服务的日志 → 订单服务的日志。它记录用户提交的订单。",
+              "matched": "这份表就是我们对外承诺的基线：给试点客户的第一个版本，只承诺上表里真正站得住的部分。"
+            },
+            "supportedFixes": [
+              "Split the sentence or move a modifier into its own clause."
+            ]
+          }
+        ],
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "stderr": "archify: This sentence chains 3 “的” modifiers, so the head noun arrives late.\narchify: Sentence has 51 reading units, above the configured zh limit of 50.\narchify: This sentence chains 3 “的” modifiers, so the head noun arrives late."
+    },
+    "check": {
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 346,
+      "command": [
+        "/Users/yangjiefeng/.nvm/versions/node/v24.21.0/bin/node",
+        "/Users/yangjiefeng/.agents/skills/archify/bin/archify.mjs",
+        "check",
+        "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+        "--require-provenance"
+      ],
+      "receipt": {
+        "ok": true,
+        "file": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+        "family": "explainer",
+        "artifact": {
+          "sha256": "138da1e16b062b505ff8cb628b6bf2f8543086e4752c111293ec85c50e0b7f7b",
+          "bytes": 1544350
+        },
+        "checks": [
+          {
+            "name": "explainer_structure",
+            "ok": true,
+            "details": [
+              "89 unique DOM IDs"
+            ]
+          },
+          {
+            "name": "explainer_payload_identity",
+            "ok": true,
+            "details": []
+          },
+          {
+            "name": "explainer_dependencies",
+            "ok": true,
+            "details": [
+              "4 frozen dependencies"
+            ]
+          },
+          {
+            "name": "explainer_native_diagrams",
+            "ok": true,
+            "details": [
+              "system-map: pass",
+              "route-flow: pass",
+              "scene-seq: pass"
+            ]
+          }
+        ],
+        "composition": {
+          "schemaVersion": 1,
+          "profile": "showcase",
+          "status": "pass",
+          "summary": {
+            "errors": 0,
+            "warnings": 0
+          },
+          "issues": [],
+          "nativeDiagrams": [
+            {
+              "id": "system-map",
+              "receipt": {
+                "ok": true,
+                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-yjkYNw/child.html",
+                "artifact": {
+                  "sha256": "f5e53fd3486796d9a46fae0c5293fa7e49969ed56f586b1f24e160f9bbbbc72e",
+                  "bytes": 840823
+                },
+                "checks": [
+                  {
+                    "name": "single_svg",
+                    "ok": true,
+                    "details": [
+                      "found 1 <svg> block(s)"
+                    ]
+                  },
+                  {
+                    "name": "finite_svg",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "orthogonal_arrows",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "label_route_clearance",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_crossings",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_corridors",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "container_border_runs",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "route_rhythm",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "legend_clearance",
+                    "ok": true,
+                    "details": []
+                  }
+                ],
+                "composition": {
+                  "schemaVersion": 1,
+                  "profile": "showcase",
+                  "status": "pass",
+                  "summary": {
+                    "errors": 0,
+                    "warnings": 0
+                  },
+                  "metrics": {
+                    "properCrossings": 0,
+                    "resolvedCrossovers": 2,
+                    "ambiguousCorridors": 0,
+                    "arrowheadCollisions": 0,
+                    "containerBorderRuns": 0,
+                    "labelRouteClearanceIssues": 0,
+                    "labelCanvasOverflowIssues": 0,
+                    "minLabelRouteClearance": 4.5,
+                    "desktopReadabilityIssues": 0,
+                    "viewportHeightIssues": 0,
+                    "minProjectedNodeTextPx": 8,
+                    "maxBends": 6,
+                    "routesOverSuggestedBends": 2,
+                    "maxStretch": 1.533,
+                    "routesOverSuggestedStretch": 2,
+                    "minSegmentPx": 17.5,
+                    "minInteriorSegmentPx": 17.5,
+                    "shortSegmentCount": 0,
+                    "shortEndpointSegmentCount": 0,
+                    "shortInteriorSegmentCount": 0,
+                    "microSegmentCount": 0
+                  },
+                  "suggestedLimits": {
+                    "bendsPerRelationship": 2,
+                    "stretch": 1.35,
+                    "segmentPx": 16,
+                    "microSegmentPx": 8
+                  },
+                  "routeReview": {
+                    "crossings": [
+                      {
+                        "left": {
+                          "id": "portal-to-orch-1",
+                          "from": "portal",
+                          "to": "orch",
+                          "label": "事情进来了",
+                          "collectionIndex": 0,
+                          "artifactIndex": 1
+                        },
+                        "right": {
+                          "id": "orch-to-bos-1",
+                          "from": "orch",
+                          "to": "bos",
+                          "label": "查制度、发起流程",
+                          "collectionIndex": 1,
+                          "artifactIndex": 2
+                        },
+                        "point": [
+                          174,
+                          799.0454545454545
+                        ],
+                        "sharedNode": "orch"
+                      },
+                      {
+                        "left": {
+                          "id": "portal-to-orch-1",
+                          "from": "portal",
+                          "to": "orch",
+                          "label": "事情进来了",
+                          "collectionIndex": 0,
+                          "artifactIndex": 1
+                        },
+                        "right": {
+                          "id": "orch-to-rag-1",
+                          "from": "orch",
+                          "to": "rag",
+                          "label": "查知识",
+                          "collectionIndex": 2,
+                          "artifactIndex": 3
+                        },
+                        "point": [
+                          160,
+                          745
+                        ],
+                        "sharedNode": "orch"
+                      }
+                    ],
+                    "detours": [
+                      {
+                        "relationship": {
+                          "id": "portal-to-orch-1",
+                          "from": "portal",
+                          "to": "orch",
+                          "label": "事情进来了",
+                          "collectionIndex": 0,
+                          "artifactIndex": 1
+                        },
+                        "bends": 6,
+                        "stretch": 1.533
+                      },
+                      {
+                        "relationship": {
+                          "id": "orch-to-bos-1",
+                          "from": "orch",
+                          "to": "bos",
+                          "label": "查制度、发起流程",
+                          "collectionIndex": 1,
+                          "artifactIndex": 2
+                        },
+                        "bends": 4,
+                        "stretch": 1.488
+                      }
+                    ]
+                  },
+                  "leadingSpace": {
+                    "measured": true,
+                    "emptyTopPx": 80,
+                    "emptyTopRatio": 0.058,
+                    "occupiedTop": 80,
+                    "viewBoxTop": 0,
+                    "canvasHeight": 1368,
+                    "typicalNodeHeight": 60,
+                    "reviewSuggested": false
+                  },
+                  "desktopReadability": {
+                    "budgetBasis": "legacy-930",
+                    "readerContract": "declared-wide-v1",
+                    "availableDiagramWidth": 930,
+                    "actualBudgetPx": 930,
+                    "limit": "legacy",
+                    "requestedTargetPx": 7.5,
+                    "requestedTargetMet": true,
+                    "hardFloorPx": 6,
+                    "hardFloorMet": true,
+                    "minimumOwner": {
+                      "kind": "edge",
+                      "id": "portal-to-orch-1",
+                      "from": "portal",
+                      "to": "orch"
+                    },
+                    "minimumSourceTextPx": 8,
+                    "minimumProjectedTextPx": 8,
+                    "semanticTextCount": 15
+                  },
+                  "issues": []
+                }
+              }
+            },
+            {
+              "id": "route-flow",
+              "receipt": {
+                "ok": true,
+                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-4CubEg/child.html",
+                "artifact": {
+                  "sha256": "2793d7d77404b595ab1e41b3228dc6d4acdeb71d740c44aab6e945343b3bc83a",
+                  "bytes": 834044
+                },
+                "checks": [
+                  {
+                    "name": "single_svg",
+                    "ok": true,
+                    "details": [
+                      "found 1 <svg> block(s)"
+                    ]
+                  },
+                  {
+                    "name": "finite_svg",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "orthogonal_arrows",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "label_route_clearance",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_crossings",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_corridors",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "container_border_runs",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "route_rhythm",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "legend_clearance",
+                    "ok": true,
+                    "details": []
+                  }
+                ],
+                "composition": {
+                  "schemaVersion": 1,
+                  "profile": "showcase",
+                  "status": "pass",
+                  "summary": {
+                    "errors": 0,
+                    "warnings": 0
+                  },
+                  "metrics": {
+                    "properCrossings": 0,
+                    "resolvedCrossovers": 0,
+                    "ambiguousCorridors": 0,
+                    "arrowheadCollisions": 0,
+                    "containerBorderRuns": 0,
+                    "labelRouteClearanceIssues": 0,
+                    "labelCanvasOverflowIssues": 0,
+                    "minLabelRouteClearance": 15,
+                    "desktopReadabilityIssues": 0,
+                    "viewportHeightIssues": 0,
+                    "minProjectedNodeTextPx": 7.638603696098563,
+                    "maxBends": 0,
+                    "routesOverSuggestedBends": 0,
+                    "maxStretch": 1,
+                    "routesOverSuggestedStretch": 0,
+                    "minSegmentPx": 8,
+                    "minInteriorSegmentPx": null,
+                    "shortSegmentCount": 1,
+                    "shortEndpointSegmentCount": 1,
+                    "shortInteriorSegmentCount": 0,
+                    "microSegmentCount": 0
+                  },
+                  "suggestedLimits": {
+                    "bendsPerRelationship": 2,
+                    "stretch": 1.35,
+                    "segmentPx": 16,
+                    "microSegmentPx": 8
+                  },
+                  "routeReview": {
+                    "crossings": [],
+                    "detours": []
+                  },
+                  "leadingSpace": {
+                    "measured": false,
+                    "reviewSuggested": false
+                  },
+                  "desktopReadability": {
+                    "budgetBasis": "legacy-930",
+                    "readerContract": "declared-wide-v1",
+                    "availableDiagramWidth": 930,
+                    "actualBudgetPx": 930,
+                    "limit": "legacy",
+                    "requestedTargetPx": null,
+                    "requestedTargetMet": null,
+                    "hardFloorPx": 6,
+                    "hardFloorMet": true,
+                    "minimumOwner": {
+                      "kind": "edge",
+                      "id": "judge-to-adhoc-1",
+                      "from": "judge",
+                      "to": "adhoc"
+                    },
+                    "minimumSourceTextPx": 8,
+                    "minimumProjectedTextPx": 7.638603696098563,
+                    "semanticTextCount": 12
+                  },
+                  "issues": []
+                }
+              }
+            },
+            {
+              "id": "scene-seq",
+              "receipt": {
+                "ok": true,
+                "file": "/var/folders/17/x4gfsdmj74355x331tbfjts80000gn/T/archify-explainer-check-ScxRz1/child.html",
+                "artifact": {
+                  "sha256": "fe6c6e9cf97a10f920a18e59e0ab5b07a170c5f6b11400603532ab82a68f6198",
+                  "bytes": 835806
+                },
+                "checks": [
+                  {
+                    "name": "single_svg",
+                    "ok": true,
+                    "details": [
+                      "found 1 <svg> block(s)"
+                    ]
+                  },
+                  {
+                    "name": "finite_svg",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "orthogonal_arrows",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "label_route_clearance",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_crossings",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "relationship_corridors",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "container_border_runs",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "route_rhythm",
+                    "ok": true,
+                    "details": []
+                  },
+                  {
+                    "name": "legend_clearance",
+                    "ok": true,
+                    "details": []
+                  }
+                ],
+                "composition": {
+                  "schemaVersion": 1,
+                  "profile": "showcase",
+                  "status": "pass",
+                  "summary": {
+                    "errors": 0,
+                    "warnings": 0
+                  },
+                  "metrics": {
+                    "properCrossings": 0,
+                    "resolvedCrossovers": 0,
+                    "ambiguousCorridors": 0,
+                    "arrowheadCollisions": 0,
+                    "containerBorderRuns": 0,
+                    "labelRouteClearanceIssues": 0,
+                    "labelCanvasOverflowIssues": 0,
+                    "minLabelRouteClearance": 28,
+                    "desktopReadabilityIssues": 0,
+                    "viewportHeightIssues": 0,
+                    "minProjectedNodeTextPx": 11,
+                    "maxBends": 0,
+                    "routesOverSuggestedBends": 0,
+                    "maxStretch": 1,
+                    "routesOverSuggestedStretch": 0,
+                    "minSegmentPx": 127.8,
+                    "minInteriorSegmentPx": null,
+                    "shortSegmentCount": 0,
+                    "shortEndpointSegmentCount": 0,
+                    "shortInteriorSegmentCount": 0,
+                    "microSegmentCount": 0
+                  },
+                  "suggestedLimits": {
+                    "bendsPerRelationship": 2,
+                    "stretch": 1.35,
+                    "segmentPx": 16,
+                    "microSegmentPx": 8
+                  },
+                  "routeReview": {
+                    "crossings": [],
+                    "detours": []
+                  },
+                  "leadingSpace": {
+                    "measured": false,
+                    "reviewSuggested": false
+                  },
+                  "sequenceColumnSpace": {
+                    "measured": true,
+                    "columnFit": "spread",
+                    "participantCount": 6,
+                    "occupiedRight": 880,
+                    "viewBoxLeft": 0,
+                    "canvasWidth": 920,
+                    "emptyRightPx": 40,
+                    "emptyRightRatio": 0.043,
+                    "typicalParticipantWidth": 109,
+                    "reviewSuggested": false
+                  },
+                  "desktopReadability": {
+                    "budgetBasis": "legacy-930",
+                    "readerContract": "declared-wide-v1",
+                    "availableDiagramWidth": 930,
+                    "actualBudgetPx": 930,
+                    "limit": "legacy",
+                    "requestedTargetPx": null,
+                    "requestedTargetMet": null,
+                    "hardFloorPx": 6,
+                    "hardFloorMet": true,
+                    "minimumOwner": {
+                      "kind": "edge",
+                      "id": "event-to-ai-1",
+                      "from": "event",
+                      "to": "ai"
+                    },
+                    "minimumSourceTextPx": 11,
+                    "minimumProjectedTextPx": 11,
+                    "semanticTextCount": 18
+                  },
+                  "issues": []
+                }
+              }
+            }
+          ]
+        },
+        "diagnostics": [],
+        "provenance": "current",
+        "deliveryReceiptId": "cb7d547f-3292-434b-aee2-2b104af24681"
+      }
+    }
+  },
+  "browserCheck": {
+    "requested": false,
+    "ran": false
+  },
+  "diagnostics": [
+    {
+      "code": "explainer/writing-de-chain",
+      "severity": "warning",
+      "message": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "line": 3,
+        "component": "answer"
+      },
+      "evidence": {
+        "reason": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+        "example": "负责处理用户提交的订单的服务的日志 → 订单服务的日志。它记录用户提交的订单。",
+        "rule": "de-chain",
+        "matched": "一句话：给公司装一个「AI 员工团队」，难点从来不是让它会说话，而是让它只做被批准的事、在隔离的地方做、做完留下可查的账。"
+      },
+      "supportedFixes": [
+        "Split the sentence or move a modifier into its own clause."
+      ]
+    },
+    {
+      "code": "explainer/writing-sentence-length",
+      "severity": "warning",
+      "message": "Sentence has 51 reading units, above the configured zh limit of 50.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "line": 3,
+        "component": "answer"
+      },
+      "evidence": {
+        "reason": "Sentence has 51 reading units, above the configured zh limit of 50.",
+        "example": "先查缓存。未命中时再查数据库。 / Check the cache first. Query the database on a miss.",
+        "rule": "sentence-length",
+        "units": 51,
+        "limit": 50
+      },
+      "supportedFixes": [
+        "Split at a logical action or condition boundary while preserving qualifications and causal links."
+      ]
+    },
+    {
+      "code": "explainer/writing-de-chain",
+      "severity": "warning",
+      "message": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "line": 123,
+        "component": "prose",
+        "panelId": "status"
+      },
+      "evidence": {
+        "reason": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+        "example": "负责处理用户提交的订单的服务的日志 → 订单服务的日志。它记录用户提交的订单。",
+        "rule": "de-chain",
+        "matched": "这份表就是我们对外承诺的基线：给试点客户的第一个版本，只承诺上表里真正站得住的部分。"
+      },
+      "supportedFixes": [
+        "Split the sentence or move a modifier into its own clause."
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-3/superagent-management.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-3/superagent-management.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "finishedAt": "2026-11-10T16:31:12.777Z",
+  "durationMs": 1299,
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "cache-valid"
+  }
+}

@@ -1,0 +1,21 @@
+/* edge-contrast: raise the light-theme edge and marker tokens to WCAG 4.5:1.
+   Applied by tools/apply-edge-contrast.mjs after archify finalize. Idempotent:
+   the script removes any previous patch block before inserting this one.
+   Only informational strokes and fills are touched; panel borders and grids
+   stay as the renderer draws them, since they carry no information. */
+.preview-assembly-map[data-theme="light"],
+.preview-event-flow-diagram[data-theme="light"],
+.preview-thread-lifecycle-diagram[data-theme="light"] {
+  --arrow: #525c6b;
+  --arrow-emphasis: #047857;
+  --security-stroke: #be123c;
+}
+@media (prefers-color-scheme: light) {
+  .preview-assembly-map:not([data-theme]),
+  .preview-event-flow-diagram:not([data-theme]),
+  .preview-thread-lifecycle-diagram:not([data-theme]) {
+    --arrow: #525c6b;
+    --arrow-emphasis: #047857;
+    --security-stroke: #be123c;
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "explainer",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+    "sha256": "7e664f9917b3c5a772b8e5384f79c1ccba95a1f98a6edf6d5d9c451606bfe4b4",
+    "bytes": 8385
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+    "sha256": "138da1e16b062b505ff8cb628b6bf2f8543086e4752c111293ec85c50e0b7f7b",
+    "bytes": 1544350
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "not-run"
+  },
+  "diagnostics": [
+    {
+      "code": "explainer/writing-de-chain",
+      "severity": "warning",
+      "message": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "line": 3,
+        "component": "answer"
+      },
+      "evidence": {
+        "reason": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+        "example": "负责处理用户提交的订单的服务的日志 → 订单服务的日志。它记录用户提交的订单。",
+        "rule": "de-chain",
+        "matched": "一句话：给公司装一个「AI 员工团队」，难点从来不是让它会说话，而是让它只做被批准的事、在隔离的地方做、做完留下可查的账。"
+      },
+      "supportedFixes": [
+        "Split the sentence or move a modifier into its own clause."
+      ]
+    },
+    {
+      "code": "explainer/writing-sentence-length",
+      "severity": "warning",
+      "message": "Sentence has 51 reading units, above the configured zh limit of 50.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "line": 3,
+        "component": "answer"
+      },
+      "evidence": {
+        "reason": "Sentence has 51 reading units, above the configured zh limit of 50.",
+        "example": "先查缓存。未命中时再查数据库。 / Check the cache first. Query the database on a miss.",
+        "rule": "sentence-length",
+        "units": 51,
+        "limit": 50
+      },
+      "supportedFixes": [
+        "Split at a logical action or condition boundary while preserving qualifications and causal links."
+      ]
+    },
+    {
+      "code": "explainer/writing-de-chain",
+      "severity": "warning",
+      "message": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "line": 123,
+        "component": "prose",
+        "panelId": "status"
+      },
+      "evidence": {
+        "reason": "This sentence chains 3 “的” modifiers, so the head noun arrives late.",
+        "example": "负责处理用户提交的订单的服务的日志 → 订单服务的日志。它记录用户提交的订单。",
+        "rule": "de-chain",
+        "matched": "这份表就是我们对外承诺的基线：给试点客户的第一个版本，只承诺上表里真正站得住的部分。"
+      },
+      "supportedFixes": [
+        "Split the sentence or move a modifier into its own clause."
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 3,
+    "shown": 3,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-3/superagent-management.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-3/superagent-management.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1299,
+  "browserCheck": {
+    "requested": false,
+    "ran": false
+  }
+}
