@@ -9,8 +9,25 @@
 @answer scope="给管理层与业务负责人 · 不含实现细节 · 现状如实标注"
 @meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=37a9bfefcf32482d8b417a7577ecaf7fb6ffad2c
 @source status title="四个模块的现状（如实盘点）" path=docs/drafts/enterprise-superagent-dev-plan.md lines=23:36
-@source terms title="Mandate 与准入链的术语提示" path=docs/drafts/enterprise-superagent-dev-plan.md lines=7:7
-@source lifecycle title="Ticket 与 Assignment 的生命周期（6.4）" path=docs/drafts/enterprise-superagent-architecture.md lines=344:385
+@source terms title="三道保险的术语出处（准入链 / 独立办公室 / 台账）" path=docs/drafts/enterprise-superagent-dev-plan.md lines=7:7
+@source lifecycle title="工单与执行尝试的生命周期（架构文档 6.4 节）" path=docs/drafts/enterprise-superagent-architecture.md lines=344:385
+
+## 先对齐一件事：说的不是你用过的那种 AI {#not-chatbot span=12}
+
+**你可能用过的 AI 助手**（问答机器人之类）：你打开它、输入问题，它回答。**你不问，它不动**；它也不认识你的业务。
+
+**我们说的「AI 员工」**：它盯着公司的事情——一封邮件、一张订单、一个异常。事情发生，它**先动手**。
+
+| 对比 | 聊天机器人 | AI 员工 |
+| --- | --- | --- |
+| 怎么开始 | 你提问，它回答 | 事情发生，它先动手 |
+| 它认识你的业务吗 | 不认识 | 按公司的流程办事，开工先取得批准 |
+| 干完之后 | 对话结束就忘 | 留下记录和经验，下次更熟练 |
+
+**举个具体例子**（后面整页都用它）：供应商发来一封邮件说「这批货对不上」。
+聊天机器人：等你复制粘贴去问它怎么办。
+AI 员工：它自己看到邮件 → 查公司的收货异常流程 → 开工、找历史记录 → 给出处理建议 → 送给你**确认**。
+**你从提问的人，变成了确认的人。**
 
 ## 一张图看懂：四个系统各管一件事 {#big-picture span=12}
 
@@ -63,7 +80,7 @@
 | lookup > run | 有现成 |
 
 
-这是这套系统最值钱的地方，也是它和「聊天机器人」的根本差别：**它不等你提问**。事情一进来，它自己判断、自己动手。
+这就是刚才例子里的事：**它不等你提问**——事情一进来，它自己判断、自己动手。而对比表里的三条差别，分别由三个系统支撑。
 
 **同样的活干第二遍，不用再从头想一遍**——第一遍怎么干、谁批的、卡在哪，都固化成流程。下次自动照办，人只看例外。用得越久，固化的制度越多，人操心的地方越少。
 

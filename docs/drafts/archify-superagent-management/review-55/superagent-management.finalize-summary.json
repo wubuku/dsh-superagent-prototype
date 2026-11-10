@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "explainer",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+    "sha256": "7d2e10189d8ee235011a6f268dd5317af93f3656b28a2693f78280a356632274",
+    "bytes": 10425
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+    "sha256": "153e971b00bc3f4ea1010ce2556ca39897dd87e30fd04a8e953bcddb5ba45c49",
+    "bytes": 1494256
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "not-run"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-55/superagent-management.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-55/superagent-management.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1260,
+  "browserCheck": {
+    "requested": false,
+    "ran": false
+  }
+}
