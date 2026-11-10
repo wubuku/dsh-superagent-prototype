@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "explainer",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+    "sha256": "b325743b48f5dba86c32a826d8661b7a698d7b1341a0e331ca10a9b40baa8296",
+    "bytes": 10808
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+    "sha256": "19dd8d052c45fbcd6e811178bc09deb668508d31752d683f2b229e61c818d587",
+    "bytes": 1498972
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "not-run"
+  },
+  "diagnostics": [
+    {
+      "code": "explainer/writing-de-chain",
+      "severity": "warning",
+      "message": "This sentence chains 4 “的” modifiers, so the head noun arrives late.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "line": 19,
+        "component": "prose",
+        "panelId": "not-chatbot"
+      },
+      "evidence": {
+        "reason": "This sentence chains 4 “的” modifiers, so the head noun arrives late.",
+        "example": "负责处理用户提交的订单的服务的日志 → 订单服务的日志。它记录用户提交的订单。",
+        "rule": "de-chain",
+        "matched": "但它们不认识你的公司——不知道你的流程、你的审批权限、你的数据边界。"
+      },
+      "supportedFixes": [
+        "Split the sentence or move a modifier into its own clause."
+      ]
+    },
+    {
+      "code": "explainer/writing-paragraph-length",
+      "severity": "warning",
+      "message": "This paragraph has 5 sentences and 137 reading units; long paragraphs are what the page should replace.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "line": 29,
+        "component": "prose",
+        "panelId": "not-chatbot"
+      },
+      "evidence": {
+        "reason": "This paragraph has 5 sentences and 137 reading units; long paragraphs are what the page should replace.",
+        "example": "把并列要点写成列表，把先后动作写成 @steps，把方案差异写成对比表。 / Turn parallel points into a list, ordered actions into @steps and option differences into a comparison.",
+        "rule": "paragraph-length",
+        "units": 137,
+        "limit": 120
+      },
+      "supportedFixes": [
+        "Split the paragraph into a list, steps or a comparison; keep at most two or three short sentences of prose."
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 2,
+    "shown": 2,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-59/superagent-management.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-59/superagent-management.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1140,
+  "browserCheck": {
+    "requested": false,
+    "ran": false
+  }
+}
