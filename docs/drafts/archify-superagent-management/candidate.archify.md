@@ -7,17 +7,17 @@
 - **新增的只有一层「信任层」**：谁能开工（准入）、在哪干活（独立办公室）、干完记什么（台账）。这一层，才是我们比「一个聊天机器人」多交付的东西。[](source:status)
 
 @answer scope="给管理层与业务负责人 · 不含实现细节 · 现状如实标注"
-@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=2a78e8e8b2e811bd313ceae7e0a67550be24b195
+@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=8f7ab1c93eb6d72437179b30128ae9508d1200c0
 @source status title="四个模块的现状（如实盘点）" path=docs/drafts/enterprise-superagent-dev-plan.md lines=23:36
 @source terms title="Mandate 与准入链的术语提示" path=docs/drafts/enterprise-superagent-dev-plan.md lines=7:7
-@source lifecycle title="Ticket 与 Assignment 的生命周期" path=docs/drafts/enterprise-superagent-architecture.md lines=344:386
+@source lifecycle title="Ticket 与 Assignment 的生命周期（6.4）" path=docs/drafts/enterprise-superagent-architecture.md lines=344:385
 
 ## 一张图看懂：四个系统各管一件事 {#big-picture span=12}
 
 @architecture id=system-map title="四个系统各管一件事，谁也不在谁的肚子里"
 | user | 员工（主人） | external |
 | portal | 入口：邮件 / 群消息 / 工单 / 业务事件 | frontend |
-| bos | BOS · 制度：流程 / Case / 审批 / 版本 | backend |
+| bos | BOS · 制度：流程 / 灵活案件 / 审批 / 版本 | backend |
 | rag | 知识库 · 只回原文、能溯源 | database |
 | orch | AI 员工调度中心 · 派活 / 准入 / 台账 | security |
 | node | 独立办公室 · 在员工电脑或云端 | cloud |
@@ -37,7 +37,7 @@
 
 | 您担心的事 | 我们的答案 | 落点 |
 | --- | --- | --- |
-| 「它会不会乱来？」 | **每次开工都要有凭据**：凭什么开这个工、依据哪次审批，一条条记下来 | 准入链 {good:已设计} |
+| 「它会不会乱来？」 | **每次开工都要有凭据**：凭什么开这个工、依据哪次审批，一条条记下来（这条检查链叫「准入链」） | 准入链 {good:已设计} |
 | 「它会不会看到不该看的？」 | **一任务一间独立办公室**：独立目录、独立凭据、独立网络出口，干完即焚 | 任务域 {good:已设计} |
 | 「出了事查得清吗？」 | **每一笔对外动作都记账**：做了 / 可能做了 / 没做，三态对账，人工可裁定 | 台账与对账 {good:已设计} |
 
@@ -60,7 +60,10 @@
 | model > run | 固化后 |
 | run > adhoc | 到节点为止 | emphasis |
 
-这是这套系统最值钱的地方：**同样的活干第二遍时，不用再从头想一遍**。第一遍怎么干、谁批的、卡在哪，都被固化成流程；下次自动照办，人只看例外。
+
+这是这套系统最值钱的地方，也是它和「聊天机器人」的根本差别：**它不等你提问**。事情一进来，它自己判断、自己动手。
+
+**同样的活干第二遍，不用再从头想一遍**——第一遍怎么干、谁批的、卡在哪，都固化成流程。下次自动照办，人只看例外。用得越久，固化的制度越多，人操心的地方越少。
 
 @steps id=route-steps
 | t | 事情进来了 | 可能来自一封邮件、一条群消息，也可能来自收货、订单这类业务事件。 | route-flow | trigger |
