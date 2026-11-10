@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "explainer",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+    "sha256": "0188bf48bbce2bdb5b32a339a2916515cdfbb6ca4cb514da163926917c5410bc",
+    "bytes": 10198
+  },
+  "artifact": {
+    "path": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
+    "sha256": "6a4813516b543704c18d245e08ac1777aac291ca055d2269cb00e12f4b984333",
+    "bytes": 1520664
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "not-run"
+  },
+  "diagnostics": [
+    {
+      "code": "explainer/writing-sentence-length",
+      "severity": "warning",
+      "message": "Sentence has 52 reading units, above the configured zh limit of 50.",
+      "subject": {
+        "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
+        "line": 26,
+        "component": "prose",
+        "panelId": "big-picture"
+      },
+      "evidence": {
+        "reason": "Sentence has 52 reading units, above the configured zh limit of 50.",
+        "example": "先查缓存。未命中时再查数据库。 / Check the cache first. Query the database on a miss.",
+        "rule": "sentence-length",
+        "units": 52,
+        "limit": 50
+      },
+      "supportedFixes": [
+        "Split at a logical action or condition boundary while preserving qualifications and causal links."
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-32/superagent-management.finalize.json",
+    "summaryReceipt": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/review-32/superagent-management.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1258,
+  "browserCheck": {
+    "requested": false,
+    "ran": false
+  }
+}

@@ -7,31 +7,27 @@
 - **新增的只有一层「信任层」**：谁能开工（准入）、在哪干活（独立办公室）、干完记什么（台账）。这一层，才是我们比「一个聊天机器人」多交付的东西。[](source:status)
 
 @answer scope="给管理层与业务负责人 · 不含实现细节 · 现状如实标注"
-@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=8f7ab1c93eb6d72437179b30128ae9508d1200c0
+@meta locale=zh-CN repo_url=https://github.com/wubuku/dsh-superagent-prototype.git repo_revision=37a9bfefcf32482d8b417a7577ecaf7fb6ffad2c
 @source status title="四个模块的现状（如实盘点）" path=docs/drafts/enterprise-superagent-dev-plan.md lines=23:36
 @source terms title="Mandate 与准入链的术语提示" path=docs/drafts/enterprise-superagent-dev-plan.md lines=7:7
 @source lifecycle title="Ticket 与 Assignment 的生命周期（6.4）" path=docs/drafts/enterprise-superagent-architecture.md lines=344:385
 
 ## 一张图看懂：四个系统各管一件事 {#big-picture span=12}
 
-@architecture id=system-map title="四个系统各管一件事，谁也不在谁的肚子里"
-| user | 员工（主人） | external |
-| portal | 入口：邮件 / 群消息 / 工单 / 业务事件 | frontend |
-| bos | BOS · 制度：流程 / 灵活案件 / 审批 / 版本 | backend |
-| rag | 知识库 · 只回原文、能溯源 | database |
-| orch | AI 员工调度中心 · 派活 / 准入 / 台账 | security |
-| node | 独立办公室 · 在员工电脑或云端 | cloud |
-| memory | 外挂记忆 · 跨会话记得住 | database |
-| portal > orch | 事情进来了 |
-| orch > bos | 查制度、发起流程 |
-| orch > rag | 查知识 |
-| orch > node | 派活 |
-| node > orch | 交活 + 副作用清单 |
-| node > memory | 留下经验 |
-| orch > user | 主动办结 / 待确认 |
-| user > portal | 确认 / 补充 |
+@workflow id=system-map title="一件事的四步：进来 → 把关 → 查规矩 → 干活"
+| user | 事情进来 | external |
+| orch | 调度中心 | security |
+| know | 制度 + 知识 | database |
+| node | 独立办公室 | cloud |
+| user > orch | 把关 |
+| orch > know | 查规矩 |
+| know > node | 派活 |
+
+**调度中心**派活、把关、记账。**BOS** 管制度：该走什么流程、谁审批。**知识库**只回原文、能溯源。**独立办公室**在员工电脑或云端，一个任务一间。
 
 四个系统各自独立部署，走标准接口相连。**没有一个大平台把它们装进肚子**——这正是它们能各自升级、各自替换的原因。
+
+事情从任何地方进来：邮件、群消息、工单、业务事件。另有一个不占框的辅助件——**外挂记忆**，在旁边观察、提炼经验，下次干活带上来。
 
 ## 您最该问的三个问题 {#three-questions span=12}
 
@@ -43,27 +39,35 @@
 
 这三件事合起来，就是「信任层」。它不改变您现有的系统，只在关键位置加检查点。
 
+还有第四件，是员工自己会问的：**「用我的电脑，我能不能说了算？」** 能。员工可以规定：允许开几个 AI、允许用哪种、哪些会话可以被调度。
+
+**任何一条随时可以收回**——收回那一刻，正在跑的立刻停手，只留交接单。用谁的机器，谁做主。
+
 ## 事情进来之后：一次性的灵活办，会重复的沉淀成制度 {#routing span=12}
 
 @workflow id=route-flow title="AI 员工先判断：一次性灵活办，会重复的沉淀成制度"
-| trigger | 事情进来了 | external |
-| judge | 一次性还是重复？ | backend |
-| adhoc | 灵活办结 | backend |
-| lookup | 查 BOS 现成流程 | backend |
-| model | 建模并发布 | backend |
-| run | 发起流程 | backend |
+| lane ask | 先判断 |
+| lane once | 一次性 |
+| lane repeat | 会重复 |
+| trigger | 事情 | external | ask |
+| judge | 一次性？ | backend | ask |
+| adhoc | 办结 | backend | once |
+| lookup | 查流程 | backend | repeat |
+| model | 建模 | backend | repeat |
+| run | 发起 | backend | repeat |
 | trigger > judge | |
 | judge > adhoc | 一次性 |
 | judge > lookup | 会重复 |
-| lookup > run | 有现成 |
 | lookup > model | 没有 |
 | model > run | 固化后 |
-| run > adhoc | 到节点为止 | emphasis |
+| lookup > run | 有现成 |
 
 
 这是这套系统最值钱的地方，也是它和「聊天机器人」的根本差别：**它不等你提问**。事情一进来，它自己判断、自己动手。
 
 **同样的活干第二遍，不用再从头想一遍**——第一遍怎么干、谁批的、卡在哪，都固化成流程。下次自动照办，人只看例外。用得越久，固化的制度越多，人操心的地方越少。
+
+还有第二条曲线：**它干的活会变成公司的知识**，不是聊天记录。AI 把过程整理成资料，**人签字确认**后才进知识库——有出处、有责任人、能传下去。用得越久，攒下的知识越厚。
 
 @steps id=route-steps
 | t | 事情进来了 | 可能来自一封邮件、一条群消息，也可能来自收货、订单这类业务事件。 | route-flow | trigger |
@@ -75,29 +79,16 @@
 
 ## 一个真实场景跑起来是什么样 {#scene span=12}
 
-@sequence id=scene-seq title="从「一封邮件」到「事情办完、账对上了」"
-| actor event | 事情来了 | external |
-| actor staff | 员工（主人） | frontend |
-| actor ai | AI 员工助理 | backend |
-| actor bos | BOS 制度 | backend |
-| actor rag | 知识库 | database |
-| actor office | 独立办公室 | security |
-| phase | 判断与查制度 |
-| event | ai | 收到：供应商说这批货对不上 |
-| ai | bos | 查：有没有「收货异常处理」流程？ |
-| bos | ai | 有，第 3 版，正在生效 | return |
-| phase | 开工要凭据 |
-| ai | bos | 发起实例，取这次开工的凭据 |
-| bos | ai | 凭据已签发：依据本流程第 3 版 | return |
-| phase | 在隔离的地方干活 |
-| ai | rag | 查这批货的历史验收记录 |
-| rag | ai | 证据（附原文出处） | return |
-| ai | office | 在一间独立办公室处理，用完即焚 |
-| office | ai | 完成，附「我做了哪些对外动作」清单 | return |
-| phase | 交活与对账 |
-| ai | staff | 主动办结：结论 + 依据，送达到主人 |
-| ai | bos | 回写结果，进入对账 |
-| staff | ai | 有异议，补充指示 | return |
+@workflow id=scene-seq title="从「一封邮件」到「事情办完、账对上了」"
+| mail | 货对不上 | external |
+| ask | 查流程拿凭据 | security |
+| office | 办公室处理 | cloud |
+| list | 动作清单 | backend |
+| report | 办结 + 对账 | frontend |
+| mail > ask | |
+| ask > office | 有凭据 |
+| office > list | |
+| list > report | |
 
 关键在最后一步：**AI 交活时必须附一份「我做了哪些对外动作」的清单**。没有清单的「完成」，我们一律不认——这是防止「AI 说做完了但其实没做 / 做了但没说」的唯一办法。[](source:lifecycle)
 
@@ -110,6 +101,28 @@
 | 干活的方法 | **技能包（SKILL）** | 怎么读一张验收单、怎么核对一个批次号 |
 
 三条通道分开的好处：制度改了不影响知识，知识更新不用动制度，技能升级不用改前两者。**任何一条出问题，都能单独定位、单独修**。
+
+## 人随时可以插手，而且分三层 {#human span=12}
+
+| 在哪一层 | 人能做什么 |
+| --- | --- |
+| **在员工电脑上** | 看见自己的机器上正在跑什么，随时接管 |
+| **在调度中心** | 改派、叫停、把一件事交给别人；冻结期间下对账结论 |
+| **在业务系统里** | 审批、验收、退回——走公司原本的流程，不由 AI 代劳 |
+
+三层缺一不可。只在调度中心能插手，员工就看不见自己机器上发生了什么；只在业务系统能插手，就看不到执行现场。**这也是「随时叫停」能成立的原因**——AI 干活不是一次不回头的大动作，人随时能进来。
+
+## 凭什么信我们：查过 19 个产品 {#evidence span=12}
+
+这三件事，今天市面上有没有人做？我们把 19 个产品查了一遍——**14 个开源项目逐个读源码，5 个闭源产品逐条对公开资料**。
+
+| 企业要的那道门槛 | 竞品现状 |
+| --- | --- |
+| 谁批准它干的（准入） | 没有一个做 |
+| 资料收得回吗（隔离与焚毁） | 没有一个做 |
+| 出了事查得到吗（台账） | 没有一个做 |
+
+查的过程中，我们纠正了自己 20 多处判断错误。**我们的结论可以被证伪——这比结论本身更值钱。**
 
 ## 现状说实话 {#status span=12}
 

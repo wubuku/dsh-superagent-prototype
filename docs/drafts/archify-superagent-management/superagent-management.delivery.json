@@ -1,50 +1,50 @@
 {
   "schemaVersion": 1,
-  "receiptId": "3b4a719a-bdd0-400e-8dd3-f8e18b5fdfe3",
+  "receiptId": "bcdfad49-0dac-48ac-9530-73124b8557d3",
   "status": "current",
   "command": "deliver",
   "type": "explainer",
   "input": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/candidate.archify.md",
   "output": "/Users/yangjiefeng/Documents/deepseek-ai/dsh-superagent-prototype/docs/drafts/archify-superagent-management/superagent-management.html",
   "specification": {
-    "sha256": "10e7cfdf117c098722f9419fe601e681cdfa281d4a34bffb60f9a32dce5fad11",
-    "bytes": 8386
+    "sha256": "78fc2e4e373ce208f6864141b07a067511f2e96c47d8e3a8ca3bc92ca99af090",
+    "bytes": 9353
   },
   "artifact": {
-    "sha256": "21e0b1097557e7e4652edcf57808334d067dfc13e0b771f132fff4e20a5b2248",
-    "bytes": 1540892
+    "sha256": "628180e8151d92ff57b86b9efd0cf4737c42dfc638a304a6582a6f14156ecb5b",
+    "bytes": 1486444
   },
   "explainer": {
-    "preparedSha256": "599cda8f22d14bb80f1a74bffc244712ef4e761a5174e14b418022f4115fdae1",
+    "preparedSha256": "206fc6736fff59c0145d6ff13ef36a8e36e192130de07eb1e10a8c39b2e079ec",
     "dependencies": [
       {
         "kind": "repository",
         "id": "lifecycle",
         "path": "docs/drafts/enterprise-superagent-architecture.md",
-        "revision": "8f7ab1c93eb6d72437179b30128ae9508d1200c0",
-        "sha256": "123db6494cfff08efaed34278cd40fa3a9b8efe2c2a35b246d463deab214d1fc",
-        "bytes": 98652
+        "revision": "37a9bfefcf32482d8b417a7577ecaf7fb6ffad2c",
+        "sha256": "d26e18cc6b9f1bae8abd85371c347837285e6b018da500986f2bcccc99a90d28",
+        "bytes": 98704
       },
       {
         "kind": "diagram-spec",
         "id": "system-map",
         "inline": true,
-        "sha256": "080d0c6bcacd4919b2b5496a0f3cff45b62cd2c7795e34a965513ff49dbb0016",
-        "bytes": 1712
+        "sha256": "d16a3ff62bcb8f2ea458a41635da28be7da21d80c239b5c8e0da99db7bdbf969",
+        "bytes": 852
       },
       {
         "kind": "diagram-spec",
         "id": "route-flow",
         "inline": true,
-        "sha256": "be11ae1515c12b25f9d66369277bdff3e6f03a26b5671306f3dd3603233140eb",
-        "bytes": 1405
+        "sha256": "27762eef7308415a0000ed522e44c825127a7bc6accf5aed67ffbbc0442e40c9",
+        "bytes": 1206
       },
       {
         "kind": "diagram-spec",
         "id": "scene-seq",
         "inline": true,
-        "sha256": "6a00146449503163d1b58685ff861a8e83c85eecd10b5d0fdeb93ea443377629",
-        "bytes": 2088
+        "sha256": "15fcca2a387f931fdc009898c25499cdafe5450e6ecc8e6a44494a53d6491afe",
+        "bytes": 962
       }
     ]
   }
