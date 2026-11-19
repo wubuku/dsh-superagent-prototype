@@ -7,6 +7,7 @@
 > **核查状态（2026-11-08）**：本文与 14 份深查报告已按「浅克隆全部仓库 → 逐条回代码/文档判定 → 修正原文」做过一轮实施核查。修正集中在三类：把 README 的过时表述当现状（AGT 包切分、dori 行数）、把文档片段当可调用 API（AGT `AgentControl.evaluate`）、语义方向夸大（SPACE「不做凭据注入」实为有但默认关、OpenSandbox「快照复活身份连续」实为新 ID、「谁都能调 API」实为有 API key 鉴权、cube「<5MB 内存」被其自家 benchmark 反证）。**S/A/B 分级与「没有一项填满三个空位」的总判经复核成立**；paperclip 的①判定已从「明确不填」软化为「无开票链，但有容量级执行准入缝与核实型 watchdog 角色」。
 > **关系**：入口综述覆盖已考察的 8 个对象（含私有系统与本仓库原型）。本文是**公开 GitHub 侧、可借鉴层**的续篇：不重写那 8 个对象的深查；其中对架构边界同等重要的项在 §1 用一行指针列入 S，正文仍留在入口综述。  
 > **新增核查（2026-11-18）**：加入 `AgentBull/ankole`，深查见 `docs/drafts/ankole-deep-research-report.md`；基线 HEAD `09d9b6a3b`（`v2.0.0-alpha.168`），核查方式为逐条回代码 + web research（官网 / 机器之心 11-18 文章 / GitHub）交叉验证。该报告复核出三处「说法 > 证据」：README 的 claim 四分类在代码 schema 中无对应字段、外部文章「Rust 内核按位求交」实为 Elixir `band` + PG `bit_or`、「证明撤权后写回不可能」实为模型级 partial correctness 且已准入写回仍可发生。**加入后 S/A/B 分级标准与「没有一项填满三个空位」的总判仍成立**；三空位须自建不变。
+> **查漏补缺（2026-11-19）**：逐份比对同目录 18 份深查报告与本文索引，发现 `herdrdev/herdr` 只在入口综述做了交叉索引、本文漏收。本次补入 §1 S 档、§2 总表、§3.6、§5、§6、§7、§8。Herdr 命中 §0「通道与账本先例」一类，是 Driver B 方向最完整的工程参照，**不填三个空位**；总判与分级标准不变。补入后 18 份深查报告全部进索引。
 
 ## 0. 「值得借鉴」的门槛
 
@@ -54,6 +55,7 @@
 | **OpenSandbox + CubeSandbox**（一条架构课；**SPACE 作 API 伴读**） | 销毁路径 + 箱外 Credential Vault，对齐架构 §4.5 / §6.2 的基建。填的是空位②的基础设施，不是移交包产品语义。SPACE 只贡献 Firecracker「模板→沙箱→会话→delete」的 API 清洁度，vault 弱于前两者 | ②部分（基建）。①③不填 | `docs/drafts/opensandbox-deep-research-report.md`、`docs/drafts/cubesandbox-deep-research-report.md`；伴读 `docs/drafts/space-deep-research-report.md` | pause / resume / snapshot 不得当任务域默认；没有移交包不得宣布焚毁已解决 |
 | **paperclipai/paperclip** | 空位③目前最好的组织外形：Org / Goal / Issue / Assignment / Heartbeat / Budget，且控制面与 Runtime Adapter 解耦。schema 已核实无 Mandate 数据实体 | ③部分外形。①无开票链，但有**工程化执行准入缝**（execution_admissions + maxConcurrentTasks + 幂等结算）。②弱 | `docs/drafts/paperclip-deep-research-report.md` | 无 Mandate 实体（只有提示词层 watchdog mandate）；`paperclip-eval-kernel` 是产品评测，不是准入 Eval |
 | **AgentBull/ankole** | 空位③目前最重的**治理机制**先例：多租户 Actor/OTP 控制面、allow-only CEL/PBAC、`access_version` 单调撤权、不可变审计、Delivery 未知态、Lean 部分正确性模型；认知侧把有来源/可推翻的断言做成一等公民。**与 Paperclip 同档但不同工：Paperclip 是外形，Ankole 是机制** | ③部分（机制最强，核心仍空）。①部分（六道运行门禁，无开票）。②**空且方向相反**（每 Agent 常驻 Worker + pause/resume 保留凭据） | `docs/drafts/ankole-deep-research-report.md` | 常驻 Worker / pause-resume 不得当任务域；Claim 不是本设计的认知事实、Delivery 未知态不是对账三态；「撤权后写回不可能」只是模型级 partial correctness |
+| **herdrdev/herdr** | **Driver B（驱动员工已有 agent）方向最完整的工程参照**，对准 §0「通道与账本先例」：manifest 驱动的 harness 识别（实测 22 份清单）+ 可靠 prompt 提交三件套（有序提交 → 活动门 → stalled 不重发）+ settled-state 等待 + `blocked` = 人工介入探针 + 协议版本化 JSON 控制面（protocol 22 / 强 schema / 保留历史回放与追赶失败显式报错）。不填三个空位，但证明驱动契约可做生产级 | 不填空位（通道与账本先例）；云端治理归我们 | `docs/drafts/herdr-deep-research-report.md` | pane 是真终端、无隔离概念，不是任务域；屏幕规则检测只当「非权威进度流」；单用户本地假设与无台账 / 对账不可整包搬 |
 | **入口综述已深查**（Comma / OpenMausBot / UHP；BOS / Spring-AI-RAG 为承载者） | 与上三行同一档，正文不在本文展开。Comma 送达、OpenMausBot 委派账本、UHP 驱动契约是生产级通道 / 账本先例；BOS 与 Spring-AI-RAG 是制度 / 认知事实的承载者，决定 Control Plane **不复刻什么** | 通道与账本有先例；三个空位仍空。承载者不是空位填充物 | `docs/drafts/enterprise-superagent-reference-survey.md` §2、§4；`docs/drafts/comma-deep-research-report.md`；`docs/drafts/openmausbot-deep-research-report.md`（UHP 无独立深查，见入口综述 §4.1 与架构 §11.2） | 通道先例不是准入链、任务域焚毁或组织治理；个人助理 / 桌面委派整包不是企业 Control Plane |
 
 ### A / 有价值（裁剪外形或边界，不进控制平面核心）
@@ -96,7 +98,7 @@
 | **准入 / 制度接缝** | 仍空。动作级策略有先例（AGT，S）；开票权 Eval / Mandate 仍须自建并对接 BOS |
 | **任务域焚毁** | **产品语义仍空**。销毁生命周期 + 箱外凭据 vault 的基建先例是 OpenSandbox / CubeSandbox（S；SPACE 仅 API 伴读）。nono 是工具粒度（A） |
 | **组织治理核心** | **仍空**。组织 / Assignment 外形看 Paperclip（S）；治理机制（PBAC / 撤权版本 / 审计 / 未知态 / 形式化）看 Ankole（S），两项同档不同工。SSO / 网关外壳看 Archestra（A），不与 Paperclip / Ankole 等权 |
-| **通道与账本** | 生产级先例在入口综述（Comma / OpenMausBot / UHP，S）。A2A / ContextForge 是协议与网关（B）；Hatchet 是 durable 外形（A） |
+| **通道与账本** | 生产级先例在入口综述（Comma / OpenMausBot / UHP，S）；Driver B 驱动契约最完整的工程参照是 **Herdr**（S，有独立深查）。A2A / ContextForge 是协议与网关（B）；Hatchet 是 durable 外形（A） |
 | **Harness / 工程边界** | DeerFlow、OpenHands（A）可作外围；不进控制平面 |
 
 **姿态**：自建企业 Control Plane，按 S → A 的顺序裁剪具体机制。禁止整包 fork 当底座。
@@ -114,6 +116,7 @@
 | **A** | **nolabs-ai/nono** | Apache-2.0 | 每工具一次临时沙箱、凭据代理注入、审计 | 产品定位（可包装个人助理）；工具粒度≠任务域信封 | ②部分（粒度错位） | **部分填空**（工具级隔离） |
 | **S** | **paperclipai/paperclip** | MIT | Org / Goal / Issue / Assignment / Heartbeat / Budget / Approval 外形；控制面与 Runtime Adapter 解耦；task watchdog 是**被指派的核实型 agent 角色**；有工程化执行准入缝 | `eval-kernel`（产品评测，不是准入 Eval）；整包当 Mandate 系统；依赖消费级助理生态叙事 | ①无开票链（有容量级准入缝）②弱 ③部分外形 | **过关新参照**（组织/Assignment 外形 + 核实型 watchdog） |
 | **S** | **AgentBull/ankole** | Apache-2.0 | `access_version` 单调撤权 + T0 单事务 + 不可变审计；allow-only CEL/PBAC（Rust 内核求值）；Delivery 未知态 + 幂等/回执；Brain 的 source-gated recall 与受众交集；generation/fencing | per-Agent 常驻 Worker 与 pause/resume 当任务域；Claim 当认知事实；「撤权后一切写回不可能」；整包 fork | ①部分（运行门禁）②空且反向 ③部分（机制最强） | **过关新参照**（组织治理机制 + 认知断言） |
+| **S** | **herdrdev/herdr** | Apache-2.0 | manifest 驱动 harness 检测（priority / not / skip + `DetectionExplain` 可解释性）；paste+Enter 有序提交 → 活动门 → stalled 不重发；settled-state `--wait`；`blocked` 上抛人工介入；protocol 22 强 schema + 保留历史回放 + 追赶失败显式报错 | pane 当任务域；屏幕正则当权威事实；单用户本地假设整包搬；无台账 / 对账当已覆盖 | 不填空位（通道与账本先例） | **过关新参照**（Driver B 驱动契约 + 送达 / 等待语义） |
 | **A** | **archestra-ai/archestra** | AGPL-3.0 + Enterprise | SSO/RBAC、触发入口、MCP/A2A 网关、成本/护栏外形 | 整包替代三类事实归位；AGPL/EE 双许可未评估就商用 | ①弱 ②弱–中 ③部分外形 | **部分填空**（平台外壳） |
 | **A** | **bytedance/deer-flow** | MIT | 长周期 harness、`SandboxProvider` 抽象、Gateway API + IM Channels、subagent | 当成企业准入控制平面 | ①无 ②弱–中 ③无 | **外围先例**（Harness） |
 | **A** | **OpenHands/OpenHands** | MIT | Automation Service ↔ Agent Server 分层；Cron/事件触发后的调度与失败处理 | 研发工作流自动化 ≠ 通用企业 Super-Agent | ①无 ②弱 ③无 | **外围先例**（工程边界） |
@@ -214,6 +217,17 @@
 | **Hatchet**（Temporal 同类可选） | 多租户 durable、重试、事件触发 | 通用引擎 ≠ agent 领域模型 |
 | **dori-superagent** | 与 DSH 角色同构的又一份落地 | 脚注；不升主参照 |
 
+### 3.6 通道与驱动契约（Driver B；不填空位）
+
+#### herdrdev/herdr
+
+1. **承载**：[文档] 终端复用器 + agent 运行时，单 Rust 二进制（HEAD `5da0a01e`，v0.9.3）；[代码] `src/detect/manifests/*.toml`（实测 22 份清单，priority / not / skip 三件套 + `DetectionExplain` 可解释性）、`src/api/wait.rs`（854 行，settled-state + activity gate）、`docs/next/api/herdr-api.schema.json`（protocol 22，schemars 从 Rust 类型生成）、`src/persist/`（`session.json` 布局恢复 + `ReportedAgentResume` 自报命令、目录参与 dedupe）。
+2. **先例**：Driver B 的四个生产级答案——「怎么识别 harness、怎么喂活、怎么等、怎么记账」。自报状态优先 / 屏幕读取兜底；提交后 5 秒 activity gate，`stalled ≠ 未送达，禁止盲目重发`；`--wait` 等稳定态；`blocked`（审批 / 提问 UI）= 人工介入探针；`events.subscribe` 保留历史回放 + 追赶失败显式报错。
+3. **空位**：**不填**。报告 §3 自承无多租户 / 准入 / Mandate / 台账 / 对账三态 / 任务域 / 凭据代理 / 云端 Router。它是 §0「通道与账本先例」这一类的最完整样本，不是空位填充物。
+4. **借鉴清单**：manifest 驱动的事件解析（替代「逐个写驱动器」）；prompt 提交三件套；settled-state 等待契约；`blocked` 上抛为人工介入；JSON 控制面 + 协议版本号 + 回放 / 追赶语义（报告 §6 记载已落地为 byomd 契约 v0.1 初稿）；单执行路径模型（有头 / 无头只是观察器在不在）。
+5. **禁借**：`pane` / `session` 不是任务域（架构 §0.6 已登记）；屏幕正则检测只能当「非权威进度流」（架构 C4 语义）；单用户本地假设；无台账 / 对账不可当已覆盖；306k 行体量不要整包搬（报告 §7 实测直接相关约 15–20%）。
+6. **与 UHP 的关系**：同族驱动契约先例，但 UHP 无独立深查（见入口综述 §4.1 与架构 §11.2），Herdr 有——Driver B 场景下优先读它。
+
 ## 4. 明确不主推（及理由）
 
 短表见 §1「不值得当架构主参照」。本节保留理由，不新增主推。
@@ -234,7 +248,7 @@
 | **2. 任务域焚毁** | **产品语义仍空**；基建**部分有先例** | OpenSandbox / CubeSandbox（S）；SPACE 仅 API 伴读；nono 为工具粒度（A）。**反向过滤** k8s agent-sandbox 与各类 pause |
 | **3. 组织级治理** | **核心仍空**；外形与治理机制**部分有先例** | Paperclip（S，组织外形）+ Ankole（S，治理机制：撤权版本 / PBAC / 审计 / 未知态 / 形式化）。Archestra、Hatchet 只是外壳或 durable 外形（A），不与二者等权。知识生产线与对账三态仍接 BOS / Spring-AI-RAG 自建 |
 
-通道与账本「可以做生产级」的判断不变（见入口综述 §5）；本篇把沙箱/凭据与组织外形先例加厚，**不推翻三空位须自建**。
+通道与账本「可以做生产级」的判断不变（见入口综述 §5）；Driver B 驱动契约方向以 **Herdr**（S，独立深查）为最完整工程参照。本篇把沙箱/凭据、组织外形与驱动契约先例加厚，**不推翻三空位须自建**。
 
 ## 6. 建议的借鉴顺序（源码审计）
 
@@ -248,20 +262,21 @@
 4. **OpenSandbox + CubeSandbox**（SPACE 只作 API 伴读）— destroy + vault；裁掉 pause 哲学  
 5. **Paperclip** — Org / Goal / Issue / Assignment / Heartbeat / Budget 外形；书面记录「无 Mandate；eval-kernel 不是准入 Eval」  
 6. **Ankole** — 治理机制：撤权版本 / PBAC / 不可变审计 / 未知态 / Lean 边界声明；书面记录「②方向相反，pause/resume 保留凭据，禁借」
+7. **Herdr** — Driver B 驱动契约：manifest 驱动检测 / 有序提交 + 活动门 / settled-state 等待 / blocked 上抛 / 协议版本化 JSON 契约；书面记录「不填空位，pane ≠ 任务域，屏幕检测非权威」
 
 ### A — 裁剪外形或边界，不进控制平面核心
 
-7. **Archestra** — 平台外壳；先评估 AGPL / Enterprise  
-8. **DeerFlow** — `SandboxProvider` / Gateway  
-9. **OpenHands** — Automation Service ↔ Agent Server  
-10. **Hatchet 或 Temporal（二选一）** — 只看多租户 durable 外形  
-11. **nono** — 工具级一次一箱与凭据代理；粒度错位，不升成任务域
+8. **Archestra** — 平台外壳；先评估 AGPL / Enterprise  
+9. **DeerFlow** — `SandboxProvider` / Gateway  
+10. **OpenHands** — Automation Service ↔ Agent Server  
+11. **Hatchet 或 Temporal（二选一）** — 只看多租户 durable 外形  
+12. **nono** — 工具级一次一箱与凭据代理；粒度错位，不升成任务域
 
 ### B — 索引保留，架构权重低
 
-12. **A2A、ContextForge** — 互操作合同与 MCP host，不代替 Mandate / Assignment 账本  
-13. **kubernetes-sigs/agent-sandbox** — 仅声明式 API；生命周期是反模式  
-14. **dori-superagent** — 同构脚注，不作为主参照审计
+13. **A2A、ContextForge** — 互操作合同与 MCP host，不代替 Mandate / Assignment 账本  
+14. **kubernetes-sigs/agent-sandbox** — 仅声明式 API；生命周期是反模式  
+15. **dori-superagent** — 同构脚注，不作为主参照审计
 
 ### 不进主参照审计
 
@@ -277,6 +292,7 @@ OpenClaw、Hermes、CompanyOS（除非单独做许可证与反模式研究）、
   ├─ 认知事实 → Spring-AI-RAG + 第 9 章知识生产线
   ├─ 编排事实 → 本项目自持（对账/重启/幂等）
   ├─ 通道/账本先例 ← Comma / OpenMausBot / UHP 〔S，入口综述〕
+  ├─ Driver B 驱动契约 ← Herdr（识别/喂活/等待/blocked）〔S，禁 pane 当任务域〕
   ├─ 动作治理外形 ← AGT（裁剪）               〔S〕
   ├─ 组织/Assignment 外形 ← Paperclip         〔S〕
   ├─ 治理机制 ← Ankole（撤权/审计/未知态）    〔S；禁 pause 当任务域〕
@@ -308,6 +324,7 @@ OpenClaw、Hermes、CompanyOS（除非单独做许可证与反模式研究）、
 | S（API 伴读） | SPACE 深查 | `docs/drafts/space-deep-research-report.md` |
 | S | Paperclip 深查 | `docs/drafts/paperclip-deep-research-report.md` |
 | S | Ankole 深查（2026-11-18；含 web research 交叉验证） | `docs/drafts/ankole-deep-research-report.md` |
+| S（通道与账本） | Herdr 深查（2026-11-19 补索引；Driver B 工程参照） | `docs/drafts/herdr-deep-research-report.md` |
 | A | Archestra 深查 | `docs/drafts/archestra-deep-research-report.md` |
 | A | DeerFlow 深查 | `docs/drafts/deerflow-deep-research-report.md` |
 | A | OpenHands 深查 | `docs/drafts/openhands-deep-research-report.md` |
