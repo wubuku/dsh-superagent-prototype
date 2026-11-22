@@ -1,5 +1,8 @@
 # 架构设计评审：`super-agent-architecture-design.md`（对抗性复核）
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/reviews/architecture-design-review-20261105.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 > 评审日期：2026-11-05
 > 评审对象：`docs/drafts/super-agent-architecture-design.md`（1555 行，HEAD `cba1194`）
 > 评审约束：只读不改；未联网验证厂商行为；未读 `.archify/`、`tests/` 全量与 DSH 全仓。

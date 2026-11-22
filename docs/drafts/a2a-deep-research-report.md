@@ -1,5 +1,8 @@
 # A2A（Agent2Agent Protocol）深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/a2a-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：a2aproject/A2A（Linux Foundation，Google 贡献）。  
 远端：`https://github.com/a2aproject/A2A`（~26.4k ★，Apache-2.0）；站点 `https://a2a-protocol.org/`。  
 基线：HEAD `9fff3e08ab33`（2026-11-07 前后）。调研方式：规范文档 `docs/topics/*`、`docs/specification.md` 与 README；SDK 在独立仓（python/js/go/java/dotnet/rust）。关键断言附 [文档] 路径。

@@ -1,5 +1,8 @@
 # OpenHands 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/openhands-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：OpenHands/OpenHands（Agent Canvas 前端与本地栈）+ 配套 `OpenHands/automation`（Automation Service）+ `OpenHands/software-agent-sdk`（Agent Server）。  
 基线：OpenHands HEAD `340c2d930fea`（约 2026-11-07）；Automation 独立仓 ~48 stars、MIT、仍标 Beta。  
 调研方式：README / `docs/architecture.md` / Automation README 与 `openhands/automation/{models,dispatcher,filter_eval,trigger_matcher}.py` 文档↔代码核对；坐标系为 `enterprise-superagent-architecture.md` 与 `enterprise-superagent-borrowable-oss-survey.md`。

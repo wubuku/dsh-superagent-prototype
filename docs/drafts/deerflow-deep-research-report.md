@@ -1,5 +1,8 @@
 # DeerFlow 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/deerflow-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：bytedance/deer-flow，远端 `https://github.com/bytedance/deer-flow`。
 基线：HEAD `3a85baba`（2026-11-07，main，DeerFlow 2.0）。
 调研方式：README / README_zh / AGENTS.md / `SandboxProvider` 源码与 OpenSandbox community provider 核对；明确无 Eval/Mandate。

@@ -1,5 +1,8 @@
 # Hatchet 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/hatchet-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：hatchet-dev/hatchet。  
 远端：`https://github.com/hatchet-dev/hatchet`（~8.2k ★，MIT）；文档 `https://docs.hatchet.run`；可选 Hatchet Cloud。  
 基线：HEAD `4a0a4f10b132`（2026-11-07 前后）。调研方式：README 功能矩阵、仓库内 tenant handlers / migrations、`pkg/repository` 耐久组件名。关键断言附 [文档] / [代码] 路径。

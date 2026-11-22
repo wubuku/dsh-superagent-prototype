@@ -1,5 +1,8 @@
 # Herdr 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/herdr-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：`/Users/yangjiefeng/Documents/herdrdev/herdr`（本地代码库，Apache-2.0）。
 基线：HEAD `5da0a01e`（v0.9.3，2026-10-03 前后活跃）。规模：约 30.6 万行 Rust、417 个文件、1798 commits。
 调研方式：README / CLAUDE.md（工程原则）/ `skills/herdr/SKILL.md`（214 行 agent 操作手册）/ `docs/next/api/herdr-api.schema.json`（协议 22 的正式 JSON Schema）/ 检测清单与源码（`src/detect/`、`src/api/wait.rs`、`src/persist/`、`src/remote/`）逐项核对。

@@ -1,5 +1,8 @@
 # 企业级 Super-Agent 架构设计
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/enterprise-superagent-architecture.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 > **文档性质**：架构设计，**尚未实现**。本文描述的是一条设计路线，不是一份关于已存在系统的说明；文中任何段落都不表示相应代码已经存在或可运行。
 >
 > **事实来源**：本文的全部决策来自一份对谈备忘（`docs/drafts/enterprise-superagent-session-notes.md`）。每条结论在括号里标出设计前提序号（`结论 N`），备忘里同一条前提会带出它所依据的裁决编号（`Q-…`），供回查用。**不看备忘也能读懂本文**；这些编号不是阅读前提。

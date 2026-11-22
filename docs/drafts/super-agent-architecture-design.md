@@ -1,5 +1,8 @@
 # Super-Agent 整体架构设计（第 1–3 阶段：定位、原则、分解、契约、拓扑、ADR、身份安全、领域系统接入）
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/super-agent-architecture-design.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 > 状态：第 1–3 阶段草稿，待评审。第 3 阶段接入流程引擎、知识库与过程状态三类外部领域系统。
 > 上游材料：[事件驱动架构调研](event-driven-architecture-research.md)（本仓库，2026-11-05 完成，678 行）。本文引用它而不重复它。
 > 核查日期：2026-11-05。证据标签：〔原型〕=本仓库可复核实现；〔DSH〕=`deepseek-harness` 现有能力；〔判断〕=本文分析；〔设想〕=本文提出、尚未落地；〔推断〕=代码可解释但未运行验证。外部材料标注来源与读取日期。

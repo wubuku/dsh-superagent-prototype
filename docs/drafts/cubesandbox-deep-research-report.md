@@ -1,5 +1,8 @@
 # TencentCloud/CubeSandbox 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/cubesandbox-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：`TencentCloud/CubeSandbox`，远端 `https://github.com/TencentCloud/CubeSandbox`；站点 `https://cubesandbox.com`。  
 基线：`master` HEAD 附近 `c44a81d25`（2026-11-07，`fix(pvm): drop module.sig_enforce=1…`）；同日另有 pause/resume 指标与 lifecycle 文档提交。  
 许可核实：以仓库根目录 **`LICENSE` 文件为准**——正文写明 **Apache-2.0**（Tencent 版权声明 + 第三方组件清单：kata-containers、cloud-hypervisor 等；cilium/bpf 选 BSD-2-Clause）。GitHub API 的 `license.spdx_id=NOASSERTION` **不可采信**；README badge 与 LICENSE 一致为 Apache-2.0。  

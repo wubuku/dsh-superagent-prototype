@@ -1,5 +1,8 @@
 # 事件驱动架构调研：面向角色进程隔离与 agent 异构
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/event-driven-architecture-research.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 ## 0. 摘要（结论先行）
 
 本文研究对象是 `dsh-superagent` 原型的事件驱动实现，服务目标不是复刻原型，而是回答：当 router、worker、watchdog 可以是不同实现、不同厂商的 agent，且三者可以运行在不同进程时，事件驱动系统应该保留什么、替换什么、新增什么。

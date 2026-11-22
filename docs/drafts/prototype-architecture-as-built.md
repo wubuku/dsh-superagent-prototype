@@ -1,5 +1,8 @@
 # DSH Superagent 原型现状架构（as-built）
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/prototype-architecture-as-built.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 本文描述仓库在 `903fc6a` 提交中的真实行为，不描述设计意图。文中的每个机制、默认值和数字都对应到 `文件:行号`；无法从仓库内代码确认的内容集中列在末章〔未核实〕。
 
 本文不依赖任何其他文档：文中出现的概念都在正文内解释。其他材料只在「参考资料索引」列出地址，在「与既有材料的差异」一章作为被比较对象出现；读正文不读它们也成立。

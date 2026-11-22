@@ -1,5 +1,8 @@
 # Paperclip 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/paperclip-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：paperclipai/paperclip，远端 `https://github.com/paperclipai/paperclip`。
 基线：HEAD `b8e02fc2`（2026-11-07，master）。
 调研方式：README / DESIGN / schema 源码核对；`packages/db/src/schema` 全量文件名枚举；`mandate` 在 `packages/db` 代码搜索 **0 命中**；`paperclip-eval-kernel` 与 `evals/README.md` 核对名称陷阱。

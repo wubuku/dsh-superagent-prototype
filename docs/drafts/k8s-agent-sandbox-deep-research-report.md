@@ -1,5 +1,8 @@
 # Kubernetes Agent Sandbox 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/k8s-agent-sandbox-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：kubernetes-sigs/agent-sandbox（SIG Apps）。  
 远端：`https://github.com/kubernetes-sigs/agent-sandbox`（~4.5k ★，Apache-2.0）；站点 `https://agent-sandbox.sigs.k8s.io`。  
 基线：HEAD `993fd4aa9f57`（2026-11-07 前后）。调研方式：README、`docs/api.md`、`roadmap.md`。关键断言附 [文档] 路径。

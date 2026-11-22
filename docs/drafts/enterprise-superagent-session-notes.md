@@ -1,5 +1,8 @@
 # 企业级 Super-Agent：会话备忘（2026-11-05，第 7 版）
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/enterprise-superagent-session-notes.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 > **版本记录**
 >
 > - v1：记录 H1–H3、BYOM、三类事实、5 个未决问题。

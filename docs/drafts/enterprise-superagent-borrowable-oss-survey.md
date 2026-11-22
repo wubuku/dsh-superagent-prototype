@@ -1,5 +1,8 @@
 # 企业级 Super-Agent：值得借鉴的开源项目综述
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/enterprise-superagent-borrowable-oss-survey.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 > **性质**：公开 GitHub 侧的**架构设计价值索引**。只收录「对本设计真的值得借鉴」的项目——有可核对的代码/文档证据，能落到架构空位或生产级先例。排序依据是**对本设计的架构决策价值**，不是星数，也不是「作为一般 agent 好不好用」。  
 > **坐标系**：与 `enterprise-superagent-reference-survey.md`（下称「入口综述」）同一套 §0 三问；设计结论以 `enterprise-superagent-architecture.md` 为准（三类事实：制度 / 认知 / 编排；三个空位：通用准入链 / 任务域焚毁 / 组织级治理）。  
 > **基线**：仓库元数据以 **2026-11-07（Asia/Shanghai）** 前后 GitHub HEAD 为准；事实分 [文档] / [代码]。分级不新增仓库事实，只重排已有深查。  

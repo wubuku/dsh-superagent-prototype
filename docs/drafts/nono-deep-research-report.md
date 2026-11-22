@@ -1,5 +1,8 @@
 # nono 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/nono-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：nolabs-ai/nono，远端 `https://github.com/nolabs-ai/nono`。
 基线：HEAD `e9796cca`（2026-11-06，fix(docker): create home directory for nono user）。
 调研方式：README / docs ↔ crates 目录与关键路径核对；事实分 [文档] / [代码]；坐标系为 `enterprise-superagent-architecture.md` 三空位与三类事实。

@@ -1,5 +1,8 @@
 # 企业级 Super-Agent：参考项目综述（入口/索引）
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/enterprise-superagent-reference-survey.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 > **性质**：考察综述与入口，不是设计文档。它回答一个问题：**为了规划企业级 Super-Agent，我们考察过哪些项目、各自证明了什么、空位在哪**。每节的深入材料都给指针；设计结论以《企业级 Super-Agent 架构设计》（`enterprise-superagent-architecture.md`，下称「架构文档」）为准，讨论过程以会话备忘（`enterprise-superagent-session-notes.md`，下称「备忘」）为准。
 >
 > **基线**：各仓库以 2026-11-07 前后的 HEAD 为准（逐项标注）；事实全部经代码/文档核对，[文档] 与 [代码] 分开标注的部分在各自报告里。

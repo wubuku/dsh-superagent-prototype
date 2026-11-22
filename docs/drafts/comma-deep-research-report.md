@@ -1,5 +1,8 @@
 # Comma 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/comma-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：AFK-surf/Comma，本地路径 `/Users/yangjiefeng/Documents/AFK-surf/Comma`（远端 `https://github.com/AFK-surf/Comma.git`）。
 基线：HEAD `66ab3dc9`（Sync Comma source，仓库仅 8 个 sync 提交，内部代码为定期同步的快照）。
 调研方式：文档 ↔ 代码逐条核对，关键断言附文件路径；编排与验证两条线由专项子核查补证据。

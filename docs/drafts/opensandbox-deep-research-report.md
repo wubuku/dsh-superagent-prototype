@@ -1,5 +1,8 @@
 # opensandbox-group/OpenSandbox 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/opensandbox-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：`opensandbox-group/OpenSandbox`，远端 `https://github.com/opensandbox-group/OpenSandbox`；站点 `https://open-sandbox.ai`。  
 基线：HEAD 附近 `1f3ec4f27`（2026-11-07，`docs(osep): specify resolver caller authentication for OSEP-0025`）；`pushed_at` 同日活跃。  
 调研方式：README、Credential Vault 指南、Fast Sandbox checkpoints、架构/egress 文档与本仓库 §4.5 / §6.2 / §7 对照；事实分 [文档] / [代码·结构]。

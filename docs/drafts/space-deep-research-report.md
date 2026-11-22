@@ -1,5 +1,8 @@
 # perplexityai/SPACE 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/space-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：`perplexityai/SPACE`（Sandboxed Platform for Agentic Code Execution），远端 `https://github.com/perplexityai/SPACE`。  
 基线：HEAD **恰为** `2f19d5f`（2026-11-07，`template: partition template caches by execution environment (#1075)`）；同日有大量 lifecycle admission / store 重构提交。  
 调研方式：README、`docs/architecture.md`、`docs/first-sandbox.md`、egress profiles 与本仓库 §4.5 / §6.2 / §7 对照；事实分 [文档] / [代码·结构]。

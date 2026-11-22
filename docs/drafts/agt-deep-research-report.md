@@ -1,5 +1,8 @@
 # microsoft/agent-governance-toolkit 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/agt-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：`microsoft/agent-governance-toolkit`（AGT），远端 `https://github.com/microsoft/agent-governance-toolkit`。  
 基线：仓库元数据截至 **2026-11-07（Asia/Shanghai）**；近期可见提交含 `ea260c540`（2026-11-05，`fix(agent-lightning): count only accepted spans…`）。`pushed_at` 显示至 2026-11-06。  
 调研方式：README / Architecture / LIMITATIONS / 正式 specs（Audit、Hypervisor）与入口综述、`enterprise-superagent-architecture.md`（§0 三类事实、§1.4、§4.5、§7、§11）、`enterprise-superagent-borrowable-oss-survey.md` 对照；关键断言附路径。事实分 [文档] / [代码·包结构]。

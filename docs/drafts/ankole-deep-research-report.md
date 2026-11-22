@@ -1,5 +1,8 @@
 # AgentBull/ankole 深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/ankole-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：`AgentBull/ankole`（下称 **Ankole**），远端 `https://github.com/AgentBull/ankole`，本地 clone `/Users/yangjiefeng/Documents/AgentBull/ankole`。
 基线：HEAD `09d9b6a3b`（2026-11-18 04:45 +08，`fix(ci): verify the packaged rclone with its version flag`），带 tag `v2.0.0-alpha.168`，分支 `main` 与 `origin/main` 一致、工作区干净。**注意版本仍是 alpha.168，但 README 自述「runs in production」——两处并存，按 [文档] 如实记录，不推断成熟度。**
 调研方式：① 通读 README / `docs/README.md` / `docs/TradeoffsAndKnownLimits.md` / 关键 `design-docs`（BrainV3、Signals、AgentWorkers、Connectors、AuthZ、Tenants、Principal、HumanOffboarding、AutomationJobs、SkillLessons 等）；② 逐条回 `app/control_plane/lib`、`app/kernel`、`app/agent_computer/src`、`tools/formal` 的代码与模型核实；③ **web research** 交叉验证官方定位（agentbull.com）、外部技术文章（机器之心 2026-11-18）、GitHub 元数据与第三方活跃度。

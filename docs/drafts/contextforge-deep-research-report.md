@@ -1,5 +1,8 @@
 # IBM ContextForge（mcp-context-forge）深度调研报告
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/contextforge-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：IBM/mcp-context-forge（产品名 ContextForge）。  
 远端：`https://github.com/IBM/mcp-context-forge`（~4.8k ★，Apache-2.0）；文档 `https://ibm.github.io/mcp-context-forge/`。  
 基线：HEAD `7d34038ca1f2`（2026-11-07 前后）。调研方式：README Overview、包结构 `mcpgateway/`、关键 service 文件头。关键断言附 [文档] / [代码] 路径。

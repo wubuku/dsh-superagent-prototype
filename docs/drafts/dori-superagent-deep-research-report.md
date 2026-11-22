@@ -1,5 +1,8 @@
 # dori-superagent 深度调研报告（脚注级）
 
+> **[已迁移 · 2026-11-22]** 本文档已迁入 [`enterprise-superagent`](https://github.com/wubuku/enterprise-superagent) 仓库的 `docs/drafts/dori-superagent-deep-research-report.md`（正文原文快照），后续只在该仓库维护更新。本文件保留仅为历史链接，**请勿在此继续更新**。
+
+
 对象：sisyphuslabs/dori-superagent。  
 远端：`https://github.com/sisyphuslabs/dori-superagent`（~191 ★，MIT）。  
 基线：HEAD `e15c01d20785`（2026-11-07 前后）。调研方式：README 对照表 + `src/harness.ts` / `store.ts` / `loop.ts`。关键断言附 [文档] / [代码]。
