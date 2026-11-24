@@ -16,6 +16,11 @@
 - 结论性表述必须有出处（代码路径、文档章节、实测数据）；没有核查过的话不写成「肯定」。
 - 跨仓库引用用相对路径（BOS 仓库：`../../../../wubuku/AI-Native-Business-Operating-System/docs/drafts/`）。
 
+## 调研报告入口
+
+- `docs/drafts/README.md` 是 `docs/drafts/` 的 agent 阅读入口；新增草稿应在那里登记。
+- 涉及 WorkBuddy 桌面 app、内置 CLI、CodeBuddy CLI、ACP、session resume/fork、TUI、`~/.workbuddy` 与 `~/.codebuddy` 的问题，先读 `docs/drafts/workbuddy-codebuddy-cli-deep-research-report.md`（2026-11-24 本机实测 + 官方文档交叉验证）。
+
 ## 仓库边界
 
 - 本仓库是 **public**：客户材料、pitch、内部商务信息一律**不提交**到这里（放 BOS 私有仓库）。
