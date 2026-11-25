@@ -1,12 +1,12 @@
 # docs/drafts 阅读入口
 
-**TL;DR：agent 先读本页。若问题涉及 WorkBuddy 桌面 app、内置 CLI、CodeBuddy CLI、ACP、session resume/fork、TUI 或 `~/.workbuddy` vs `~/.codebuddy`，直接读 [WorkBuddy / CodeBuddy CLI 深度调研报告](workbuddy-codebuddy-cli-deep-research-report.md)；本目录其余多数文档是已迁移到 `enterprise-superagent` 仓库的历史快照。**
+**TL;DR：agent 先读本页。若问题涉及 WorkBuddy 桌面 app、内置 CLI、CodeBuddy CLI、ACP、session resume/fork、TUI 或 `~/.workbuddy` vs `~/.codebuddy`，直接读 [WorkBuddy / CodeBuddy CLI 深度调研报告](../../../../wubuku/enterprise-superagent/docs/drafts/workbuddy-codebuddy-cli-deep-research-report.md)（**已迁至 `wubuku/enterprise-superagent` 仓，本目录只留占位**）；本目录其余多数文档是已迁移到 `enterprise-superagent` 仓库的历史快照。**
 
 ## 1. 先读这里
 
 | 场景 | 先读文档 | 说明 |
 |---|---|---|
-| WorkBuddy / CodeBuddy / CLI / ACP / session 接续 / TUI | [`workbuddy-codebuddy-cli-deep-research-report.md`](workbuddy-codebuddy-cli-deep-research-report.md) | 2026-11-24 本机实测 + 官方文档交叉验证；含四个接续方向判定与控制实验 |
+| WorkBuddy / CodeBuddy / CLI / ACP / session 接续 / TUI | [`../../../../wubuku/enterprise-superagent/docs/drafts/workbuddy-codebuddy-cli-deep-research-report.md`](../../../../wubuku/enterprise-superagent/docs/drafts/workbuddy-codebuddy-cli-deep-research-report.md) | 2026-11-24 本机实测 + 官方文档交叉验证；含四个接续方向判定与控制实验。**2026-11-25 自本仓 `57d2729` 迁入，后续只更新该副本**；本仓同名文件只留占位注解 |
 | 仓库写作纪律、术语纪律 | [`../../CLAUDE.md`](../../CLAUDE.md) | 术语与写作约定，优先级高于本目录单篇文档 |
 | 本项目架构真源 | [`enterprise-superagent-architecture.md`](enterprise-superagent-architecture.md) §0.4 / §0.6 | 术语唯一真源；**该文件已标记迁移，只作历史快照** |
 

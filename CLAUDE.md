@@ -19,7 +19,7 @@
 ## 调研报告入口
 
 - `docs/drafts/README.md` 是 `docs/drafts/` 的 agent 阅读入口；新增草稿应在那里登记。
-- 涉及 WorkBuddy 桌面 app、内置 CLI、CodeBuddy CLI、ACP、session resume/fork、TUI、`~/.workbuddy` 与 `~/.codebuddy` 的问题，先读 `docs/drafts/workbuddy-codebuddy-cli-deep-research-report.md`（2026-11-24 本机实测 + 官方文档交叉验证）。
+- 涉及 WorkBuddy 桌面 app、内置 CLI、CodeBuddy CLI、ACP、session resume/fork、TUI、`~/.workbuddy` 与 `~/.codebuddy` 的问题，先读 `../../../../wubuku/enterprise-superagent/docs/drafts/workbuddy-codebuddy-cli-deep-research-report.md`（2026-11-24 本机实测 + 官方文档交叉验证；**2026-11-25 自本仓 `57d2729` 迁入 `enterprise-superagent`，后续只更新该副本**——本仓同名文件只留占位注解）。
 
 ## 仓库边界
 
